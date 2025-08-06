@@ -1,13 +1,14 @@
 import React from 'react';
 import Header from './components/Header';
-import Hero from './components/Hero';
 import About from './components/About';
+import ReportsAndActions from './components/ReportsAndActions';
 import Stats from './components/Stats';
-import Actions from './components/Actions';
-import News from './components/News';
 import Join from './components/Join';
 import Footer from './components/Footer';
+import Hero from './components/Hero';
 import BackToTop from './components/BackToTop';
+import News from './components/News';
+import './index.css';
 
 function App() {
   return (
@@ -16,7 +17,7 @@ function App() {
       <Hero />
       <About />
       <Stats />
-      <Actions />
+      <ReportsAndActions />
       <News />
       <Join />
       <Footer />

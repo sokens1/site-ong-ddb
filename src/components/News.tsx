@@ -1,60 +1,40 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useRef, useState } from 'react';
+import { supabase } from '../supabaseClient';
 
 const News: React.FC = () => {
   const sliderRef = useRef<HTMLDivElement>(null);
-  const [scrollAmount, setScrollAmount] = useState(0);
+  const [, setScrollAmount] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const [news, setNews] = useState<any[]>([]);
+  const [team, setTeam] = useState<any[]>([]);
 
-  const news = [
-    {
-      category: 'Événement',
-      date: '10 mai 2023',
-      title: 'Journée mondiale de l\'environnement 2023',
-      description: 'Retour sur notre participation à cette journée internationale avec des ateliers et conférences.',
-      image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'
-    },
-    {
-      category: 'Nouveau projet',
-      date: '28 avril 2023',
-      title: 'Lancement du programme "Familles Durables"',
-      description: 'Un nouveau programme pour aider les familles à adopter des pratiques écoresponsables au quotidien.',
-      image: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'
-    },
-    {
-      category: 'Partenariat',
-      date: '15 avril 2023',
-      title: 'Nouveau partenariat avec le Ministère de l\'Éducation',
-      description: 'Signature d\'une convention pour intégrer l\'éducation environnementale dans le programme scolaire.',
-      image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'
-    }
-  ];
+  useEffect(() => {
+    const fetchNews = async () => {
+      const { data, error } = await supabase
+        .from('news')
+        .select('*');
+      if (error) {
+        console.error('Error fetching news:', error);
+      } else {
+        setNews(data);
+      }
+    };
 
-  const team = [
-    {
-      name: 'Franck Ondeno',
-      position: 'Président',
-      description: 'Fondateur de l\'ONG, expert en développement durable',
-      image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'
-    },
-    {
-      name: 'Marie Ntoutoume',
-      position: 'Vice-présidente',
-      description: 'Spécialiste en éducation environnementale',
-      image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'
-    },
-    {
-      name: 'Jean Mba',
-      position: 'Trésorier',
-      description: 'Expert en gestion de projets',
-      image: 'https://images.unsplash.com/photo-1562788869-4ed32648eb72?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'
-    },
-    {
-      name: 'Sarah Bongo',
-      position: 'Secrétaire générale',
-      description: 'Coordinatrice des programmes',
-      image: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'
-    }
-  ];
+    const fetchTeam = async () => {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('*');
+      if (error) {
+        console.error('Error fetching team members:', error);
+      } else {
+        setTeam(data);
+      }
+    };
+
+    fetchNews();
+    fetchTeam();
+  }, []);
 
   useEffect(() => {
     if (!isHovered && sliderRef.current) {

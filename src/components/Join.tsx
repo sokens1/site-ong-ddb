@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../supabaseClient';
 
 const Join: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -10,10 +11,35 @@ const Join: React.FC = () => {
     interest: '',
     skills: '',
     motivation: '',
-    captcha: false
+    captcha: false // correspond au nom de la colonne dans Supabase
   });
   const [showSuccess, setShowSuccess] = useState(false);
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
+  const [faqItems, setFaqItems] = useState<any[]>([]);
+  const [contributionTypes, setContributionTypes] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchFaqItems = async () => {
+      const { data, error } = await supabase.from('faq').select('*');
+      if (error) {
+        console.error('Error fetching FAQ items:', error);
+        return;
+      }
+      setFaqItems(data as any[]);
+    };
+
+    const fetchContributionTypes = async () => {
+      const { data, error } = await supabase.from('contribution_types').select('*');
+      if (error) {
+        console.error('Error fetching contribution types:', error);
+        return;
+      }
+      setContributionTypes(data as any[]);
+    };
+
+    fetchFaqItems();
+    fetchContributionTypes();
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { id, value, type } = e.target;
@@ -23,8 +49,17 @@ const Join: React.FC = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const { data, error } = await supabase
+      .from('form_submissions')
+      .insert([formData]);
+
+    if (error) {
+      console.error('Error submitting form:', error);
+      alert('Une erreur est survenue lors de l\'envoi de votre candidature.');
+    } else {
     setShowSuccess(true);
     setFormData({
       civility: '',
@@ -38,49 +73,12 @@ const Join: React.FC = () => {
       captcha: false
     });
     setTimeout(() => setShowSuccess(false), 5000);
+    }
   };
 
   const toggleFAQ = (index: number) => {
     setOpenFAQ(openFAQ === index ? null : index);
   };
-
-  const faqItems = [
-    {
-      question: 'Quel est le temps d\'engagement minimum ?',
-      answer: 'Nous avons des missions ponctuelles (quelques heures) comme des engagements plus longs. Tout dépend de votre disponibilité.'
-    },
-    {
-      question: 'Faut-il des compétences particulières ?',
-      answer: 'Non, nous formons nos bénévoles. Seule la motivation compte !'
-    },
-    {
-      question: 'Comment se passent les dons ?',
-      answer: 'Les dons peuvent être ponctuels ou réguliers. Nous émettons un reçu fiscal permettant une réduction d\'impôt.'
-    }
-  ];
-
-  const contributionTypes = [
-    {
-      icon: 'fas fa-hands-helping',
-      title: 'Bénévole',
-      description: 'Donnez de votre temps pour nos actions sur le terrain ou nos activités éducatives.'
-    },
-    {
-      icon: 'fas fa-handshake',
-      title: 'Partenaire',
-      description: 'Entreprises et institutions, devenez partenaires de nos projets durables.'
-    },
-    {
-      icon: 'fas fa-donate',
-      title: 'Donateur',
-      description: 'Soutenez financièrement nos actions et bénéficiez d\'un reçu fiscal.'
-    },
-    {
-      icon: 'fas fa-bullhorn',
-      title: 'Ambassadeur',
-      description: 'Relayez nos messages et sensibilisez votre entourage à notre cause.'
-    }
-  ];
 
   return (
     <section id="join" className="py-20 bg-gray-50">
