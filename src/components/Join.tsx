@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 
@@ -52,7 +53,7 @@ const Join: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('form_submissions')
       .insert([formData]);
 
