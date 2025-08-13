@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { motion, useInView } from 'framer-motion';
 import ReportCard from './ReportCard';
 import { fetchReports } from '../data/reports';
 
@@ -12,10 +13,29 @@ interface Report {
   category: string;
 }
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.15, delayChildren: 0.2 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5 },
+  },
+};
+
 const CoreReports: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState('Toutes');
   const [reportsData, setReportsData] = useState<Report[]>([]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const animationRef = useRef(null);
+  const isInView = useInView(animationRef, { once: true, margin: '-150px' });
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
@@ -58,12 +78,22 @@ const CoreReports: React.FC = () => {
           </button>
         ))}
       </div>
-      <div className="relative group">
+      <motion.div
+        ref={animationRef}
+        variants={containerVariants}
+        initial="hidden"
+        animate={isInView ? 'visible' : 'hidden'}
+        className="relative group"
+      >
         <div ref={scrollContainerRef} className="flex overflow-x-auto snap-x snap-mandatory gap-8 pb-6 scrollbar-hide" style={{ scrollBehavior: 'smooth' }}>
           {filteredReports.map((report: Report) => (
-            <div key={report.id} className="flex-shrink-0 snap-start w-96">
+            <motion.div
+              key={report.id}
+              variants={itemVariants}
+              className="flex-shrink-0 snap-start w-96"
+            >
               <ReportCard report={report} />
-            </div>
+            </motion.div>
           ))}
         </div>
         {/* Flèches de navigation */}
@@ -79,7 +109,7 @@ const CoreReports: React.FC = () => {
         >
           <i className="fas fa-chevron-right"></i>
         </button>
-      </div>
+      </motion.div>
     </>
   );
 };

@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 
 const Hero: React.FC = () => {
   const scrollToSection = (sectionId: string) => {
@@ -8,16 +9,51 @@ const Hero: React.FC = () => {
     }
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.3,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        duration: 0.5,
+      },
+    },
+  };
+
   return (
     <section id="home" className="hero-bg min-h-screen flex items-center text-white">
-      <div className="container mx-auto px-4 py-20 text-center">
-        <h1 className="text-4xl md:text-6xl font-bold mb-6">
+      <motion.div
+        className="container mx-auto px-4 py-20 text-center"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <motion.h1
+          className="text-4xl md:text-6xl font-bold mb-6"
+          variants={itemVariants}
+        >
           La préservation de l'environnement<br />par l'éducation au changement
-        </h1>
-        <p className="text-xl md:text-2xl mb-10 max-w-3xl mx-auto">
+        </motion.h1>
+        <motion.p
+          className="text-xl md:text-2xl mb-10 max-w-3xl mx-auto"
+          variants={itemVariants}
+        >
           ONG nationale créée en 2017 à Libreville, nous œuvrons pour l'éducation environnementale et la protection des écosystèmes au Gabon
-        </p>
-        <div className="flex flex-col sm:flex-row justify-center gap-4">
+        </motion.p>
+        <motion.div
+          className="flex flex-col sm:flex-row justify-center gap-4"
+          variants={itemVariants}
+        >
           <button
             onClick={() => scrollToSection('join')}
             className="btn btn-primary btn-enhanced pulse-on-hover text-white font-bold py-3 px-8 rounded-full"
@@ -30,8 +66,8 @@ const Hero: React.FC = () => {
           >
             Nos actions
           </button>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </section>
   );
 };
