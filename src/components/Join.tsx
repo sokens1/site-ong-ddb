@@ -49,6 +49,7 @@ const Join: React.FC = () => {
     interest: '',
     skills: '',
     motivation: '',
+    cv: null as File | null,
     captcha: false,
   });
   const [showSuccess, setShowSuccess] = useState(false);
@@ -78,15 +79,53 @@ const Join: React.FC = () => {
     setFormData(prev => ({ ...prev, [id]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value }));
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setFormData(prev => ({ ...prev, cv: file }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await supabase.from('form_submissions').insert([formData]);
+    
+    // Upload CV if provided
+    let cvUrl = null;
+    if (formData.cv) {
+      const fileExt = formData.cv.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage
+        .from('cv-uploads')
+        .upload(fileName, formData.cv);
+      
+      if (uploadError) {
+        console.error('Error uploading CV:', uploadError);
+        alert("Une erreur est survenue lors de l'upload de votre CV.");
+        return;
+      }
+      
+      const { data } = supabase.storage.from('cv-uploads').getPublicUrl(fileName);
+      cvUrl = data.publicUrl;
+    }
+
+    // Submit form data
+    const { error } = await supabase.from('form_submissions').insert([{
+      civility: formData.civility,
+      fullname: formData.fullname,
+      email: formData.email,
+      phone: formData.phone,
+      city: formData.city,
+      interest: formData.interest,
+      skills: formData.skills,
+      motivation: formData.motivation,
+      captcha: formData.captcha,
+      cv_url: cvUrl
+    }]);
+    
     if (error) {
       console.error('Error submitting form:', error);
       alert("Une erreur est survenue lors de l'envoi de votre candidature.");
     } else {
       setShowSuccess(true);
-      setFormData({ civility: '', fullname: '', email: '', phone: '', city: '', interest: '', skills: '', motivation: '', captcha: false });
+      setFormData({ civility: '', fullname: '', email: '', phone: '', city: '', interest: '', skills: '', motivation: '', cv: null, captcha: false });
       setTimeout(() => setShowSuccess(false), 5000);
     }
   };
@@ -172,19 +211,21 @@ const Join: React.FC = () => {
               </motion.div>
               <motion.div variants={itemVariants}>
                 <label htmlFor="interest" className="block text-gray-700 font-medium mb-2">Domaine d'intérêt</label>
-                <select id="interest" value={formData.interest} onChange={handleInputChange} className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600">
-                  <option value="">Sélectionnez un domaine</option>
-                  <option value="education">Éducation environnementale</option>
-                  <option value="cleaning">Nettoyage d'espaces naturels</option>
-                  <option value="restoration">Restauration d'écosystèmes</option>
-                  <option value="events">Organisation d'événements</option>
-                  <option value="communication">Communication et réseaux sociaux</option>
-                  <option value="other">Autre</option>
-                </select>
+                <input type="text" id="interest" value={formData.interest} onChange={handleInputChange} placeholder="Décrivez votre domaine d'intérêt" className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600" />
               </motion.div>
               <motion.div variants={itemVariants}>
-                <label htmlFor="skills" className="block text-gray-700 font-medium mb-2">Compétences (facultatif)</label>
-                <textarea id="skills" rows={2} value={formData.skills} onChange={handleInputChange} className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600"></textarea>
+                <label htmlFor="skills" className="block text-gray-700 font-medium mb-2">Compétences <span className="text-red-500">*</span></label>
+                <textarea id="skills" rows={2} value={formData.skills} onChange={handleInputChange} required className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600"></textarea>
+              </motion.div>
+              <motion.div variants={itemVariants}>
+                <label htmlFor="cv" className="block text-gray-700 font-medium mb-2">CV (PDF, DOC, DOCX)</label>
+                <input type="file" id="cv" onChange={handleFileChange} accept=".pdf,.doc,.docx" className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600" />
+                {formData.cv && (
+                  <p className="text-sm text-green-600 mt-1">
+                    <i className="fas fa-check-circle mr-1"></i>
+                    Fichier sélectionné : {formData.cv.name}
+                  </p>
+                )}
               </motion.div>
               <motion.div variants={itemVariants}>
                 <label htmlFor="motivation" className="block text-gray-700 font-medium mb-2">Pourquoi souhaitez-vous nous rejoindre ?</label>

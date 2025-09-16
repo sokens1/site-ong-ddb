@@ -12,7 +12,7 @@ const QuickActions: React.FC = () => {
     },
     {
       id: 'missions',
-      title: 'Nos Actions et Rapports',
+      title: 'Nos Actions',
       image: '/images/image-presentation-2.jpg',
       link: '/actions',
       description: 'Nos actions pour l\'environnement'

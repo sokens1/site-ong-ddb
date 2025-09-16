@@ -55,11 +55,11 @@ const CoreReports: React.FC = () => {
     getReports();
   }, []);
 
-  const filters = ['Toutes', 'Rapport d\'activité', 'Rapport d\'étude', 'Rapport de projet'];
+  const filters = ['Toutes', '2025', '2024', '2023', '2022', '2021'];
 
   const filteredReports = activeFilter === 'Toutes'
     ? reportsData
-    : reportsData.filter((report: Report) => report.category === activeFilter);
+    : reportsData.filter((report: Report) => report.date.includes(activeFilter));
 
   return (
     <>

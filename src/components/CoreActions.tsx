@@ -22,11 +22,11 @@ const CoreActions: React.FC = () => {
     getActions();
   }, []);
 
-  const filters = ['Toutes', 'Éducation', 'Restauration', 'Nettoyage'];
+  const filters = ['Toutes', '2024', '2023', '2022', '2021'];
 
   const filteredActions = activeFilter === 'Toutes'
     ? actionsData
-    : actionsData.filter((action: Action) => action.category === activeFilter);
+    : actionsData.filter((action: Action) => action.date.includes(activeFilter));
 
   return (
     <>
@@ -70,7 +70,7 @@ const CoreActions: React.FC = () => {
         ))}
       </div>
 
-      <div className="bg-white p-8 rounded-lg shadow-md">
+      {/* <div className="bg-white p-8 rounded-lg shadow-md">
         <h3 className="text-2xl font-bold text-green-800 mb-6">Projets en cours</h3>
         {[ 
           { name: 'Programme "École Verte"', progress: 65 },
@@ -95,7 +95,7 @@ const CoreActions: React.FC = () => {
             Soutenir nos projets
           </a>
         </div>
-      </div>
+      </div> */}
     </>
   );
 };
