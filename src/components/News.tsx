@@ -160,7 +160,7 @@ const News: React.FC = () => {
         
         <AnimatedSection className="text-center mb-16">
           <motion.h2 variants={itemVariants} className="text-3xl md:text-4xl font-bold text-green-800 mb-4">
-            Nos dernières actualités
+            Actualités
           </motion.h2>
           <motion.div variants={itemVariants} className="w-24 h-1 bg-green-600 mx-auto"></motion.div>
         </AnimatedSection>

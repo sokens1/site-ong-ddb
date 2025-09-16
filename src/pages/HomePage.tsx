@@ -1,12 +1,14 @@
 import React from 'react';
 import Hero from '../components/Hero';
-import Stats from '../components/Stats';
+import QuickActions from '../components/QuickActions';
+import News from '../components/News';
 
 const HomePage: React.FC = () => {
   return (
     <div id="home">
       <Hero />
-      <Stats />
+      <QuickActions />
+      <News />
     </div>
   );
 };

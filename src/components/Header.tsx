@@ -44,7 +44,7 @@ const Header: React.FC = () => {
                       : 'text-green-800 hover:text-green-600'
                   }`}
                 >
-                  L'ONG
+                  À propos
                 </Link>
               </li>
               <li>

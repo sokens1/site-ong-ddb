@@ -21,9 +21,9 @@ const Footer: React.FC = () => {
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
-            <h3 className="text-xl font-bold mb-4">DDBE Gabon</h3>
+            <h3 className="text-xl font-bold mb-4"> ONG DDB </h3>
             <p className="mb-4">
-              ONG Développement Durable et Bien-Être, engagée pour la protection de l'environnement et l'éducation au développement durable au Gabon.
+              ONG Développement Durable et Bien-Être, engagé à former les leaders jeunesse pour la protection de l'environnement et l'avenir de la planète.
             </p>
             <div className="flex space-x-4">
               <a href="#" className="text-white hover:text-green-300">
@@ -43,17 +43,17 @@ const Footer: React.FC = () => {
           <div>
             <h3 className="text-xl font-bold mb-4">Contact</h3>
             <address className="not-italic">
-              <p className="mb-2">
+              {/* <p className="mb-2">
                 <i className="fas fa-map-marker-alt mr-2"></i>
                 Kalikak, Libreville-Gabon
-              </p>
+              </p> */}
               <p className="mb-2">
                 <i className="fas fa-phone-alt mr-2"></i>
                 +241 077 65 00 15
               </p>
               <p className="mb-2">
                 <i className="fas fa-phone-alt mr-2"></i>
-                +241 062 15 95 20
+                +241 074 26 70 78
               </p>
               <p className="mb-2">
                 <i className="fas fa-envelope mr-2"></i>
