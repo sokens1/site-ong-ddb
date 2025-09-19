@@ -93,15 +93,6 @@ const News: React.FC = () => {
     }
   };
 
-  const scrollTeam = (direction: 'left' | 'right') => {
-    if (teamScrollRef.current) {
-      const scrollAmount = teamScrollRef.current.clientWidth * 0.8;
-      teamScrollRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth',
-      });
-    }
-  };
 
   // Effects
   useEffect(() => {

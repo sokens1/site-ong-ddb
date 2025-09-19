@@ -55,7 +55,7 @@ const Join: React.FC = () => {
   });
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [showSuccess] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
   const [faqItems, setFaqItems] = useState<any[]>([]);

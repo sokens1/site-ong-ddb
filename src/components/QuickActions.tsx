@@ -133,7 +133,7 @@ const QuickActions: React.FC = () => {
         {isMobile && (
           <div className="relative">
             <div ref={scrollRef} className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-6 scrollbar-hide" style={{ scrollBehavior: 'smooth' }}>
-              {actions.map((action, index) => (
+              {actions.map((action) => (
                 <Link
                   key={action.id}
                   to={action.link}
