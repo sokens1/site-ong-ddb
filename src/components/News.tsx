@@ -73,17 +73,30 @@ const News: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [teamActiveIndex, setTeamActiveIndex] = useState(0);
   const isMobile = useIsMobile();
 
   // Refs
   const newsScrollRef = useRef<HTMLDivElement>(null);
+  const teamScrollRef = useRef<HTMLDivElement>(null);
   const autoScrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const teamAutoScrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Functions
   const scrollNews = (direction: 'left' | 'right') => {
     if (newsScrollRef.current) {
       const scrollAmount = newsScrollRef.current.clientWidth * 0.9;
       newsScrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  const scrollTeam = (direction: 'left' | 'right') => {
+    if (teamScrollRef.current) {
+      const scrollAmount = teamScrollRef.current.clientWidth * 0.8;
+      teamScrollRef.current.scrollBy({
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth',
       });
@@ -136,6 +149,33 @@ const News: React.FC = () => {
   }, [isMobile, news.length, isModalOpen]);
 
   useEffect(() => {
+    const startTeamAutoScroll = () => {
+      if (teamAutoScrollIntervalRef.current) clearInterval(teamAutoScrollIntervalRef.current);
+      teamAutoScrollIntervalRef.current = setInterval(() => {
+        setTeamActiveIndex(prevIndex => {
+          const nextIndex = (prevIndex + 1) % team.length;
+          const container = teamScrollRef.current;
+          if (container?.children[nextIndex]) {
+            const card = container.children[nextIndex] as HTMLElement;
+            container.scrollTo({ left: card.offsetLeft, behavior: 'smooth' });
+          }
+          return nextIndex;
+        });
+      }, 6000);
+    };
+
+    if (isMobile && team.length > 0) {
+      startTeamAutoScroll();
+    } else {
+      if (teamAutoScrollIntervalRef.current) clearInterval(teamAutoScrollIntervalRef.current);
+    }
+
+    return () => {
+      if (teamAutoScrollIntervalRef.current) clearInterval(teamAutoScrollIntervalRef.current);
+    };
+  }, [isMobile, team.length]);
+
+  useEffect(() => {
     const container = newsScrollRef.current;
     let scrollTimeout: NodeJS.Timeout;
     const handleScroll = () => {
@@ -152,6 +192,24 @@ const News: React.FC = () => {
     container?.addEventListener('scroll', handleScroll);
     return () => container?.removeEventListener('scroll', handleScroll);
   }, [activeIndex]);
+
+  useEffect(() => {
+    const container = teamScrollRef.current;
+    let scrollTimeout: NodeJS.Timeout;
+    const handleScroll = () => {
+      if (!container) return;
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        const scrollLeft = container.scrollLeft;
+        const cardWidth = container.children[0]?.clientWidth || 0;
+        const gap = 16; // Assuming gap-4
+        const newIndex = Math.round(scrollLeft / (cardWidth + gap));
+        if (newIndex !== teamActiveIndex) setTeamActiveIndex(newIndex);
+      }, 150);
+    };
+    container?.addEventListener('scroll', handleScroll);
+    return () => container?.removeEventListener('scroll', handleScroll);
+  }, [teamActiveIndex]);
 
   // Render
   return (
@@ -236,15 +294,114 @@ const News: React.FC = () => {
             Notre bureau directeur
           </motion.h2>
           <motion.div variants={itemVariants} className="w-24 h-1 bg-green-600 mx-auto mb-8"></motion.div>
-          <div className="flex justify-center flex-wrap gap-8">
-            {team.map((member, index) => (
-              <motion.div key={index} variants={itemVariants} className="text-center w-64">
-                <img src={member.image} alt={member.name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg"/>
-                <h3 className="font-bold text-green-800 text-xl">{member.name}</h3>
-                <p className="text-gray-600">{member.position}</p>
-              </motion.div>
-            ))}
-          </div>
+          
+          {/* Version Desktop - Disposition hiérarchisée */}
+          {!isMobile && (
+            <>
+              {/* Premier membre seul en haut au centre */}
+              {team.length > 0 && (
+                <motion.div variants={itemVariants} className="text-center mb-12">
+                  <img src={team[0].image} alt={team[0].name} className="w-40 h-40 rounded-full mx-auto mb-4 object-cover shadow-lg"/>
+                  <h3 className="font-bold text-green-800 text-xl">{team[0].name}</h3>
+                  <p className="text-gray-600">{team[0].position}</p>
+                </motion.div>
+              )}
+
+              {/* Membres 2, 3, 4 en ligne */}
+              {team.length > 1 && (
+                <div className="flex justify-center flex-wrap gap-8 mb-8">
+                  {team.slice(1, 4).map((member, index) => (
+                    <motion.div key={index + 1} variants={itemVariants} className="text-center w-64">
+                      <img src={member.image} alt={member.name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg"/>
+                      <h3 className="font-bold text-green-800 text-xl">{member.name}</h3>
+                      <p className="text-gray-600">{member.position}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+
+              {/* Membres 5, 11, 12 en ligne (3 photos) */}
+              {team.length > 4 && (
+                <div className="flex justify-center flex-wrap gap-8 mb-8">
+                  {[4, 10, 11].filter(index => index < team.length).map((memberIndex) => (
+                    <motion.div key={memberIndex} variants={itemVariants} className="text-center w-64">
+                      <img src={team[memberIndex].image} alt={team[memberIndex].name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg"/>
+                      <h3 className="font-bold text-green-800 text-xl">{team[memberIndex].name}</h3>
+                      <p className="text-gray-600">{team[memberIndex].position}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+
+              {/* Membres 6, 7 en ligne (2 photos) */}
+              {team.length > 5 && (
+                <div className="flex justify-center flex-wrap gap-8 mb-8">
+                  {[5, 6].filter(index => index < team.length).map((memberIndex) => (
+                    <motion.div key={memberIndex} variants={itemVariants} className="text-center w-64">
+                      <img src={team[memberIndex].image} alt={team[memberIndex].name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg"/>
+                      <h3 className="font-bold text-green-800 text-xl">{team[memberIndex].name}</h3>
+                      <p className="text-gray-600">{team[memberIndex].position}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+
+              {/* Reste des membres (10, 8, 9, 13 et plus) */}
+              {team.length > 4 && (
+                <div className="flex justify-center flex-wrap gap-8">
+                  {[9, 7, 8, 12].filter(index => index < team.length).concat(
+                    team.slice(13).map((_, index) => index + 13)
+                  ).map((memberIndex) => (
+                    <motion.div key={memberIndex} variants={itemVariants} className="text-center w-64">
+                      <img src={team[memberIndex].image} alt={team[memberIndex].name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg"/>
+                      <h3 className="font-bold text-green-800 text-xl">{team[memberIndex].name}</h3>
+                      <p className="text-gray-600">{team[memberIndex].position}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Version Mobile - Défilement horizontal */}
+          {isMobile && (
+            <div className="relative group">
+              <div ref={teamScrollRef} className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-6 scrollbar-hide" style={{ scrollBehavior: 'smooth' }}>
+                {team.map((member, index) => (
+                  <motion.div
+                    key={index}
+                    variants={itemVariants}
+                    className="flex-shrink-0 snap-start w-48"
+                  >
+                    <div className="text-center">
+                      <img src={member.image} alt={member.name} className="w-24 h-24 rounded-full mx-auto mb-3 object-cover shadow-lg"/>
+                      <h3 className="font-bold text-green-800 text-base">{member.name}</h3>
+                      <p className="text-gray-600 text-sm">{member.position}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+              
+              {/* Indicateurs de pagination pour mobile */}
+              <div className="flex justify-center gap-2 mt-4">
+                {team.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      setTeamActiveIndex(index);
+                      const container = teamScrollRef.current;
+                      if (container?.children[index]) {
+                        const card = container.children[index] as HTMLElement;
+                        container.scrollTo({ left: card.offsetLeft, behavior: 'smooth' });
+                      }
+                    }}
+                    className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${teamActiveIndex === index ? 'bg-green-600' : 'bg-gray-300'}`}
+                    aria-label={`Aller au membre ${index + 1}`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </AnimatedSection>
       </div>
 

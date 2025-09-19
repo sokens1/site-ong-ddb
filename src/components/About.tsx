@@ -107,9 +107,10 @@ const About: React.FC = () => {
 
   const partners = [
     { type: 'image', value: '/images/logo-unicef.png', alt: 'UNICEF Logo' },
+    { type: 'image', value: '/images/logo-pnud.png', alt: 'PNUDLogo' },
     { type: 'image', value: '/images/logo-WWF.png', alt: 'WWF Logo' },
     { type: 'image', value: '/images/logo-fondation-lekedi.png', alt: 'Fondation Lekedi Logo' },
-    { type: 'text', value: 'Mairie de Libreville' }
+    
   ];
 
   return (

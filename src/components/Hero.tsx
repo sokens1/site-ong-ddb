@@ -1,13 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 const Hero: React.FC = () => {
-  const scrollToSection = (sectionId: string) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
+  const navigate = useNavigate();
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -55,7 +51,7 @@ const Hero: React.FC = () => {
           variants={itemVariants}
         >
           <button
-            onClick={() => scrollToSection('join')}
+            onClick={() => navigate('/join')}
             className="btn btn-primary btn-enhanced pulse-on-hover text-white font-bold py-3 px-8 rounded-full"
           >
             Rejoignez-nous
