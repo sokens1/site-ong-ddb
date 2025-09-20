@@ -39,6 +39,7 @@ const AnimatedSection: React.FC<{ children: React.ReactNode; className?: string 
 
 const About: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
   const historyImages = [
     '/images/image-presentation-2.jpg',
     '/images/image-presentation-1.jpg',
@@ -182,6 +183,50 @@ const About: React.FC = () => {
           </div>
         </AnimatedSection>
 
+        <AnimatedSection className="mb-20">
+          <motion.h3 variants={itemVariants} className="text-2xl font-bold text-green-800 mb-8 text-center">Documents statutaires</motion.h3>
+          <div className="max-w-2xl mx-auto">
+            <motion.div
+              variants={itemVariants}
+              className="bg-white p-8 rounded-lg shadow-md border border-gray-100 hover:shadow-xl transition-all duration-300"
+            >
+              <div className="flex items-center mb-6">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-800 mr-6">
+                  <i className="fas fa-file-alt text-2xl"></i>
+                </div>
+                <div>
+                  <h4 className="text-2xl font-bold text-green-800">Statuts et Règlement intérieur</h4>
+                  <p className="text-gray-600">Documents officiels de l'ONG</p>
+                </div>
+              </div>
+              <p className="text-gray-700 mb-6 text-lg">
+                Consultez les documents officiels qui définissent les objectifs, la structure organisationnelle et les règles de fonctionnement de notre ONG Développement Durable et Bien-Être.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button 
+                  onClick={() => setIsDocumentModalOpen(true)}
+                  className="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors duration-300 flex items-center justify-center text-lg font-medium"
+                >
+                  <i className="fas fa-eye mr-3"></i>
+                  Visualiser le document
+                </button>
+                <button 
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = '/documents/statuts-ong.pdf.pdf';
+                    link.download = 'statuts-et-reglement-ong.pdf';
+                    link.click();
+                  }}
+                  className="flex-1 bg-gray-600 text-white py-3 px-6 rounded-lg hover:bg-gray-700 transition-colors duration-300 flex items-center justify-center text-lg font-medium"
+                >
+                  <i className="fas fa-download mr-3"></i>
+                  Télécharger
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        </AnimatedSection>
+
         <AnimatedSection className="text-center">
           <motion.h3 variants={itemVariants} className="text-2xl font-bold text-green-800 mb-8">Nos partenaires</motion.h3>
           <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">
@@ -201,6 +246,48 @@ const About: React.FC = () => {
           </div>
         </AnimatedSection>
       </div>
+
+      {/* Modal pour visualiser le document */}
+      {isDocumentModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-6xl h-[95vh] w-full relative flex flex-col">
+            {/* En-tête du modal */}
+            <div className="flex justify-between items-center p-4 border-b border-gray-200">
+              <div>
+                <h2 className="text-xl font-bold text-green-800">Statuts et Règlement intérieur</h2>
+                <p className="text-green-600 text-sm">Documents officiels de l'ONG</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <a
+                  href="/documents/statuts-ong.pdf.pdf"
+                  download
+                  className="text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors duration-200"
+                  title="Télécharger le document"
+                >
+                  <i className="fas fa-download sm:mr-1"></i>
+                  <span className="hidden sm:inline">Télécharger</span>
+                </a>
+                <button
+                  onClick={() => setIsDocumentModalOpen(false)}
+                  className="text-gray-500 hover:text-gray-700 text-2xl bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center transition-colors duration-200"
+                  title="Fermer"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {/* Contenu du document */}
+            <div className="flex-1 overflow-hidden">
+              <iframe
+                src="/documents/statuts-ong.pdf.pdf"
+                className="w-full h-full border-0"
+                title="Statuts et Règlement intérieur"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 };
