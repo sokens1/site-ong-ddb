@@ -83,3 +83,4 @@ CREATE POLICY "Allow authenticated users to read CVs" ON storage.objects
 FOR SELECT TO authenticated
 USING (bucket_id = 'cv-uploads');
 ```
+

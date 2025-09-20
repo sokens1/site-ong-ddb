@@ -333,36 +333,36 @@ const Join: React.FC = () => {
                   <h4 className="text-lg font-semibold text-green-800 mb-4">Informations personnelles</h4>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="civility" className="block text-gray-700 font-medium mb-2">Civilité</label>
-                      <select id="civility" value={formData.civility} onChange={handleInputChange} className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600">
-                        <option value="">Sélectionnez</option>
-                        <option value="M">Monsieur</option>
-                        <option value="Mme">Madame</option>
-                        <option value="Mlle">Mademoiselle</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label htmlFor="fullname" className="block text-gray-700 font-medium mb-2">Nom complet</label>
-                      <input type="text" id="fullname" value={formData.fullname} onChange={handleInputChange} required className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600" />
-                    </div>
+                <div>
+                  <label htmlFor="civility" className="block text-gray-700 font-medium mb-2">Civilité</label>
+                  <select id="civility" value={formData.civility} onChange={handleInputChange} className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600">
+                    <option value="">Sélectionnez</option>
+                    <option value="M">Monsieur</option>
+                    <option value="Mme">Madame</option>
+                    <option value="Mlle">Mademoiselle</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="fullname" className="block text-gray-700 font-medium mb-2">Nom complet</label>
+                  <input type="text" id="fullname" value={formData.fullname} onChange={handleInputChange} required className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600" />
+                </div>
                   </div>
                   
                   <div>
-                    <label htmlFor="email" className="block text-gray-700 font-medium mb-2">Adresse e-mail</label>
-                    <input type="email" id="email" value={formData.email} onChange={handleInputChange} required className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600" />
+                <label htmlFor="email" className="block text-gray-700 font-medium mb-2">Adresse e-mail</label>
+                <input type="email" id="email" value={formData.email} onChange={handleInputChange} required className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600" />
                   </div>
                   
                   <div>
-                    <label htmlFor="phone" className="block text-gray-700 font-medium mb-2">Téléphone</label>
-                    <input type="tel" id="phone" value={formData.phone} onChange={handleInputChange} className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600" />
+                <label htmlFor="phone" className="block text-gray-700 font-medium mb-2">Téléphone</label>
+                <input type="tel" id="phone" value={formData.phone} onChange={handleInputChange} className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600" />
                   </div>
                   
                   <div>
-                    <label htmlFor="city" className="block text-gray-700 font-medium mb-2">Ville</label>
-                    <input type="text" id="city" value={formData.city} onChange={handleInputChange} className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600" />
+                <label htmlFor="city" className="block text-gray-700 font-medium mb-2">Ville</label>
+                <input type="text" id="city" value={formData.city} onChange={handleInputChange} className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600" />
                   </div>
-                </motion.div>
+              </motion.div>
               )}
 
               {/* Étape 2: Profil & motivation */}
@@ -371,7 +371,7 @@ const Join: React.FC = () => {
                   <h4 className="text-lg font-semibold text-green-800 mb-4">Profil & motivation</h4>
                   
                   <div>
-                    <label htmlFor="interest" className="block text-gray-700 font-medium mb-2">Domaine d'intérêt</label>
+                <label htmlFor="interest" className="block text-gray-700 font-medium mb-2">Domaine d'intérêt</label>
                     <input type="text" id="interest" value={formData.interest} onChange={handleInputChange} placeholder="Décrivez votre domaine d'intérêt" className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600" />
                   </div>
                   
@@ -381,10 +381,10 @@ const Join: React.FC = () => {
                   </div>
                   
                   <div>
-                    <label htmlFor="motivation" className="block text-gray-700 font-medium mb-2">Pourquoi souhaitez-vous nous rejoindre ?</label>
+                <label htmlFor="motivation" className="block text-gray-700 font-medium mb-2">Pourquoi souhaitez-vous nous rejoindre ?</label>
                     <textarea id="motivation" rows={4} value={formData.motivation} onChange={handleInputChange} placeholder="Expliquez votre motivation pour rejoindre l'ONG DDB" className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600"></textarea>
                   </div>
-                </motion.div>
+              </motion.div>
               )}
 
               {/* Étape 3: Finalisation */}
@@ -393,7 +393,10 @@ const Join: React.FC = () => {
                   <h4 className="text-lg font-semibold text-green-800 mb-4">Finalisation</h4>
                   
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2">CV (PDF, DOC, DOCX) - Max 5MB</label>
+                    <label className="block text-gray-700 font-medium mb-2">CV (PDF, DOC, DOCX) - Max 5MB <span className="text-gray-500 font-normal">- Optionnel</span></label>
+                    <p className="text-xs text-gray-500 -mt-1 mb-3">
+                      Le CV n'est pas obligatoire. Vous pouvez soumettre votre candidature sans l'ajouter.
+                    </p>
                     
                     {/* Zone de drop moderne */}
                     <div
@@ -464,7 +467,7 @@ const Join: React.FC = () => {
                           </div>
                           <div>
                             <p className="text-sm font-medium text-gray-900">
-                              Glissez-déposez votre CV ici
+                              Glissez-déposez votre CV ici (optionnel)
                             </p>
                             <p className="text-xs text-gray-500">
                               ou cliquez pour sélectionner un fichier
@@ -490,10 +493,10 @@ const Join: React.FC = () => {
                   </div>
                   
                   <div className="flex items-center">
-                    <input type="checkbox" id="captcha" checked={formData.captcha} onChange={handleInputChange} className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded" />
-                    <label htmlFor="captcha" className="ml-2 block text-gray-700">Je ne suis pas un robot</label>
+                <input type="checkbox" id="captcha" checked={formData.captcha} onChange={handleInputChange} className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded" />
+                <label htmlFor="captcha" className="ml-2 block text-gray-700">Je ne suis pas un robot</label>
                   </div>
-                </motion.div>
+              </motion.div>
               )}
 
               {/* Boutons de navigation */}

@@ -27,3 +27,4 @@ USING (bucket_id = 'cv-uploads');
 -- Vérifier que le bucket existe et est public
 -- (Cette requête devrait retourner une ligne si le bucket existe)
 SELECT * FROM storage.buckets WHERE id = 'cv-uploads';
+
