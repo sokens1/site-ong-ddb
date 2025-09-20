@@ -407,7 +407,9 @@ const News: React.FC = () => {
               <h1 className="text-2xl md:text-3xl font-bold text-green-800 mb-4">{selectedArticle.title}</h1>
               <div className="prose max-w-none text-gray-700">
                 <p className="text-lg mb-4">{selectedArticle.description}</p>
-                <div className="space-y-4" dangerouslySetInnerHTML={{ __html: selectedArticle.content || '' }} />
+                <div className="space-y-4 whitespace-pre-wrap text-base leading-relaxed">
+                  {selectedArticle.content || ''}
+                </div>
               </div>
               <div className="mt-6 pt-4 border-t border-gray-200 flex items-center justify-between">
                 <span className="text-gray-600 font-medium">Partager :</span>
