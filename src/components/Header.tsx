@@ -114,7 +114,7 @@ const Header: React.FC = () => {
                   isActive('/about') ? 'text-green-600' : 'text-green-800'
                 }`}
               >
-                L'ONG
+                À propos
               </Link>
             </li>
             <li className="py-2 border-b">
