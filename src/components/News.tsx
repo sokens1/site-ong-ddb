@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Key } from 'react';
 import { supabase } from '../supabaseClient';
 import { motion, useInView } from 'framer-motion';
 
@@ -13,6 +13,7 @@ interface NewsArticle {
 }
 
 interface TeamMember {
+  id: Key | null | undefined;
   name: string;
   image: string;
   position: string;
@@ -103,7 +104,7 @@ const News: React.FC = () => {
     };
 
     const fetchTeam = async () => {
-      const { data, error } = await supabase.from('team_members').select('*');
+      const { data, error } = await supabase.from('team_members').select('*').order('id', { ascending: true });
       if (error) console.error('Error fetching team members:', error);
       else setTeam(data || []);
     };
@@ -298,11 +299,11 @@ const News: React.FC = () => {
                 </motion.div>
               )}
 
-              {/* Membres 2, 3, 4 en ligne */}
+              {/* Membres 2, 3, 4 en ligne (selon l'ordre des ID) */}
               {team.length > 1 && (
                 <div className="flex justify-center flex-wrap gap-8 mb-8">
-                  {team.slice(1, 4).map((member, index) => (
-                    <motion.div key={index + 1} variants={itemVariants} className="text-center w-64">
+                  {team.slice(1, 4).map((member) => (
+                    <motion.div key={member.id} variants={itemVariants} className="text-center w-64">
                       <img src={member.image} alt={member.name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg"/>
                       <h3 className="font-bold text-green-800 text-xl">{member.name}</h3>
                       <p className="text-gray-600">{member.position}</p>
@@ -311,42 +312,40 @@ const News: React.FC = () => {
                 </div>
               )}
 
-              {/* Membres 5, 11, 12 en ligne (3 photos) */}
+              {/* Membres 5, 6, 7 en ligne (selon l'ordre des ID) */}
               {team.length > 4 && (
                 <div className="flex justify-center flex-wrap gap-8 mb-8">
-                  {[4, 10, 11].filter(index => index < team.length).map((memberIndex) => (
-                    <motion.div key={memberIndex} variants={itemVariants} className="text-center w-64">
-                      <img src={team[memberIndex].image} alt={team[memberIndex].name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg"/>
-                      <h3 className="font-bold text-green-800 text-xl">{team[memberIndex].name}</h3>
-                      <p className="text-gray-600">{team[memberIndex].position}</p>
+                  {team.slice(4, 7).map((member) => (
+                    <motion.div key={member.id} variants={itemVariants} className="text-center w-64">
+                      <img src={member.image} alt={member.name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg"/>
+                      <h3 className="font-bold text-green-800 text-xl">{member.name}</h3>
+                      <p className="text-gray-600">{member.position}</p>
                     </motion.div>
                   ))}
                 </div>
               )}
 
-              {/* Membres 6, 7 en ligne (2 photos) */}
-              {team.length > 5 && (
+              {/* Membres 8, 9, 10 en ligne (selon l'ordre des ID) */}
+              {team.length > 7 && (
                 <div className="flex justify-center flex-wrap gap-8 mb-8">
-                  {[5, 6].filter(index => index < team.length).map((memberIndex) => (
-                    <motion.div key={memberIndex} variants={itemVariants} className="text-center w-64">
-                      <img src={team[memberIndex].image} alt={team[memberIndex].name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg"/>
-                      <h3 className="font-bold text-green-800 text-xl">{team[memberIndex].name}</h3>
-                      <p className="text-gray-600">{team[memberIndex].position}</p>
+                  {team.slice(7, 10).map((member) => (
+                    <motion.div key={member.id} variants={itemVariants} className="text-center w-64">
+                      <img src={member.image} alt={member.name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg"/>
+                      <h3 className="font-bold text-green-800 text-xl">{member.name}</h3>
+                      <p className="text-gray-600">{member.position}</p>
                     </motion.div>
                   ))}
                 </div>
               )}
 
-              {/* Reste des membres (10, 8, 9, 13 et plus) */}
-              {team.length > 4 && (
+              {/* Reste des membres (selon l'ordre des ID) */}
+              {team.length > 10 && (
                 <div className="flex justify-center flex-wrap gap-8">
-                  {[9, 7, 8, 12].filter(index => index < team.length).concat(
-                    team.slice(13).map((_, index) => index + 13)
-                  ).map((memberIndex) => (
-                    <motion.div key={memberIndex} variants={itemVariants} className="text-center w-64">
-                      <img src={team[memberIndex].image} alt={team[memberIndex].name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg"/>
-                      <h3 className="font-bold text-green-800 text-xl">{team[memberIndex].name}</h3>
-                      <p className="text-gray-600">{team[memberIndex].position}</p>
+                  {team.slice(10).map((member) => (
+                    <motion.div key={member.id} variants={itemVariants} className="text-center w-64">
+                      <img src={member.image} alt={member.name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg"/>
+                      <h3 className="font-bold text-green-800 text-xl">{member.name}</h3>
+                      <p className="text-gray-600">{member.position}</p>
                     </motion.div>
                   ))}
                 </div>
@@ -358,9 +357,9 @@ const News: React.FC = () => {
           {isMobile && (
             <div className="relative group">
               <div ref={teamScrollRef} className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-6 scrollbar-hide" style={{ scrollBehavior: 'smooth' }}>
-                {team.map((member, index) => (
+                {team.map((member) => (
                   <motion.div
-                    key={index}
+                    key={member.id}
                     variants={itemVariants}
                     className="flex-shrink-0 snap-start w-48"
                   >
