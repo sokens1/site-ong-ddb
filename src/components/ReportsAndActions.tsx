@@ -1,5 +1,6 @@
 import React from 'react';
 import CoreReports from './CoreReports';
+import CoreVideos from './CoreVideos';
 
 const ReportsAndActions: React.FC = () => {
   return (
@@ -11,7 +12,17 @@ const ReportsAndActions: React.FC = () => {
         </div>
 
         <div>
+          <div className="text-left mb-6">
+            <h3 className="text-2xl font-bold text-green-800 mb-2">Rapports</h3>
+          </div>
           <CoreReports />
+        </div>
+
+        <div className="mt-16">
+          <div className="text-left mb-6">
+            <h3 className="text-2xl font-bold text-green-800 mb-2">Reportages (Vidéos)</h3>
+          </div>
+          <CoreVideos />
         </div>
       </div>
     </section>
