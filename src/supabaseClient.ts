@@ -11,4 +11,14 @@ if (!supabaseAnonKey) {
   throw new Error('VITE_SUPABASE_ANON_KEY est manquante. Veuillez créer un fichier .env avec vos variables Supabase.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+  global: {
+    headers: {
+      'x-client-info': 'ong-ddb-web',
+    },
+  },
+});

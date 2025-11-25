@@ -100,15 +100,35 @@ const News: React.FC = () => {
   // Effects
   useEffect(() => {
     const fetchNews = async () => {
-      const { data, error } = await supabase.from('news').select('*').order('date', { ascending: false });
-      if (error) console.error('Error fetching news:', error);
-      else setNews(data?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || []);
+      try {
+        const { data, error } = await supabase.from('news').select('*').order('date', { ascending: false });
+        if (error) {
+          console.error('Error fetching news:', error);
+          // Ne pas bloquer l'application si la requête échoue
+          setNews([]);
+        } else {
+          setNews(data?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || []);
+        }
+      } catch (err) {
+        console.error('Unexpected error fetching news:', err);
+        setNews([]);
+      }
     };
 
     const fetchTeam = async () => {
-      const { data, error } = await supabase.from('team_members').select('*').order('id', { ascending: true });
-      if (error) console.error('Error fetching team members:', error);
-      else setTeam(data || []);
+      try {
+        const { data, error } = await supabase.from('team_members').select('*').order('id', { ascending: true });
+        if (error) {
+          console.error('Error fetching team members:', error);
+          // Ne pas bloquer l'application si la requête échoue
+          setTeam([]);
+        } else {
+          setTeam(data || []);
+        }
+      } catch (err) {
+        console.error('Unexpected error fetching team:', err);
+        setTeam([]);
+      }
     };
 
     fetchNews();
@@ -285,7 +305,7 @@ const News: React.FC = () => {
 
         <AnimatedSection className="text-center mb-16">
           <motion.h2 variants={itemVariants} className="text-3xl md:text-4xl font-bold text-green-800 mb-4">
-            Notre bureau directeur
+            Notre Bureau Directeur
           </motion.h2>
           <motion.div variants={itemVariants} className="w-24 h-1 bg-green-600 mx-auto mb-8"></motion.div>
           

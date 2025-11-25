@@ -21,30 +21,35 @@ export interface VideoItem {
 const DEFAULT_VIDEO_BUCKET = import.meta.env.VITE_SUPABASE_VIDEO_BUCKET || 'videos';
 
 export const fetchVideos = async (): Promise<VideoItem[]> => {
-  const { data, error } = await supabase
-    .from('videos')
-    .select('*');
+  try {
+    const { data, error } = await supabase
+      .from('videos')
+      .select('*');
 
-  if (error) {
-    console.error('Error fetching videos:', error);
+    if (error) {
+      console.error('Error fetching videos:', error);
+      return [];
+    }
+
+    // Adapter le mapping à votre schéma: videourl, filepath, thumbnailpath
+    const mapped: VideoItem[] = (data || []).map((row: any) => ({
+      id: row.id,
+      title: row.title,
+      description: row.description ?? null,
+      date: row.date ?? null,
+      created_at: row.created_at ?? null,
+      video_url: row.videourl ?? null,
+      storage_path: row.filepath ?? null,
+      thumbnail_url: row.thumbnailpath ?? null,
+      bucket: row.bucket ?? DEFAULT_VIDEO_BUCKET, // si vous avez une colonne bucket, sinon défaut
+      category: row.category ?? null,
+    }));
+
+    return mapped;
+  } catch (err) {
+    console.error('Unexpected error fetching videos:', err);
     return [];
   }
-
-  // Adapter le mapping à votre schéma: videourl, filepath, thumbnailpath
-  const mapped: VideoItem[] = (data || []).map((row: any) => ({
-    id: row.id,
-    title: row.title,
-    description: row.description ?? null,
-    date: row.date ?? null,
-    created_at: row.created_at ?? null,
-    video_url: row.videourl ?? null,
-    storage_path: row.filepath ?? null,
-    thumbnail_url: row.thumbnailpath ?? null,
-    bucket: row.bucket ?? DEFAULT_VIDEO_BUCKET, // si vous avez une colonne bucket, sinon défaut
-    category: row.category ?? null,
-  }));
-
-  return mapped;
 };
 
 
