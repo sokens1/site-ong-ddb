@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { ArrowLeft } from 'lucide-react';
 
 const AdminLogin: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -38,7 +39,17 @@ const AdminLogin: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-green-100 px-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-xl p-8">
+      <div className="max-w-md w-full bg-white rounded-lg shadow-xl p-8 relative">
+        {/* Bouton retour */}
+        <button
+          onClick={() => navigate('/')}
+          className="absolute top-4 left-4 flex items-center gap-2 text-gray-600 hover:text-green-600 transition-colors"
+          title="Retour à l'accueil"
+        >
+          <ArrowLeft size={20} />
+          <span className="text-sm font-medium">Accueil</span>
+        </button>
+
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-green-800 mb-2">Administration</h1>
           <p className="text-gray-600">Connectez-vous pour accéder au panneau d'administration</p>
