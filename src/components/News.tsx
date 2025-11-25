@@ -421,7 +421,7 @@ const News: React.FC = () => {
             className="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-8 max-w-md mx-auto"
           >
             <p className="text-gray-700 mb-3 font-medium">
-              Membre du bureau directeur ?
+              Membre du Bureau Directeur ?
             </p>
             <button
               onClick={() => navigate('/admin/login')}
