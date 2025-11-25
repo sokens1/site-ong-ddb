@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, Key } from 'react';
 import { supabase } from '../supabaseClient';
 import { motion, useInView } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 // Interfaces
 interface NewsArticle {
@@ -68,6 +69,7 @@ const AnimatedSection: React.FC<{ children: React.ReactNode; className?: string 
 };
 
 const News: React.FC = () => {
+  const navigate = useNavigate();
   // State
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
@@ -392,6 +394,23 @@ const News: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* Section connexion pour les membres - après toutes les photos */}
+          <motion.div 
+            variants={itemVariants} 
+            className="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-8 max-w-md mx-auto"
+          >
+            <p className="text-gray-700 mb-3 font-medium">
+              Membre du bureau directeur ?
+            </p>
+            <button
+              onClick={() => navigate('/admin/login')}
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200 shadow-md hover:shadow-lg"
+            >
+              <i className="fas fa-sign-in-alt mr-2"></i>
+              Connectez-vous
+            </button>
+          </motion.div>
         </AnimatedSection>
       </div>
 
