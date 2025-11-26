@@ -126,7 +126,8 @@ const ActionsAdmin: React.FC = () => {
           <ImageUpload
             value={formData.image || ''}
             onChange={(url) => setFormData({ ...formData, image: url })}
-            bucket="images"
+            bucket="ong-backend"
+            folder="actions/images"
             folder="actions"
             label="Image"
             required
@@ -147,11 +148,10 @@ const ActionsAdmin: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
               <input
-                type="text"
+                type="date"
                 value={formData.date || ''}
                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                 required
-                placeholder="2024"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
             </div>

@@ -16,8 +16,8 @@ interface FileUploadProps {
 const FileUpload: React.FC<FileUploadProps> = ({
   value,
   onChange,
-  bucket = 'files',
-  folder = 'uploads',
+  bucket = 'ong-backend',
+  folder = 'files',
   label = 'Fichier',
   required = false,
   accept = '*/*',
@@ -55,6 +55,13 @@ const FileUpload: React.FC<FileUploadProps> = ({
         });
 
       if (uploadError) {
+        // Vérifier le type d'erreur
+        if (uploadError.message?.includes('Bucket not found') || uploadError.message?.includes('not found')) {
+          throw new Error(`Le bucket "${bucket}" n'existe pas dans Supabase Storage. Veuillez le créer dans votre projet Supabase.`);
+        }
+        if (uploadError.message?.includes('row-level security') || uploadError.message?.includes('RLS')) {
+          throw new Error(`Politique RLS manquante pour le bucket "${bucket}". Veuillez configurer les politiques Storage dans Supabase Dashboard > Storage > ${bucket} > Policies. Voir le fichier STORAGE-POLICIES-SETUP.md pour les instructions.`);
+        }
         throw uploadError;
       }
 
@@ -65,7 +72,17 @@ const FileUpload: React.FC<FileUploadProps> = ({
       onChange(publicUrl);
     } catch (err: any) {
       console.error('Error uploading file:', err);
-      setError(err.message || 'Erreur lors de l\'upload du fichier');
+      let errorMessage = 'Erreur lors de l\'upload du fichier';
+      
+      if (err.message?.includes('Bucket not found')) {
+        errorMessage = `Le bucket "${bucket}" n'existe pas. Veuillez le créer dans Supabase Storage (Storage > New bucket).`;
+      } else if (err.message?.includes('row-level security') || err.message?.includes('RLS')) {
+        errorMessage = `Politique RLS manquante pour le bucket "${bucket}". Allez dans Supabase Dashboard > Storage > ${bucket} > Policies et créez une politique INSERT pour les utilisateurs authentifiés. Voir STORAGE-POLICIES-SETUP.md pour les détails.`;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
       setFileName(null);
     } finally {
       setUploading(false);

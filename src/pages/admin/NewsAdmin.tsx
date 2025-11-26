@@ -9,7 +9,6 @@ import { List, Grid, Edit, Trash2, Plus } from 'lucide-react';
 interface News {
   id: number;
   title: string;
-  description: string;
   content: string;
   image: string;
   category: string;
@@ -25,7 +24,6 @@ const NewsAdmin: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState<Partial<News>>({
     title: '',
-    description: '',
     content: '',
     image: '',
     category: '',
@@ -34,7 +32,7 @@ const NewsAdmin: React.FC = () => {
 
   const handleAdd = () => {
     setEditingItem(null);
-    setFormData({ title: '', description: '', content: '', image: '', category: '', date: '' });
+    setFormData({ title: '', content: '', image: '', category: '', date: '' });
     setIsModalOpen(true);
   };
 
@@ -57,15 +55,24 @@ const NewsAdmin: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const dataToSubmit: Partial<News> = {
+        title: formData.title || '',
+        content: formData.content || '',
+        image: formData.image || '',
+        category: formData.category || '',
+        date: formData.date || '',
+      };
+
       if (editingItem) {
-        await update(editingItem.id, formData);
+        await update(editingItem.id, dataToSubmit);
       } else {
-        await create(formData);
+        await create(dataToSubmit);
       }
       setIsModalOpen(false);
-      setFormData({ title: '', description: '', content: '', image: '', category: '', date: '' });
+      setFormData({ title: '', content: '', image: '', category: '', date: '' });
     } catch (err) {
       alert('Erreur lors de l\'enregistrement');
+      console.error('Error submitting news:', err);
     }
   };
 
@@ -76,7 +83,6 @@ const NewsAdmin: React.FC = () => {
     const query = searchQuery.toLowerCase();
     return data.filter((news) =>
       news.title.toLowerCase().includes(query) ||
-      news.description.toLowerCase().includes(query) ||
       news.content.toLowerCase().includes(query) ||
       news.category.toLowerCase().includes(query) ||
       news.date.toLowerCase().includes(query)
@@ -87,11 +93,6 @@ const NewsAdmin: React.FC = () => {
     { key: 'title', label: 'Titre' },
     { key: 'category', label: 'Catégorie' },
     { key: 'date', label: 'Date' },
-    {
-      key: 'description',
-      label: 'Description',
-      render: (value: string) => <span className="max-w-xs truncate block">{value || '-'}</span>,
-    },
   ];
 
   return (
@@ -146,7 +147,7 @@ const NewsAdmin: React.FC = () => {
         <SearchBar
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder="Rechercher par titre, description, contenu, catégorie ou date..."
+          placeholder="Rechercher par titre, contenu, catégorie ou date..."
           className="max-w-md"
         />
         {searchQuery && (
@@ -221,7 +222,7 @@ const NewsAdmin: React.FC = () => {
                       {news.title}
                     </h3>
                     <p className="text-gray-600 mb-3 text-xs line-clamp-3 leading-relaxed flex-grow">
-                      {news.description}
+                      {news.content}
                     </p>
                     <div className="mt-auto pt-2.5 border-t border-gray-100">
                       <button
@@ -258,17 +259,6 @@ const NewsAdmin: React.FC = () => {
           </div>
 
           <div className="w-full">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
-            <textarea
-              value={formData.description || ''}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              required
-              rows={3}
-              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent max-w-full resize-y text-sm"
-            />
-          </div>
-
-          <div className="w-full">
             <label className="block text-sm font-medium text-gray-700 mb-1">Contenu *</label>
             <textarea
               value={formData.content || ''}
@@ -283,8 +273,8 @@ const NewsAdmin: React.FC = () => {
             <ImageUpload
               value={formData.image || ''}
               onChange={(url) => setFormData({ ...formData, image: url })}
-              bucket="images"
-              folder="news"
+              bucket="ong-backend"
+              folder="news/images"
               label="Image"
               required
             />
@@ -305,11 +295,10 @@ const NewsAdmin: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
               <input
-                type="text"
+                type="date"
                 value={formData.date || ''}
                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                 required
-                placeholder="2024-01-15"
                 className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
               />
             </div>

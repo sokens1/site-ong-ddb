@@ -58,15 +58,51 @@ const ReportsAdmin: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Préparer les données pour Supabase
+      // La colonne s'appelle fileUrl (camelCase) dans la table
+      // Convertir la date si c'est juste une année (ex: "2025" -> "2025-01-01")
+      let dateValue: string | null = formData.date || null;
+      if (dateValue) {
+        // Si c'est juste une année (4 chiffres), convertir en date valide pour PostgreSQL
+        if (/^\d{4}$/.test(dateValue.trim())) {
+          dateValue = `${dateValue.trim()}-01-01`;
+        }
+        // Si c'est déjà au format date, garder tel quel
+        // Sinon, essayer de parser et formater
+        else if (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue.trim())) {
+          // Essayer de parser d'autres formats
+          const parsed = new Date(dateValue);
+          if (!isNaN(parsed.getTime())) {
+            dateValue = parsed.toISOString().split('T')[0]; // Format YYYY-MM-DD
+          }
+        }
+      }
+      
+      const dataToSubmit: any = {
+        title: formData.title || null,
+        description: formData.description || null,
+        image: formData.image || null,
+        category: formData.category || null,
+        date: dateValue,
+        fileUrl: formData.fileUrl || null, // Utiliser fileUrl (camelCase) comme dans la table
+      };
+      
+      console.log('Submitting data:', dataToSubmit);
+      console.log('Form data keys:', Object.keys(formData));
+      console.log('Form data values:', Object.values(formData));
+      
       if (editingItem) {
-        await update(editingItem.id, formData);
+        await update(editingItem.id, dataToSubmit);
       } else {
-        await create(formData);
+        await create(dataToSubmit);
       }
       setIsModalOpen(false);
       setFormData({ title: '', description: '', fileUrl: '', image: '', category: '', date: '' });
-    } catch (err) {
-      alert('Erreur lors de l\'enregistrement');
+    } catch (err: any) {
+      const errorMessage = err.message || err.details || 'Erreur lors de l\'enregistrement';
+      alert(`Erreur: ${errorMessage}\n\nVérifiez la console pour plus de détails.`);
+      console.error('Submit error:', err);
+      console.error('Form data:', formData);
     }
   };
 
@@ -219,7 +255,7 @@ const ReportsAdmin: React.FC = () => {
                   </div>
                   <div className="p-3 flex flex-col flex-grow">
                     <div className="text-green-600 font-semibold mb-1.5 text-xs">
-                      {report.category} • {report.date}
+                      {report.category} • {report.date ? (report.date.includes('-') ? report.date.split('-')[0] : report.date) : '-'}
                     </div>
                     <h3 className="text-sm font-bold text-green-800 mb-2 line-clamp-2 leading-tight flex-grow">
                       {report.title}
@@ -285,8 +321,8 @@ const ReportsAdmin: React.FC = () => {
             <FileUpload
               value={formData.fileUrl || ''}
               onChange={(url) => setFormData({ ...formData, fileUrl: url })}
-              bucket="files"
-              folder="reports"
+              bucket="ong-backend"
+              folder="reports/files"
               label="Fichier PDF"
               accept=".pdf,application/pdf"
               required
@@ -298,8 +334,8 @@ const ReportsAdmin: React.FC = () => {
             <ImageUpload
               value={formData.image || ''}
               onChange={(url) => setFormData({ ...formData, image: url })}
-              bucket="images"
-              folder="reports"
+              bucket="ong-backend"
+              folder="reports/images"
               label="Image"
               required
             />
@@ -320,13 +356,13 @@ const ReportsAdmin: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
               <input
-                type="text"
+                type="date"
                 value={formData.date || ''}
                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                 required
-                placeholder="2024"
                 className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
               />
+              <p className="text-xs text-gray-500 mt-1">Sélectionnez une date dans le calendrier</p>
             </div>
           </div>
 

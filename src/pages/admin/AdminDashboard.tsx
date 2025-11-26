@@ -75,16 +75,47 @@ const AdminDashboard: React.FC = () => {
   const fetchMonthlyData = async () => {
     try {
       // Récupérer toutes les candidatures (sans filtre de date pour être sûr de tout récupérer)
-      const { data: submissions, error: submissionsError } = await supabase
+      let submissions = null;
+      let submissionsError = null;
+      
+      // Essayer avec tri, sinon sans tri
+      const submissionsWithOrder = await supabase
         .from('form_submissions')
         .select('created_at')
         .order('created_at', { ascending: true });
+      
+      if (submissionsWithOrder.error) {
+        // Si le tri échoue, essayer sans tri
+        const submissionsNoOrder = await supabase
+          .from('form_submissions')
+          .select('created_at');
+        submissions = submissionsNoOrder.data;
+        submissionsError = submissionsNoOrder.error;
+      } else {
+        submissions = submissionsWithOrder.data;
+        submissionsError = submissionsWithOrder.error;
+      }
 
       // Récupérer tous les abonnés newsletter
-      const { data: newsletter, error: newsletterError } = await supabase
+      let newsletter = null;
+      let newsletterError = null;
+      
+      const newsletterWithOrder = await supabase
         .from('newsletter_subscribers')
         .select('created_at')
         .order('created_at', { ascending: true });
+      
+      if (newsletterWithOrder.error) {
+        // Si le tri échoue, essayer sans tri
+        const newsletterNoOrder = await supabase
+          .from('newsletter_subscribers')
+          .select('created_at');
+        newsletter = newsletterNoOrder.data;
+        newsletterError = newsletterNoOrder.error;
+      } else {
+        newsletter = newsletterWithOrder.data;
+        newsletterError = newsletterWithOrder.error;
+      }
 
       if (submissionsError) {
         console.error('Error fetching submissions:', submissionsError);

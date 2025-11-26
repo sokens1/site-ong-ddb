@@ -157,7 +157,8 @@ const VideosAdmin: React.FC = () => {
           <ImageUpload
             value={formData.thumbnailpath || ''}
             onChange={(url) => setFormData({ ...formData, thumbnailpath: url })}
-            bucket="images"
+            bucket="ong-backend"
+            folder="videos/images"
             folder="videos"
             label="Vignette"
           />
@@ -166,11 +167,10 @@ const VideosAdmin: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
               <input
-                type="text"
+                type="date"
                 value={formData.date || ''}
                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                placeholder="2024"
               />
             </div>
 

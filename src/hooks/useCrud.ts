@@ -75,21 +75,59 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
   const create = async (item: Partial<T>): Promise<T | null> => {
     try {
       setError(null);
+      
+      // Nettoyer les valeurs vides (les convertir en null pour éviter les erreurs)
+      // Ne pas mapper automatiquement car Supabase respecte les noms de colonnes exacts
+      const cleanedItem: any = {};
+      Object.entries(item).forEach(([key, value]) => {
+        if (value !== undefined) {
+          // Convertir les chaînes vides en null
+          cleanedItem[key] = value === '' ? null : value;
+        }
+      });
+      
+      console.log(`Creating ${tableName} with data:`, cleanedItem);
+      console.log(`Cleaned item keys:`, Object.keys(cleanedItem));
+      console.log(`Cleaned item values:`, Object.values(cleanedItem));
+      
       const { data: newItem, error: createError } = await supabase
         .from(tableName)
-        .insert(item)
+        .insert(cleanedItem)
         .select()
         .single();
 
-      if (createError) throw createError;
+      if (createError) {
+        console.error(`Error creating ${tableName}:`, createError);
+        console.error('Error code:', createError.code);
+        console.error('Error message:', createError.message);
+        console.error('Error details:', createError.details);
+        console.error('Error hint:', createError.hint);
+        console.error('Full error object:', JSON.stringify(createError, null, 2));
+        console.error('Data being inserted:', JSON.stringify(cleanedItem, null, 2));
+        throw createError;
+      }
+      
       if (newItem) {
         setData((prev) => [newItem, ...prev]);
         return newItem;
       }
       return null;
     } catch (err: any) {
-      setError(err.message || 'Erreur lors de la création');
+      let errorMessage = 'Erreur lors de la création';
+      
+      if (err.code === '23502') {
+        errorMessage = `Une colonne requise est manquante. Vérifiez que tous les champs obligatoires sont remplis.`;
+      } else if (err.code === '23503') {
+        errorMessage = `Erreur de référence: une valeur ne correspond à aucune référence existante.`;
+      } else if (err.code === '23505') {
+        errorMessage = `Cette entrée existe déjà (contrainte unique).`;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
       console.error(`Error creating ${tableName}:`, err);
+      console.error('Item data:', item);
       throw err;
     }
   };

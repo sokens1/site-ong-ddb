@@ -167,8 +167,8 @@ const TeamAdmin: React.FC = () => {
           <ImageUpload
             value={formData.image || ''}
             onChange={(url) => setFormData({ ...formData, image: url })}
-            bucket="images"
-            folder="team"
+            bucket="ong-backend"
+            folder="team/images"
             label="Photo du membre"
             required
           />
