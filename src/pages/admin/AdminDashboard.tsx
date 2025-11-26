@@ -4,7 +4,6 @@ import { FileText, Video, Newspaper, Users, Mail, HelpCircle, TrendingUp, Calend
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 
 interface DashboardStats {
-  actions: number;
   reports: number;
   videos: number;
   news: number;
@@ -24,7 +23,6 @@ const COLORS = ['#10b981', '#3b82f6', '#ef4444', '#8b5cf6', '#f59e0b', '#ec4899'
 
 const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats>({
-    actions: 0,
     reports: 0,
     videos: 0,
     news: 0,
@@ -44,8 +42,7 @@ const AdminDashboard: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const [actions, reports, videos, news, team, faq, submissions, newsletter] = await Promise.all([
-        supabase.from('actions').select('id', { count: 'exact', head: true }),
+      const [reports, videos, news, team, faq, submissions, newsletter] = await Promise.all([
         supabase.from('reports').select('id', { count: 'exact', head: true }),
         supabase.from('videos').select('id', { count: 'exact', head: true }),
         supabase.from('news').select('id', { count: 'exact', head: true }),
@@ -56,7 +53,6 @@ const AdminDashboard: React.FC = () => {
       ]);
 
       setStats({
-        actions: actions.count || 0,
         reports: reports.count || 0,
         videos: videos.count || 0,
         news: news.count || 0,
@@ -242,7 +238,6 @@ const AdminDashboard: React.FC = () => {
   };
 
   const statCards = [
-    { label: 'Actions', value: stats.actions, icon: FileText, color: 'bg-blue-500', bgGradient: 'from-blue-500 to-blue-600' },
     { label: 'Rapports', value: stats.reports, icon: FileText, color: 'bg-purple-500', bgGradient: 'from-purple-500 to-purple-600' },
     { label: 'Vidéos', value: stats.videos, icon: Video, color: 'bg-red-500', bgGradient: 'from-red-500 to-red-600' },
     { label: 'Actualités', value: stats.news, icon: Newspaper, color: 'bg-green-500', bgGradient: 'from-green-500 to-green-600' },
@@ -258,7 +253,6 @@ const AdminDashboard: React.FC = () => {
     { name: 'Vidéos', value: stats.videos },
     { name: 'Actualités', value: stats.news },
     { name: 'FAQ', value: stats.faq },
-    { name: 'Actions', value: stats.actions },
   ].filter(item => item.value > 0);
 
   // Données pour le graphique en barres
@@ -267,11 +261,10 @@ const AdminDashboard: React.FC = () => {
     { name: 'Vidéos', count: stats.videos },
     { name: 'Actualités', count: stats.news },
     { name: 'FAQ', count: stats.faq },
-    { name: 'Actions', count: stats.actions },
     { name: 'Équipe', count: stats.teamMembers },
   ];
 
-  const totalContent = stats.reports + stats.videos + stats.news + stats.faq + stats.actions;
+  const totalContent = stats.reports + stats.videos + stats.news + stats.faq;
 
   return (
     <div className="w-full max-w-full overflow-x-hidden">
@@ -285,7 +278,7 @@ const AdminDashboard: React.FC = () => {
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(8)].map((_, i) => (
+          {[...Array(7)].map((_, i) => (
             <div key={i} className="bg-white rounded-lg shadow-md p-6 animate-pulse">
               <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
               <div className="h-8 bg-gray-200 rounded w-1/3"></div>
