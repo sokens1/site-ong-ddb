@@ -15,11 +15,14 @@ import ActionsAdmin from './pages/admin/ActionsAdmin';
 import ReportsAdmin from './pages/admin/ReportsAdmin';
 import VideosAdmin from './pages/admin/VideosAdmin';
 import NewsAdmin from './pages/admin/NewsAdmin';
+import ProjectsAdmin from './pages/admin/ProjectsAdmin';
 import TeamAdmin from './pages/admin/TeamAdmin';
 import FaqAdmin from './pages/admin/FaqAdmin';
 import ContributionsAdmin from './pages/admin/ContributionsAdmin';
 import SubmissionsAdmin from './pages/admin/SubmissionsAdmin';
 import NewsletterAdmin from './pages/admin/NewsletterAdmin';
+import DocumentsAdmin from './pages/admin/DocumentsAdmin';
+import UsersAdmin from './pages/admin/UsersAdmin';
 import './index.css';
 
 function App() {
@@ -73,6 +76,7 @@ function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="actions" element={<ActionsAdmin />} />
+          <Route path="projects" element={<ProjectsAdmin />} />
           <Route path="reports" element={<ReportsAdmin />} />
           <Route path="videos" element={<VideosAdmin />} />
           <Route path="news" element={<NewsAdmin />} />
@@ -81,6 +85,8 @@ function App() {
           <Route path="contributions" element={<ContributionsAdmin />} />
           <Route path="submissions" element={<SubmissionsAdmin />} />
           <Route path="newsletter" element={<NewsletterAdmin />} />
+          <Route path="documents" element={<DocumentsAdmin />} />
+          <Route path="users" element={<UsersAdmin />} />
         </Route>
         
         {/* Route catch-all pour les pages non trouvées */}

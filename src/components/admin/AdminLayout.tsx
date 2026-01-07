@@ -11,7 +11,10 @@ import {
   Mail, 
   LogOut,
   Menu,
-  X
+  X,
+  FolderKanban,
+  File,
+  UserCog,
 } from 'lucide-react';
 
 const AdminLayout: React.FC = () => {
@@ -49,6 +52,7 @@ const AdminLayout: React.FC = () => {
 
   const menuItems = [
     { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/admin/projects', label: 'Projets', icon: FolderKanban },
     // { path: '/admin/actions', label: 'Actions', icon: FileText },
     { path: '/admin/reports', label: 'Rapports', icon: FileText },
     { path: '/admin/videos', label: 'Vidéos', icon: Video },
@@ -58,6 +62,8 @@ const AdminLayout: React.FC = () => {
     // { path: '/admin/contributions', label: 'Types de contribution', icon: FileText },
     { path: '/admin/submissions', label: 'Candidatures', icon: Mail },
     { path: '/admin/newsletter', label: 'Newsletter', icon: Mail },
+    { path: '/admin/documents', label: 'Documents', icon: File },
+    { path: '/admin/users', label: 'Utilisateurs', icon: UserCog },
   ];
 
   return (

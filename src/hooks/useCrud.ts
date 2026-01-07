@@ -135,22 +135,55 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
   const update = async (id: number, item: Partial<T>): Promise<T | null> => {
     try {
       setError(null);
+      
+      // Nettoyer les valeurs vides (les convertir en null pour éviter les erreurs)
+      const cleanedItem: any = {};
+      Object.entries(item).forEach(([key, value]) => {
+        if (value !== undefined) {
+          // Convertir les chaînes vides en null
+          cleanedItem[key] = value === '' ? null : value;
+        }
+      });
+      
+      console.log(`Updating ${tableName} with data:`, cleanedItem);
+      
       const { data: updatedItem, error: updateError } = await supabase
         .from(tableName)
-        .update(item)
+        .update(cleanedItem)
         .eq('id', id)
         .select()
         .single();
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error(`Error updating ${tableName}:`, updateError);
+        console.error('Error code:', updateError.code);
+        console.error('Error message:', updateError.message);
+        console.error('Error details:', updateError.details);
+        console.error('Data being updated:', JSON.stringify(cleanedItem, null, 2));
+        throw updateError;
+      }
+      
       if (updatedItem) {
         setData((prev) => prev.map((d) => (d.id === id ? updatedItem : d)));
         return updatedItem;
       }
       return null;
     } catch (err: any) {
-      setError(err.message || 'Erreur lors de la mise à jour');
+      let errorMessage = 'Erreur lors de la mise à jour';
+      
+      if (err.code === '23502') {
+        errorMessage = `Une colonne requise est manquante.`;
+      } else if (err.code === '23503') {
+        errorMessage = `Erreur de référence: une valeur ne correspond à aucune référence existante.`;
+      } else if (err.code === '23505') {
+        errorMessage = `Cette entrée existe déjà (contrainte unique).`;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
       console.error(`Error updating ${tableName}:`, err);
+      console.error('Item data:', item);
       throw err;
     }
   };
