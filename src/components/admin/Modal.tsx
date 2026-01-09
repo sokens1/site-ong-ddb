@@ -38,7 +38,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
               </button>
             </div>
           </div>
-          <div className="max-w-full overflow-x-hidden flex-1 px-4 pb-4 sm:px-5 sm:pb-5 flex flex-col min-h-0 overflow-y-hidden">
+          <div className="max-w-full overflow-x-hidden flex-1 px-4 pb-4 sm:px-5 sm:pb-5 flex flex-col min-h-0 overflow-y-auto">
             {children}
           </div>
         </div>
