@@ -7,6 +7,7 @@ import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage';
 import ActionsPage from './pages/ActionsPage';
 import NewsPage from './pages/NewsPage';
+import ArticlePage from './pages/ArticlePage';
 import JoinPage from './pages/JoinPage';
 import AdminLogin from './pages/AdminLogin';
 import AdminLayout from './components/admin/AdminLayout';
@@ -15,6 +16,7 @@ import ActionsAdmin from './pages/admin/ActionsAdmin';
 import ReportsAdmin from './pages/admin/ReportsAdmin';
 import VideosAdmin from './pages/admin/VideosAdmin';
 import NewsAdmin from './pages/admin/NewsAdmin';
+import CreateNewsPage from './pages/admin/CreateNewsPage';
 import ProjectsAdmin from './pages/admin/ProjectsAdmin';
 import TeamAdmin from './pages/admin/TeamAdmin';
 import FaqAdmin from './pages/admin/FaqAdmin';
@@ -62,6 +64,14 @@ function App() {
             <BackToTop />
           </div>
         } />
+        <Route path="/news/:id" element={
+          <div className="bg-gray-50">
+            <Header />
+            <ArticlePage />
+            <Footer />
+            <BackToTop />
+          </div>
+        } />
         <Route path="/join" element={
           <div className="bg-gray-50">
             <Header />
@@ -80,6 +90,8 @@ function App() {
           <Route path="reports" element={<ReportsAdmin />} />
           <Route path="videos" element={<VideosAdmin />} />
           <Route path="news" element={<NewsAdmin />} />
+          <Route path="news/create" element={<CreateNewsPage />} />
+          <Route path="news/edit/:id" element={<CreateNewsPage />} />
           <Route path="team" element={<TeamAdmin />} />
           <Route path="faq" element={<FaqAdmin />} />
           <Route path="contributions" element={<ContributionsAdmin />} />

@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCrud } from '../../hooks/useCrud';
 import DataTable from '../../components/admin/DataTable';
-import Modal from '../../components/admin/Modal';
-import ImageUpload from '../../components/admin/ImageUpload';
 import SearchBar from '../../components/admin/SearchBar';
 import { List, Grid, Edit, Trash2, Plus } from 'lucide-react';
 
@@ -17,29 +16,17 @@ interface News {
 }
 
 const NewsAdmin: React.FC = () => {
-  const { data, loading, error, create, update, delete: deleteNews } = useCrud<News>({ tableName: 'news' });
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<News | null>(null);
+  const navigate = useNavigate();
+  const { data, loading, error, delete: deleteNews } = useCrud<News>({ tableName: 'news' });
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
-  const [formData, setFormData] = useState<Partial<News>>({
-    title: '',
-    content: '',
-    image: '',
-    category: '',
-    date: '',
-  });
 
   const handleAdd = () => {
-    setEditingItem(null);
-    setFormData({ title: '', content: '', image: '', category: '', date: '' });
-    setIsModalOpen(true);
+    navigate('/admin/news/create');
   };
 
   const handleEdit = (item: News) => {
-    setEditingItem(item);
-    setFormData(item);
-    setIsModalOpen(true);
+    navigate(`/admin/news/edit/${item.id}`);
   };
 
   const handleDelete = async (item: News) => {
@@ -49,30 +36,6 @@ const NewsAdmin: React.FC = () => {
       } catch (err) {
         alert('Erreur lors de la suppression');
       }
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const dataToSubmit: Partial<News> = {
-        title: formData.title || '',
-        content: formData.content || '',
-        image: formData.image || '',
-        category: formData.category || '',
-        date: formData.date || '',
-      };
-
-      if (editingItem) {
-        await update(editingItem.id, dataToSubmit);
-      } else {
-        await create(dataToSubmit);
-      }
-      setIsModalOpen(false);
-      setFormData({ title: '', content: '', image: '', category: '', date: '' });
-    } catch (err) {
-      alert('Erreur lors de l\'enregistrement');
-      console.error('Error submitting news:', err);
     }
   };
 
@@ -239,88 +202,6 @@ const NewsAdmin: React.FC = () => {
           )}
         </div>
       )}
-
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={editingItem ? 'Modifier une actualité' : 'Ajouter une actualité'}
-        size="lg"
-      >
-        <form onSubmit={handleSubmit} className="space-y-3 w-full max-w-full">
-          <div className="w-full">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Titre *</label>
-            <input
-              type="text"
-              value={formData.title || ''}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              required
-              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent max-w-full text-sm"
-            />
-          </div>
-
-          <div className="w-full">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Contenu *</label>
-            <textarea
-              value={formData.content || ''}
-              onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-              required
-              rows={6}
-              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent max-w-full resize-y text-sm"
-            />
-          </div>
-
-          <div className="w-full">
-            <ImageUpload
-              value={formData.image || ''}
-              onChange={(url) => setFormData({ ...formData, image: url })}
-              bucket="ong-backend"
-              folder="news/images"
-              label="Image"
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Catégorie *</label>
-              <input
-                type="text"
-                value={formData.category || ''}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                required
-                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
-              <input
-                type="date"
-                value={formData.date || ''}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                required
-                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3">
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(false)}
-              className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-            >
-              {editingItem ? 'Modifier' : 'Ajouter'}
-            </button>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 };

@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 
 // Interfaces
 interface NewsArticle {
+  id?: number;
   title: string;
   image: string;
   category: string;
@@ -73,8 +74,6 @@ const News: React.FC = () => {
   // State
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [teamActiveIndex, setTeamActiveIndex] = useState(0);
   const isMobile = useIsMobile();
@@ -151,7 +150,7 @@ const News: React.FC = () => {
       }, 8000);
     };
 
-    if (isMobile && news.length > 0 && !isModalOpen) {
+    if (isMobile && news.length > 0) {
       startAutoScroll();
     } else {
       if (autoScrollIntervalRef.current) clearInterval(autoScrollIntervalRef.current);
@@ -160,7 +159,7 @@ const News: React.FC = () => {
     return () => {
       if (autoScrollIntervalRef.current) clearInterval(autoScrollIntervalRef.current);
     };
-  }, [isMobile, news.length, isModalOpen]);
+  }, [isMobile, news.length]);
 
   useEffect(() => {
     const startTeamAutoScroll = () => {
@@ -254,7 +253,7 @@ const News: React.FC = () => {
                     <h3 className="text-lg sm:text-xl font-bold text-green-800 mb-3 line-clamp-2">{article.title}</h3>
                     <p className="text-gray-700 mb-4 text-sm sm:text-base line-clamp-3 flex-grow">{article.description}</p>
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mt-auto">
-                      <button onClick={() => { setSelectedArticle(article); setIsModalOpen(true); }} className="text-green-600 font-medium hover:text-green-800 transition-colors duration-200 text-left">
+                      <button onClick={() => { if (article.id) { navigate(`/news/${article.id}`); } else { setSelectedArticle(article); setIsModalOpen(true); } }} className="text-green-600 font-medium hover:text-green-800 transition-colors duration-200 text-left">
                         Lire l'article →
                       </button>
                       <div className="flex space-x-3 justify-start sm:justify-end">
@@ -434,37 +433,6 @@ const News: React.FC = () => {
         </AnimatedSection>
       </div>
 
-      {isModalOpen && selectedArticle && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto relative shadow-2xl">
-            <button onClick={() => setIsModalOpen(false)} className="sticky top-4 right-4 float-right text-gray-500 hover:text-gray-800 bg-white/80 rounded-full w-9 h-9 flex items-center justify-center shadow-md z-20">
-              ×
-            </button>
-            <div className="p-6 md:p-8">
-              <img src={selectedArticle.image} alt={selectedArticle.title} className="w-full h-64 object-cover rounded-lg mb-4" />
-              <div className="text-green-600 font-bold mb-2">{selectedArticle.category} • {selectedArticle.date}</div>
-              <h1 className="text-2xl md:text-3xl font-bold text-green-800 mb-4">{selectedArticle.title}</h1>
-              <div className="prose max-w-none text-gray-700">
-                <p className="text-lg mb-4">{selectedArticle.description}</p>
-                <div className="space-y-4 whitespace-pre-wrap text-base leading-relaxed">
-                  {selectedArticle.content || ''}
-                </div>
-              </div>
-              <div className="mt-6 pt-4 border-t border-gray-200 flex items-center justify-between">
-                <span className="text-gray-600 font-medium">Partager :</span>
-                <div className="flex space-x-3">
-                  <button onClick={() => { if (navigator.share) { navigator.share({ title: selectedArticle.title, text: selectedArticle.description, url: window.location.href }); } else { navigator.clipboard.writeText(window.location.href); alert('Lien copié !'); } }} className="text-gray-500 hover:text-green-600 transition-colors duration-200 p-1" title="Partager">
-                    <i className="fas fa-share"></i>
-                  </button>
-                  <button onClick={() => { const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`; window.open(fbUrl, '_blank', 'width=600,height=400'); }} className="text-gray-500 hover:text-blue-600 transition-colors duration-200 p-1" title="Partager sur Facebook">
-                    <i className="fab fa-facebook-f"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   );
 };

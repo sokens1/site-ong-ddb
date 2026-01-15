@@ -139,7 +139,10 @@ const About: React.FC = () => {
                   "La protection de notre environnement n'est pas une option, c'est une nécessité pour assurer le bien-être des générations futures."
                 </p>
               </div>
-              <p className="text-right font-bold text-green-800">Franck Ondeno, Président</p>
+              <p className="text-right font-bold text-green-800 flex items-center justify-end gap-2">
+                <i className="fas fa-user-circle text-green-600"></i>
+                Franck Ondeno, Président
+              </p>
             </motion.div>
           </AnimatedSection>
           
