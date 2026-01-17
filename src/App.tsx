@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -12,19 +12,35 @@ import JoinPage from './pages/JoinPage';
 import AdminLogin from './pages/AdminLogin';
 import AdminLayout from './components/admin/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
-import ActionsAdmin from './pages/admin/ActionsAdmin';
-import ReportsAdmin from './pages/admin/ReportsAdmin';
-import VideosAdmin from './pages/admin/VideosAdmin';
-import NewsAdmin from './pages/admin/NewsAdmin';
-import CreateNewsPage from './pages/admin/CreateNewsPage';
-import ProjectsAdmin from './pages/admin/ProjectsAdmin';
-import TeamAdmin from './pages/admin/TeamAdmin';
-import FaqAdmin from './pages/admin/FaqAdmin';
+import AuthCallback from './pages/admin/AuthCallback';
+
+// Admin
+import UsersAdmin from './pages/admin/admin/UsersAdmin';
+import TeamAdmin from './pages/admin/admin/TeamAdmin';
+import SubmissionsAdmin from './pages/admin/admin/SubmissionsAdmin';
+
+// Communication
+import NewsAdmin from './pages/admin/communication/NewsAdmin';
+import CreateNewsPage from './pages/admin/communication/CreateNewsPage';
+import AdminArticleView from './pages/admin/communication/AdminArticleView';
+import VideosAdmin from './pages/admin/communication/VideosAdmin';
+import EditVideoPage from './pages/admin/communication/EditVideoPage';
+import NewsletterAdmin from './pages/admin/communication/NewsletterAdmin';
+import FaqAdmin from './pages/admin/communication/FaqAdmin';
+
+// Chef Projet
+import ProjectsAdmin from './pages/admin/chefproject/ProjectsAdmin';
+import ProjectDetailsPage from './pages/admin/chefproject/ProjectDetailsPage';
+import EditProjectPage from './pages/admin/chefproject/EditProjectPage';
+import ReportsAdmin from './pages/admin/chefproject/ReportsAdmin';
+import ActionsAdmin from './pages/admin/chefproject/ActionsAdmin';
+import EditActionPage from './pages/admin/chefproject/EditActionPage';
+
+// Partner
+import DocumentsAdmin from './pages/admin/partner/DocumentsAdmin';
+
+// Others
 import ContributionsAdmin from './pages/admin/ContributionsAdmin';
-import SubmissionsAdmin from './pages/admin/SubmissionsAdmin';
-import NewsletterAdmin from './pages/admin/NewsletterAdmin';
-import DocumentsAdmin from './pages/admin/DocumentsAdmin';
-import UsersAdmin from './pages/admin/UsersAdmin';
 import './index.css';
 
 function App() {
@@ -64,7 +80,7 @@ function App() {
             <BackToTop />
           </div>
         } />
-        <Route path="/news/:id" element={
+        <Route path="/article/:id" element={
           <div className="bg-gray-50">
             <Header />
             <ArticlePage />
@@ -80,18 +96,29 @@ function App() {
             <BackToTop />
           </div>
         } />
-        
+
+        {/* Auth callback route - must be before protected routes */}
+        <Route path="/admin/auth/callback" element={<AuthCallback />} />
+
         {/* Admin routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="actions" element={<ActionsAdmin />} />
+          <Route path="actions/create" element={<EditActionPage />} />
+          <Route path="actions/edit/:id" element={<EditActionPage />} />
           <Route path="projects" element={<ProjectsAdmin />} />
+          <Route path="projects/:id" element={<ProjectDetailsPage />} />
+          <Route path="projects/create" element={<EditProjectPage />} />
+          <Route path="projects/edit/:id" element={<EditProjectPage />} />
           <Route path="reports" element={<ReportsAdmin />} />
           <Route path="videos" element={<VideosAdmin />} />
+          <Route path="videos/create" element={<EditVideoPage />} />
+          <Route path="videos/edit/:id" element={<EditVideoPage />} />
           <Route path="news" element={<NewsAdmin />} />
           <Route path="news/create" element={<CreateNewsPage />} />
           <Route path="news/edit/:id" element={<CreateNewsPage />} />
+          <Route path="news/view/:id" element={<AdminArticleView />} />
           <Route path="team" element={<TeamAdmin />} />
           <Route path="faq" element={<FaqAdmin />} />
           <Route path="contributions" element={<ContributionsAdmin />} />
@@ -100,7 +127,7 @@ function App() {
           <Route path="documents" element={<DocumentsAdmin />} />
           <Route path="users" element={<UsersAdmin />} />
         </Route>
-        
+
         {/* Route catch-all pour les pages non trouvées */}
         <Route path="*" element={
           <div className="bg-gray-50 min-h-screen flex items-center justify-center">

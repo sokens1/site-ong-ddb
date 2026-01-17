@@ -1,11 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { useCrud } from '../../hooks/useCrud';
-import DataTable from '../../components/admin/DataTable';
-import Modal from '../../components/admin/Modal';
-import ImageUpload from '../../components/admin/ImageUpload';
-import FileUpload from '../../components/admin/FileUpload';
-import SearchBar from '../../components/admin/SearchBar';
+import { useNavigate } from 'react-router-dom';
+import { useCrud } from '../../../hooks/useCrud';
+import DataTable from '../../../components/admin/DataTable';
+import SearchBar from '../../../components/admin/SearchBar';
 import { List, Grid, Edit, Trash2, Play, Plus } from 'lucide-react';
+import useUserRole from '../../../hooks/useUserRole';
 
 interface Video {
   id: number;
@@ -19,30 +18,18 @@ interface Video {
 }
 
 const VideosAdmin: React.FC = () => {
-  const { data, loading, error, create, update, delete: deleteVideo } = useCrud<Video>({ tableName: 'videos' });
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<Video | null>(null);
+  const navigate = useNavigate();
+  const { data, loading, error, delete: deleteVideo } = useCrud<Video>({ tableName: 'videos' });
+  const { canCreate, canEdit, canDelete } = useUserRole();
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
-  const [formData, setFormData] = useState<Partial<Video>>({
-    title: '',
-    description: '',
-    videourl: '',
-    filepath: '',
-    thumbnailpath: '',
-    date: '',
-  });
 
   const handleAdd = () => {
-    setEditingItem(null);
-    setFormData({ title: '', description: '', videourl: '', filepath: '', thumbnailpath: '', date: '' });
-    setIsModalOpen(true);
+    navigate('/admin/videos/create');
   };
 
   const handleEdit = (item: Video) => {
-    setEditingItem(item);
-    setFormData(item);
-    setIsModalOpen(true);
+    navigate(`/admin/videos/edit/${item.id}`);
   };
 
   const handleDelete = async (item: Video) => {
@@ -52,21 +39,6 @@ const VideosAdmin: React.FC = () => {
       } catch (err) {
         alert('Erreur lors de la suppression');
       }
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (editingItem) {
-        await update(editingItem.id, formData);
-      } else {
-        await create(formData);
-      }
-      setIsModalOpen(false);
-      setFormData({ title: '', description: '', videourl: '', filepath: '', thumbnailpath: '', date: '' });
-    } catch (err) {
-      alert('Erreur lors de l\'enregistrement');
     }
   };
 
@@ -107,35 +79,35 @@ const VideosAdmin: React.FC = () => {
           <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 rounded transition ${
-                viewMode === 'grid'
-                  ? 'bg-white text-green-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={`p-2 rounded transition ${viewMode === 'grid'
+                ? 'bg-white text-green-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+                }`}
               title="Vue carte"
             >
               <Grid size={20} />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 rounded transition ${
-                viewMode === 'list'
-                  ? 'bg-white text-green-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={`p-2 rounded transition ${viewMode === 'list'
+                ? 'bg-white text-green-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+                }`}
               title="Vue liste"
             >
               <List size={20} />
             </button>
           </div>
           {/* Bouton ajouter */}
-          <button
-            onClick={handleAdd}
-            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
-          >
-            <Plus size={20} />
-            Ajouter
-          </button>
+          {canCreate('videos') && (
+            <button
+              onClick={handleAdd}
+              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition font-medium"
+            >
+              <Plus size={20} />
+              Ajouter
+            </button>
+          )}
         </div>
       </div>
 
@@ -144,21 +116,6 @@ const VideosAdmin: React.FC = () => {
           {error}
         </div>
       )}
-
-      {/* Barre de recherche */}
-      <div className="mb-4">
-        <SearchBar
-          value={searchQuery}
-          onChange={setSearchQuery}
-          placeholder="Rechercher par titre, description, lien ou date..."
-          className="max-w-md"
-        />
-        {searchQuery && (
-          <p className="text-sm text-gray-600 mt-2">
-            {filteredData.length} résultat(s) trouvé(s)
-          </p>
-        )}
-      </div>
 
       {loading ? (
         <div className="bg-white rounded-lg shadow-md p-6">
@@ -175,9 +132,9 @@ const VideosAdmin: React.FC = () => {
         <DataTable
           columns={columns}
           data={filteredData}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onAdd={handleAdd}
+          onEdit={canEdit('videos') ? handleEdit : undefined}
+          onDelete={canDelete('videos') ? handleDelete : undefined}
+          onAdd={canCreate('videos') ? handleAdd : undefined}
           title="Vidéos"
           isLoading={false}
         />
@@ -208,20 +165,24 @@ const VideosAdmin: React.FC = () => {
                       </div>
                     )}
                     <div className="absolute top-1.5 right-1.5 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => handleEdit(video)}
-                        className="bg-white/95 backdrop-blur-sm p-1.5 rounded-md text-blue-600 hover:bg-white transition shadow-sm"
-                        title="Modifier"
-                      >
-                        <Edit size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(video)}
-                        className="bg-white/95 backdrop-blur-sm p-1.5 rounded-md text-red-600 hover:bg-white transition shadow-sm"
-                        title="Supprimer"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {canEdit('videos') && (
+                        <button
+                          onClick={() => handleEdit(video)}
+                          className="bg-white/95 backdrop-blur-sm p-1.5 rounded-md text-blue-600 hover:bg-white transition shadow-sm"
+                          title="Modifier"
+                        >
+                          <Edit size={14} />
+                        </button>
+                      )}
+                      {canDelete('videos') && (
+                        <button
+                          onClick={() => handleDelete(video)}
+                          className="bg-white/95 backdrop-blur-sm p-1.5 rounded-md text-red-600 hover:bg-white transition shadow-sm"
+                          title="Supprimer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div className="p-3 flex flex-col flex-grow">
@@ -268,96 +229,6 @@ const VideosAdmin: React.FC = () => {
           )}
         </div>
       )}
-
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={editingItem ? 'Modifier une vidéo' : 'Ajouter une vidéo'}
-        size="lg"
-      >
-        <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-full">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Titre *</label>
-            <input
-              type="text"
-              value={formData.title || ''}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea
-              value={formData.description || ''}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">URL Vidéo (YouTube, Vimeo, etc.)</label>
-            <input
-              type="url"
-              value={formData.videourl || ''}
-              onChange={(e) => setFormData({ ...formData, videourl: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              placeholder="https://youtube.com/..."
-            />
-          </div>
-
-          <div>
-            <FileUpload
-              value={formData.filepath || ''}
-              onChange={(url) => setFormData({ ...formData, filepath: url })}
-              bucket="ong-backend"
-              folder="videos/files"
-              label="Fichier vidéo (Supabase Storage)"
-              accept="video/*"
-              maxSizeMB={200}
-            />
-          </div>
-
-          <ImageUpload
-            value={formData.thumbnailpath || ''}
-            onChange={(url) => setFormData({ ...formData, thumbnailpath: url })}
-            bucket="ong-backend"
-            folder="videos/images"
-            folder="videos"
-            label="Vignette"
-          />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-              <input
-                type="date"
-                value={formData.date || ''}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-            >
-              {editingItem ? 'Modifier' : 'Ajouter'}
-            </button>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 };

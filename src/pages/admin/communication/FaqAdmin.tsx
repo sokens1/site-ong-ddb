@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { useCrud } from '../../hooks/useCrud';
-import DataTable from '../../components/admin/DataTable';
-import Modal from '../../components/admin/Modal';
+import { useCrud } from '../../../hooks/useCrud';
+import DataTable from '../../../components/admin/DataTable';
+import Modal from '../../../components/admin/Modal';
+import useUserRole from '../../../hooks/useUserRole';
 
 interface Faq {
   id: number;
@@ -12,6 +13,7 @@ interface Faq {
 
 const FaqAdmin: React.FC = () => {
   const { data, loading, error, create, update, delete: deleteFaq } = useCrud<Faq>({ tableName: 'faq' });
+  const { canCreate, canEdit, canDelete } = useUserRole();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Faq | null>(null);
   const [formData, setFormData] = useState<Partial<Faq>>({
@@ -72,7 +74,7 @@ const FaqAdmin: React.FC = () => {
   return (
     <div className="w-full max-w-full overflow-x-hidden">
       <h1 className="text-2xl font-bold text-gray-800 mb-4">Gestion de la FAQ</h1>
-      
+
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
           {error}
@@ -82,9 +84,9 @@ const FaqAdmin: React.FC = () => {
       <DataTable
         columns={columns}
         data={data}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onAdd={handleAdd}
+        onEdit={canEdit('faq') ? handleEdit : undefined}
+        onDelete={canDelete('faq') ? handleDelete : undefined}
+        onAdd={canCreate('faq') ? handleAdd : undefined}
         title="Questions fréquentes"
         isLoading={loading}
       />

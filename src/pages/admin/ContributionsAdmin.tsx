@@ -77,7 +77,7 @@ const ContributionsAdmin: React.FC = () => {
   return (
     <div className="w-full max-w-full overflow-x-hidden">
       <h1 className="text-2xl font-bold text-gray-800 mb-4">Gestion des Types de Contribution</h1>
-      
+
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
           {error}

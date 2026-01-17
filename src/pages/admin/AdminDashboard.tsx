@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabaseClient';
-import { FileText, Video, Newspaper, Users, Mail, HelpCircle, TrendingUp, Calendar } from 'lucide-react';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { FileText, Newspaper, Users, TrendingUp, Calendar, FolderKanban } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 interface DashboardStats {
   reports: number;
@@ -11,6 +11,12 @@ interface DashboardStats {
   faq: number;
   submissions: number;
   newsletter: number;
+  projects: {
+    total: number;
+    planifie: number;
+    en_cours: number;
+    termine: number;
+  };
 }
 
 interface MonthlyData {
@@ -20,6 +26,7 @@ interface MonthlyData {
 }
 
 const COLORS = ['#10b981', '#3b82f6', '#ef4444', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1'];
+const PROJECT_COLORS = ['#9ca3af', '#3b82f6', '#10b981']; // Gray (Planifié), Blue (En cours), Green (Terminé)
 
 const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats>({
@@ -30,6 +37,7 @@ const AdminDashboard: React.FC = () => {
     faq: 0,
     submissions: 0,
     newsletter: 0,
+    projects: { total: 0, planifie: 0, en_cours: 0, termine: 0 },
   });
 
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
@@ -42,7 +50,7 @@ const AdminDashboard: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const [reports, videos, news, team, faq, submissions, newsletter] = await Promise.all([
+      const [reports, videos, news, team, faq, submissions, newsletter, projects] = await Promise.all([
         supabase.from('reports').select('id', { count: 'exact', head: true }),
         supabase.from('videos').select('id', { count: 'exact', head: true }),
         supabase.from('news').select('id', { count: 'exact', head: true }),
@@ -50,7 +58,15 @@ const AdminDashboard: React.FC = () => {
         supabase.from('faq').select('id', { count: 'exact', head: true }),
         supabase.from('form_submissions').select('id', { count: 'exact', head: true }),
         supabase.from('newsletter_subscribers').select('id', { count: 'exact', head: true }),
+        supabase.from('projects').select('status'),
       ]);
+
+      const projectStats = {
+        total: projects.data?.length || 0,
+        planifie: projects.data?.filter(p => p.status === 'planifie').length || 0,
+        en_cours: projects.data?.filter(p => p.status === 'en_cours').length || 0,
+        termine: projects.data?.filter(p => p.status === 'termine').length || 0,
+      };
 
       setStats({
         reports: reports.count || 0,
@@ -60,6 +76,7 @@ const AdminDashboard: React.FC = () => {
         faq: faq.count || 0,
         submissions: submissions.count || 0,
         newsletter: newsletter.count || 0,
+        projects: projectStats,
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -73,13 +90,13 @@ const AdminDashboard: React.FC = () => {
       // Récupérer toutes les candidatures (sans filtre de date pour être sûr de tout récupérer)
       let submissions = null;
       let submissionsError = null;
-      
+
       // Essayer avec tri, sinon sans tri
       const submissionsWithOrder = await supabase
         .from('form_submissions')
         .select('created_at')
         .order('created_at', { ascending: true });
-      
+
       if (submissionsWithOrder.error) {
         // Si le tri échoue, essayer sans tri
         const submissionsNoOrder = await supabase
@@ -95,12 +112,12 @@ const AdminDashboard: React.FC = () => {
       // Récupérer tous les abonnés newsletter
       let newsletter = null;
       let newsletterError = null;
-      
+
       const newsletterWithOrder = await supabase
         .from('newsletter_subscribers')
         .select('created_at')
         .order('created_at', { ascending: true });
-      
+
       if (newsletterWithOrder.error) {
         // Si le tri échoue, essayer sans tri
         const newsletterNoOrder = await supabase
@@ -120,14 +137,11 @@ const AdminDashboard: React.FC = () => {
         console.error('Error fetching newsletter:', newsletterError);
       }
 
-      console.log('Submissions data:', submissions?.length || 0, submissions);
-      console.log('Newsletter data:', newsletter?.length || 0, newsletter);
-
       // Grouper par mois
       const monthMap = new Map<string, { submissions: number; newsletter: number }>();
-      
+
       const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-      
+
       // Initialiser les 6 derniers mois
       for (let i = 5; i >= 0; i--) {
         const date = new Date();
@@ -142,21 +156,15 @@ const AdminDashboard: React.FC = () => {
           if (item.created_at) {
             try {
               const date = new Date(item.created_at);
-              // Vérifier que la date est valide
-              if (isNaN(date.getTime())) {
-                console.warn('Invalid date:', item.created_at);
-                return;
-              }
-              
-              // Vérifier si la date est dans les 6 derniers mois
+              if (isNaN(date.getTime())) return;
+
               const sixMonthsAgo = new Date();
               sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-              sixMonthsAgo.setDate(1); // Premier jour du mois pour une comparaison correcte
+              sixMonthsAgo.setDate(1);
               sixMonthsAgo.setHours(0, 0, 0, 0);
-              
-              // Normaliser la date au premier jour du mois
+
               const itemDate = new Date(date.getFullYear(), date.getMonth(), 1);
-              
+
               if (itemDate >= sixMonthsAgo) {
                 const monthKey = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
                 const current = monthMap.get(monthKey);
@@ -164,12 +172,11 @@ const AdminDashboard: React.FC = () => {
                   current.submissions++;
                   monthMap.set(monthKey, current);
                 } else {
-                  // Si le mois n'est pas dans les 6 derniers, l'ajouter quand même
                   monthMap.set(monthKey, { submissions: 1, newsletter: 0 });
                 }
               }
             } catch (error) {
-              console.error('Error processing submission date:', item.created_at, error);
+              console.error('Error processing submission date:', error);
             }
           }
         });
@@ -181,21 +188,15 @@ const AdminDashboard: React.FC = () => {
           if (item.created_at) {
             try {
               const date = new Date(item.created_at);
-              // Vérifier que la date est valide
-              if (isNaN(date.getTime())) {
-                console.warn('Invalid date:', item.created_at);
-                return;
-              }
-              
-              // Vérifier si la date est dans les 6 derniers mois
+              if (isNaN(date.getTime())) return;
+
               const sixMonthsAgo = new Date();
               sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-              sixMonthsAgo.setDate(1); // Premier jour du mois pour une comparaison correcte
+              sixMonthsAgo.setDate(1);
               sixMonthsAgo.setHours(0, 0, 0, 0);
-              
-              // Normaliser la date au premier jour du mois
+
               const itemDate = new Date(date.getFullYear(), date.getMonth(), 1);
-              
+
               if (itemDate >= sixMonthsAgo) {
                 const monthKey = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
                 const current = monthMap.get(monthKey);
@@ -203,18 +204,16 @@ const AdminDashboard: React.FC = () => {
                   current.newsletter++;
                   monthMap.set(monthKey, current);
                 } else {
-                  // Si le mois n'est pas dans les 6 derniers, l'ajouter quand même
                   monthMap.set(monthKey, { submissions: 0, newsletter: 1 });
                 }
               }
             } catch (error) {
-              console.error('Error processing newsletter date:', item.created_at, error);
+              console.error('Error processing newsletter date:', error);
             }
           }
         });
       }
 
-      // Créer un tableau avec les 6 derniers mois dans l'ordre chronologique
       const monthly: MonthlyData[] = [];
       for (let i = 5; i >= 0; i--) {
         const date = new Date();
@@ -228,9 +227,6 @@ const AdminDashboard: React.FC = () => {
         });
       }
 
-      console.log('Monthly data prepared:', monthly);
-      console.log('Total submissions in last 6 months:', monthly.reduce((sum, m) => sum + m.submissions, 0));
-      console.log('Total newsletter in last 6 months:', monthly.reduce((sum, m) => sum + m.newsletter, 0));
       setMonthlyData(monthly);
     } catch (error) {
       console.error('Error fetching monthly data:', error);
@@ -238,33 +234,27 @@ const AdminDashboard: React.FC = () => {
   };
 
   const statCards = [
+    { label: 'Projets', value: stats.projects.total, icon: FolderKanban, color: 'bg-blue-500', bgGradient: 'from-blue-500 to-blue-600' },
     { label: 'Rapports', value: stats.reports, icon: FileText, color: 'bg-purple-500', bgGradient: 'from-purple-500 to-purple-600' },
-    { label: 'Vidéos', value: stats.videos, icon: Video, color: 'bg-red-500', bgGradient: 'from-red-500 to-red-600' },
     { label: 'Actualités', value: stats.news, icon: Newspaper, color: 'bg-green-500', bgGradient: 'from-green-500 to-green-600' },
+    { label: 'Engagement', value: stats.submissions + stats.newsletter, icon: Users, color: 'bg-pink-500', bgGradient: 'from-pink-500 to-pink-600' },
     { label: 'Membres équipe', value: stats.teamMembers, icon: Users, color: 'bg-yellow-500', bgGradient: 'from-yellow-500 to-yellow-600' },
-    { label: 'FAQ', value: stats.faq, icon: HelpCircle, color: 'bg-indigo-500', bgGradient: 'from-indigo-500 to-indigo-600' },
-    { label: 'Candidatures', value: stats.submissions, icon: Mail, color: 'bg-pink-500', bgGradient: 'from-pink-500 to-pink-600' },
-    { label: 'Newsletter', value: stats.newsletter, icon: Mail, color: 'bg-teal-500', bgGradient: 'from-teal-500 to-teal-600' },
   ];
 
-  // Données pour le graphique en camembert
+  // Données pour le graphique en camembert (Contenu)
   const pieData = [
     { name: 'Rapports', value: stats.reports },
     { name: 'Vidéos', value: stats.videos },
     { name: 'Actualités', value: stats.news },
     { name: 'FAQ', value: stats.faq },
-  ].filter(item => item.value > 0);
-
-  // Données pour le graphique en barres
-  const barData = [
-    { name: 'Rapports', count: stats.reports },
-    { name: 'Vidéos', count: stats.videos },
-    { name: 'Actualités', count: stats.news },
-    { name: 'FAQ', count: stats.faq },
-    { name: 'Équipe', count: stats.teamMembers },
   ];
 
-  const totalContent = stats.reports + stats.videos + stats.news + stats.faq;
+  // Données pour le graphique des projets
+  const projectPieData = [
+    { name: 'Planifiés', value: stats.projects.planifie },
+    { name: 'En cours', value: stats.projects.en_cours },
+    { name: 'Terminés', value: stats.projects.termine },
+  ].filter(item => item.value > 0);
 
   return (
     <div className="w-full max-w-full overflow-x-hidden">
@@ -278,7 +268,7 @@ const AdminDashboard: React.FC = () => {
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(7)].map((_, i) => (
+          {[...Array(5)].map((_, i) => (
             <div key={i} className="bg-white rounded-lg shadow-md p-6 animate-pulse">
               <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
               <div className="h-8 bg-gray-200 rounded w-1/3"></div>
@@ -288,7 +278,7 @@ const AdminDashboard: React.FC = () => {
       ) : (
         <>
           {/* Cartes de statistiques */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
             {statCards.map((stat) => {
               const Icon = stat.icon;
               return (
@@ -311,7 +301,37 @@ const AdminDashboard: React.FC = () => {
 
           {/* Graphiques */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Graphique en camembert */}
+            {/* Graphique Projets */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-lg font-bold text-gray-800 mb-4">État des Projets</h2>
+              {projectPieData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={projectPieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {projectPieData.map((_entry, index) => (
+                        <Cell key={`cell-${index}`} fill={PROJECT_COLORS[index % PROJECT_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[300px] text-gray-500">
+                  <p>Aucun projet enregistré</p>
+                </div>
+              )}
+            </div>
+
+            {/* Graphique Répartition du contenu */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-lg font-bold text-gray-800 mb-4">Répartition du contenu</h2>
               {pieData.length > 0 ? (
@@ -322,16 +342,17 @@ const AdminDashboard: React.FC = () => {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      label={({ name, percent, value }) => value > 0 ? `${name}: ${((percent || 0) * 100).toFixed(0)}%` : ''}
                       outerRadius={100}
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {pieData.map((entry, index) => (
+                      {pieData.map((_entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip />
+                    <Legend />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
@@ -339,21 +360,6 @@ const AdminDashboard: React.FC = () => {
                   <p>Aucune donnée disponible</p>
                 </div>
               )}
-            </div>
-
-            {/* Graphique en barres */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-lg font-bold text-gray-800 mb-4">Statistiques par catégorie</h2>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={barData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="count" fill="#10b981" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
             </div>
           </div>
 
@@ -378,38 +384,6 @@ const AdminDashboard: React.FC = () => {
                 <p className="text-sm text-gray-400">Les données apparaîtront ici une fois que des candidatures ou abonnements seront enregistrés</p>
               </div>
             )}
-          </div>
-
-          {/* Résumé global */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-md p-6 text-white">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold">Contenu total</h3>
-                <FileText size={24} />
-              </div>
-              <p className="text-4xl font-bold">{totalContent}</p>
-              <p className="text-green-100 text-sm mt-2">Éléments de contenu</p>
-            </div>
-
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-md p-6 text-white">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold">Engagement</h3>
-                <Users size={24} />
-              </div>
-              <p className="text-4xl font-bold">{stats.submissions + stats.newsletter}</p>
-              <p className="text-blue-100 text-sm mt-2">Candidatures + Abonnés</p>
-            </div>
-
-            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-md p-6 text-white">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold">Taux de conversion</h3>
-                <TrendingUp size={24} />
-              </div>
-              <p className="text-4xl font-bold">
-                {stats.newsletter > 0 ? ((stats.submissions / stats.newsletter) * 100).toFixed(1) : '0'}%
-              </p>
-              <p className="text-purple-100 text-sm mt-2">Candidatures / Newsletter</p>
-            </div>
           </div>
         </>
       )}

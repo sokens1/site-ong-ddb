@@ -8,10 +8,12 @@ interface NewsArticle {
   id?: number;
   title: string;
   image: string;
+  image2?: string;
   category: string;
   date: string;
   description: string;
   content: string;
+  status?: string;
 }
 
 interface TeamMember {
@@ -100,13 +102,19 @@ const News: React.FC = () => {
   useEffect(() => {
     const fetchNews = async () => {
       try {
-        const { data, error } = await supabase.from('news').select('*').order('date', { ascending: false });
+        const now = new Date().toISOString().split('T')[0];
+        const { data, error } = await supabase
+          .from('news')
+          .select('*')
+          .eq('status', 'published')
+          .lte('date', now)
+          .order('date', { ascending: false });
+
         if (error) {
           console.error('Error fetching news:', error);
-          // Ne pas bloquer l'application si la requête échoue
           setNews([]);
         } else {
-          setNews(data?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || []);
+          setNews(data || []);
         }
       } catch (err) {
         console.error('Unexpected error fetching news:', err);
@@ -228,7 +236,7 @@ const News: React.FC = () => {
   return (
     <section id="news" className="py-20 bg-white">
       <div className="container mx-auto px-4">
-        
+
         <AnimatedSection className="text-center mb-16">
           <motion.h2 variants={itemVariants} className="text-3xl md:text-4xl font-bold text-green-800 mb-4">
             Actualités
@@ -253,7 +261,7 @@ const News: React.FC = () => {
                     <h3 className="text-lg sm:text-xl font-bold text-green-800 mb-3 line-clamp-2">{article.title}</h3>
                     <p className="text-gray-700 mb-4 text-sm sm:text-base line-clamp-3 flex-grow">{article.description}</p>
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mt-auto">
-                      <button onClick={() => { if (article.id) { navigate(`/news/${article.id}`); } else { setSelectedArticle(article); setIsModalOpen(true); } }} className="text-green-600 font-medium hover:text-green-800 transition-colors duration-200 text-left">
+                      <button onClick={() => { if (article.id) { navigate(`/article/${article.id}`); } }} className="text-green-600 font-medium hover:text-green-800 transition-colors duration-200 text-left">
                         Lire l'article →
                       </button>
                       <div className="flex space-x-3 justify-start sm:justify-end">
@@ -307,14 +315,14 @@ const News: React.FC = () => {
             Notre Bureau Directeur
           </motion.h2>
           <motion.div variants={itemVariants} className="w-24 h-1 bg-green-600 mx-auto mb-8"></motion.div>
-          
+
           {/* Version Desktop - Disposition hiérarchisée */}
           {!isMobile && (
             <>
               {/* Premier membre seul en haut au centre */}
               {team.length > 0 && (
                 <motion.div variants={itemVariants} className="text-center mb-12">
-                  <img src={team[0].image} alt={team[0].name} className="w-40 h-40 rounded-full mx-auto mb-4 object-cover shadow-lg"/>
+                  <img src={team[0].image} alt={team[0].name} className="w-40 h-40 rounded-full mx-auto mb-4 object-cover shadow-lg" />
                   <h3 className="font-bold text-green-800 text-xl">{team[0].name}</h3>
                   <p className="text-gray-600">{team[0].position}</p>
                 </motion.div>
@@ -325,7 +333,7 @@ const News: React.FC = () => {
                 <div className="flex justify-center flex-wrap gap-8 mb-8">
                   {team.slice(1, 4).map((member) => (
                     <motion.div key={member.id} variants={itemVariants} className="text-center w-64">
-                      <img src={member.image} alt={member.name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg"/>
+                      <img src={member.image} alt={member.name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg" />
                       <h3 className="font-bold text-green-800 text-xl">{member.name}</h3>
                       <p className="text-gray-600">{member.position}</p>
                     </motion.div>
@@ -338,7 +346,7 @@ const News: React.FC = () => {
                 <div className="flex justify-center flex-wrap gap-8 mb-8">
                   {team.slice(4, 7).map((member) => (
                     <motion.div key={member.id} variants={itemVariants} className="text-center w-64">
-                      <img src={member.image} alt={member.name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg"/>
+                      <img src={member.image} alt={member.name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg" />
                       <h3 className="font-bold text-green-800 text-xl">{member.name}</h3>
                       <p className="text-gray-600">{member.position}</p>
                     </motion.div>
@@ -351,7 +359,7 @@ const News: React.FC = () => {
                 <div className="flex justify-center flex-wrap gap-8 mb-8">
                   {team.slice(7, 10).map((member) => (
                     <motion.div key={member.id} variants={itemVariants} className="text-center w-64">
-                      <img src={member.image} alt={member.name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg"/>
+                      <img src={member.image} alt={member.name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg" />
                       <h3 className="font-bold text-green-800 text-xl">{member.name}</h3>
                       <p className="text-gray-600">{member.position}</p>
                     </motion.div>
@@ -364,7 +372,7 @@ const News: React.FC = () => {
                 <div className="flex justify-center flex-wrap gap-8">
                   {team.slice(10).map((member) => (
                     <motion.div key={member.id} variants={itemVariants} className="text-center w-64">
-                      <img src={member.image} alt={member.name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg"/>
+                      <img src={member.image} alt={member.name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg" />
                       <h3 className="font-bold text-green-800 text-xl">{member.name}</h3>
                       <p className="text-gray-600">{member.position}</p>
                     </motion.div>
@@ -385,14 +393,14 @@ const News: React.FC = () => {
                     className="flex-shrink-0 snap-start w-48"
                   >
                     <div className="text-center">
-                      <img src={member.image} alt={member.name} className="w-24 h-24 rounded-full mx-auto mb-3 object-cover shadow-lg"/>
+                      <img src={member.image} alt={member.name} className="w-24 h-24 rounded-full mx-auto mb-3 object-cover shadow-lg" />
                       <h3 className="font-bold text-green-800 text-base">{member.name}</h3>
                       <p className="text-gray-600 text-sm">{member.position}</p>
                     </div>
                   </motion.div>
                 ))}
               </div>
-              
+
               {/* Indicateurs de pagination pour mobile */}
               <div className="flex justify-center gap-2 mt-4">
                 {team.map((_, index) => (
@@ -415,8 +423,8 @@ const News: React.FC = () => {
           )}
 
           {/* Section connexion pour les membres - après toutes les photos */}
-          <motion.div 
-            variants={itemVariants} 
+          <motion.div
+            variants={itemVariants}
             className="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-8 max-w-md mx-auto"
           >
             <p className="text-gray-700 mb-3 font-medium">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../supabaseClient';
-import DataTable from '../../components/admin/DataTable';
+import { supabase } from '../../../supabaseClient';
+import DataTable from '../../../components/admin/DataTable';
+import useUserRole from '../../../hooks/useUserRole';
 
 interface NewsletterSubscriber {
   id: number;
@@ -9,6 +10,7 @@ interface NewsletterSubscriber {
 }
 
 const NewsletterAdmin: React.FC = () => {
+  const { canDelete } = useUserRole();
   const [data, setData] = useState<NewsletterSubscriber[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +23,7 @@ const NewsletterAdmin: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Essayer d'abord avec id (qui devrait toujours exister)
       let { data: fetchedData, error: fetchError } = await supabase
         .from('newsletter_subscribers')
@@ -34,13 +36,13 @@ const NewsletterAdmin: React.FC = () => {
           .from('newsletter_subscribers')
           .select('*')
           .order('created_at', { ascending: false });
-        
+
         if (retry.error) {
           // Si les deux échouent, essayer sans tri
           const noOrder = await supabase
             .from('newsletter_subscribers')
             .select('*');
-          
+
           if (noOrder.error) throw noOrder.error;
           fetchedData = noOrder.data;
         } else {
@@ -69,7 +71,7 @@ const NewsletterAdmin: React.FC = () => {
   return (
     <div className="w-full max-w-full overflow-x-hidden">
       <h1 className="text-2xl font-bold text-gray-800 mb-4">Abonnés Newsletter</h1>
-      
+
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
           {error}
@@ -79,6 +81,13 @@ const NewsletterAdmin: React.FC = () => {
       <DataTable
         columns={columns}
         data={data}
+        onDelete={canDelete('newsletter') ? async (row: NewsletterSubscriber) => {
+          if (window.confirm('Supprimer cet abonné ?')) {
+            const { error } = await supabase.from('newsletter_subscribers').delete().eq('id', row.id);
+            if (error) alert(error.message);
+            else fetchData();
+          }
+        } : undefined}
         title="Liste des abonnés"
         isLoading={loading}
       />

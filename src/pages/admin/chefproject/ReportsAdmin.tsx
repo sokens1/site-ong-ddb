@@ -1,11 +1,15 @@
 import React, { useState, useMemo } from 'react';
-import { useCrud } from '../../hooks/useCrud';
-import DataTable from '../../components/admin/DataTable';
-import Modal from '../../components/admin/Modal';
-import ImageUpload from '../../components/admin/ImageUpload';
-import FileUpload from '../../components/admin/FileUpload';
-import SearchBar from '../../components/admin/SearchBar';
+import { useCrud } from '../../../hooks/useCrud';
+import DataTable from '../../../components/admin/DataTable';
+import Modal from '../../../components/admin/Modal';
+import ImageUpload from '../../../components/admin/ImageUpload';
+import FileUpload from '../../../components/admin/FileUpload';
+import SearchBar from '../../../components/admin/SearchBar';
 import { List, Grid, Edit, Trash2, Plus } from 'lucide-react';
+import useUserRole from '../../../hooks/useUserRole';
+import { useNotifications } from '../../../hooks/useNotifications';
+import { supabase } from '../../../supabaseClient';
+import { useEffect } from 'react';
 
 interface Report {
   id: number;
@@ -20,6 +24,9 @@ interface Report {
 
 const ReportsAdmin: React.FC = () => {
   const { data, loading, error, create, update, delete: deleteReport } = useCrud<Report>({ tableName: 'reports' });
+  const { canCreate, canEdit, canDelete, role, userId: currentUserId } = useUserRole();
+  const { createNotification } = useNotifications(currentUserId);
+  const [actorProfile, setActorProfile] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Report | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
@@ -32,6 +39,12 @@ const ReportsAdmin: React.FC = () => {
     category: '',
     date: '',
   });
+
+  useEffect(() => {
+    if (currentUserId) {
+      supabase.from('user_profiles').select('*').eq('id', currentUserId).single().then(({ data }) => setActorProfile(data));
+    }
+  }, [currentUserId]);
 
   const handleAdd = () => {
     setEditingItem(null);
@@ -77,7 +90,7 @@ const ReportsAdmin: React.FC = () => {
           }
         }
       }
-      
+
       const dataToSubmit: any = {
         title: formData.title || null,
         description: formData.description || null,
@@ -86,15 +99,35 @@ const ReportsAdmin: React.FC = () => {
         date: dateValue,
         fileUrl: formData.fileUrl || null, // Utiliser fileUrl (camelCase) comme dans la table
       };
-      
+
       console.log('Submitting data:', dataToSubmit);
       console.log('Form data keys:', Object.keys(formData));
       console.log('Form data values:', Object.values(formData));
-      
+
       if (editingItem) {
         await update(editingItem.id, dataToSubmit);
       } else {
-        await create(dataToSubmit);
+        const newReport = await create(dataToSubmit);
+        if (newReport) {
+          const { data: profiles } = await supabase.from('user_profiles').select('id');
+          if (profiles) {
+            const actorName = actorProfile?.full_name || 'Un membre de l\'équipe';
+            const actorRole = role?.replace('_', ' ') || 'Membre';
+            for (const profile of profiles) {
+              if (profile.id === currentUserId) continue;
+              await createNotification({
+                user_id: profile.id,
+                actor_id: currentUserId || undefined,
+                actor_name: actorName,
+                actor_role: actorRole,
+                type: 'report_published',
+                title: 'Nouveau Rapport Publié',
+                message: `${actorName} (${actorRole}) a publié un nouveau rapport : ${dataToSubmit.title}`,
+                link: '/reports'
+              });
+            }
+          }
+        }
       }
       setIsModalOpen(false);
       setFormData({ title: '', description: '', fileUrl: '', image: '', category: '', date: '' });
@@ -109,7 +142,7 @@ const ReportsAdmin: React.FC = () => {
   // Filtrer les données selon la recherche
   const filteredData = useMemo(() => {
     if (!searchQuery.trim()) return data;
-    
+
     const query = searchQuery.toLowerCase();
     return data.filter((report) =>
       report.title.toLowerCase().includes(query) ||
@@ -143,38 +176,38 @@ const ReportsAdmin: React.FC = () => {
           <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 rounded transition ${
-                viewMode === 'grid'
-                  ? 'bg-white text-green-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={`p-2 rounded transition ${viewMode === 'grid'
+                ? 'bg-white text-green-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+                }`}
               title="Vue carte"
             >
               <Grid size={20} />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 rounded transition ${
-                viewMode === 'list'
-                  ? 'bg-white text-green-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={`p-2 rounded transition ${viewMode === 'list'
+                ? 'bg-white text-green-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+                }`}
               title="Vue liste"
             >
               <List size={20} />
             </button>
           </div>
           {/* Bouton ajouter */}
-          <button
-            onClick={handleAdd}
-            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
-          >
-            <Plus size={20} />
-            Ajouter
-          </button>
+          {canCreate('reports') && (
+            <button
+              onClick={handleAdd}
+              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+            >
+              <Plus size={20} />
+              Ajouter
+            </button>
+          )}
         </div>
       </div>
-      
+
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
           {error}
@@ -211,9 +244,9 @@ const ReportsAdmin: React.FC = () => {
         <DataTable
           columns={columns}
           data={filteredData}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onAdd={handleAdd}
+          onEdit={canEdit('reports') ? handleEdit : undefined}
+          onDelete={canDelete('reports') ? handleDelete : undefined}
+          onAdd={canCreate('reports') ? handleAdd : undefined}
           title="Rapports"
           isLoading={false}
         />
@@ -237,20 +270,24 @@ const ReportsAdmin: React.FC = () => {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                     />
                     <div className="absolute top-1.5 right-1.5 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => handleEdit(report)}
-                        className="bg-white/95 backdrop-blur-sm p-1.5 rounded-md text-blue-600 hover:bg-white transition shadow-sm"
-                        title="Modifier"
-                      >
-                        <Edit size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(report)}
-                        className="bg-white/95 backdrop-blur-sm p-1.5 rounded-md text-red-600 hover:bg-white transition shadow-sm"
-                        title="Supprimer"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {canEdit('reports') && (
+                        <button
+                          onClick={() => handleEdit(report)}
+                          className="bg-white/95 backdrop-blur-sm p-1.5 rounded-md text-blue-600 hover:bg-white transition shadow-sm"
+                          title="Modifier"
+                        >
+                          <Edit size={14} />
+                        </button>
+                      )}
+                      {canDelete('reports') && (
+                        <button
+                          onClick={() => handleDelete(report)}
+                          className="bg-white/95 backdrop-blur-sm p-1.5 rounded-md text-red-600 hover:bg-white transition shadow-sm"
+                          title="Supprimer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div className="p-3 flex flex-col flex-grow">
@@ -286,7 +323,8 @@ const ReportsAdmin: React.FC = () => {
             </div>
           )}
         </div>
-      )}
+      )
+      }
 
       <Modal
         isOpen={isModalOpen}
@@ -388,4 +426,3 @@ const ReportsAdmin: React.FC = () => {
 };
 
 export default ReportsAdmin;
-

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../supabaseClient';
-import DataTable from '../../components/admin/DataTable';
-import Modal from '../../components/admin/Modal';
+import { supabase } from '../../../supabaseClient';
+import DataTable from '../../../components/admin/DataTable';
+import Modal from '../../../components/admin/Modal';
 import { Eye } from 'lucide-react';
+import useUserRole from '../../../hooks/useUserRole';
 
 interface Submission {
   id: number;
@@ -20,6 +21,7 @@ interface Submission {
 }
 
 const SubmissionsAdmin: React.FC = () => {
+  const { canDelete } = useUserRole();
   const [data, setData] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +35,7 @@ const SubmissionsAdmin: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Vérifier d'abord la session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -55,14 +57,14 @@ const SubmissionsAdmin: React.FC = () => {
           .from('form_submissions')
           .select('*')
           .order('created_at', { ascending: false });
-        
+
         if (retry.error) {
           console.warn('Error with created_at order, trying without order:', retry.error);
           // Si les deux échouent, essayer sans tri
           const noOrder = await supabase
             .from('form_submissions')
             .select('*');
-          
+
           if (noOrder.error) {
             console.error('Final error:', noOrder.error);
             throw noOrder.error;
@@ -75,14 +77,14 @@ const SubmissionsAdmin: React.FC = () => {
 
       console.log('Fetched submissions:', fetchedData?.length || 0);
       setData(fetchedData || []);
-      
+
       // Si aucune erreur mais aucune donnée, c'est normal
       if ((!fetchedData || fetchedData.length === 0) && !fetchError) {
         console.log('Aucune candidature trouvée dans la base de données');
       }
     } catch (err: any) {
       let errorMessage = 'Erreur lors du chargement des données';
-      
+
       // Messages d'erreur plus explicites
       if (err.code === 'PGRST301' || err.code === '42P01') {
         errorMessage = 'La table "form_submissions" n\'existe pas dans la base de données';
@@ -91,7 +93,7 @@ const SubmissionsAdmin: React.FC = () => {
       } else if (err.message) {
         errorMessage = err.message;
       }
-      
+
       setError(errorMessage);
       console.error('Error fetching submissions:', err);
     } finally {
@@ -100,8 +102,8 @@ const SubmissionsAdmin: React.FC = () => {
   };
 
   const columns = [
-    { 
-      key: 'fullname', 
+    {
+      key: 'fullname',
       label: 'Nom complet',
       render: (value: string, row: Submission) => (
         <span>
@@ -112,8 +114,8 @@ const SubmissionsAdmin: React.FC = () => {
     { key: 'email', label: 'Email' },
     { key: 'phone', label: 'Téléphone' },
     { key: 'city', label: 'Ville' },
-    { 
-      key: 'interest', 
+    {
+      key: 'interest',
       label: 'Intérêt',
       render: (value: string) => <span className="max-w-xs truncate block">{value || '-'}</span>,
     },
@@ -149,7 +151,7 @@ const SubmissionsAdmin: React.FC = () => {
   return (
     <div className="w-full max-w-full overflow-x-hidden">
       <h1 className="text-2xl font-bold text-gray-800 mb-4">Candidatures</h1>
-      
+
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
           {error}
@@ -159,6 +161,13 @@ const SubmissionsAdmin: React.FC = () => {
       <DataTable
         columns={columns}
         data={data}
+        onDelete={canDelete('submissions') ? async (row: Submission) => {
+          if (window.confirm('Supprimer cette candidature ?')) {
+            const { error } = await supabase.from('form_submissions').delete().eq('id', row.id);
+            if (error) alert(error.message);
+            else fetchData();
+          }
+        } : undefined}
         title="Candidatures reçues"
         isLoading={loading}
       />
@@ -209,14 +218,14 @@ const SubmissionsAdmin: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Date de candidature</label>
                 <p className="text-gray-900">
-                  {selectedSubmission.created_at 
+                  {selectedSubmission.created_at
                     ? new Date(selectedSubmission.created_at).toLocaleDateString('fr-FR', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })
                     : '-'}
                 </p>
               </div>

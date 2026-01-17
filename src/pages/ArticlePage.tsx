@@ -8,6 +8,7 @@ interface NewsArticle {
   id: number;
   title: string;
   image: string;
+  image2?: string;
   category: string;
   date: string;
   description?: string;
@@ -26,7 +27,7 @@ const ArticlePage: React.FC = () => {
   useEffect(() => {
     const fetchArticle = async () => {
       if (!id) return;
-      
+
       try {
         setLoading(true);
         // Récupérer l'article actuel
@@ -43,7 +44,7 @@ const ArticlePage: React.FC = () => {
 
         if (articleData) {
           setArticle(articleData);
-          
+
           // Récupérer les autres articles (exclure l'article actuel)
           const { data: otherData, error: otherError } = await supabase
             .from('news')
@@ -149,38 +150,51 @@ const ArticlePage: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-           {/* Image */}
-           <div className="mb-6 rounded-lg overflow-hidden shadow-lg flex justify-center bg-transparent">
-             <img
-               src={article.image}
-               alt={article.title}
-               className="w-full max-h-[600px] object-contain"
-             />
-           </div>
+          {/* Image principale */}
+          <div className="mb-6 flex justify-center">
+            <img
+              src={article.image}
+              alt={article.title}
+              className="max-w-full h-auto max-h-[500px] object-contain rounded-lg mx-auto"
+            />
+          </div>
 
           {/* Métadonnées */}
           <div className="mb-4">
-            <div className="text-green-600 font-bold text-sm md:text-base mb-2">
-              {article.category} • {article.date}
+            <div className="text-green-600 font-bold text-sm md:text-base mb-2 flex items-center gap-2">
+              <span className="px-3 py-1 bg-green-50 rounded-full">{article.category}</span>
+              <span className="text-gray-300">•</span>
+              <span className="text-gray-600">{article.date}</span>
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold text-green-800 mb-4">
+            <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-6 leading-tight">
               {article.title}
             </h1>
           </div>
 
           {/* Description */}
           {article.description && (
-            <p className="text-lg text-gray-700 mb-6 italic border-l-4 border-green-600 pl-4">
+            <p className="text-xl text-gray-700 mb-8 italic border-l-4 border-green-600 pl-6 py-2 bg-green-50/30 rounded-r-lg">
               {article.description}
             </p>
           )}
 
           {/* Contenu */}
-          <div className="prose max-w-none text-gray-700 mb-8">
-            <div className="space-y-4 whitespace-pre-wrap text-base leading-relaxed">
+          <div className="prose prose-lg max-w-none text-gray-700 mb-12">
+            <div className="space-y-6 whitespace-pre-wrap text-lg leading-relaxed">
               {article.content || ''}
             </div>
           </div>
+
+          {/* Image secondaire */}
+          {article.image2 && (
+            <div className="mb-12 flex justify-center">
+              <img
+                src={article.image2}
+                alt={`${article.title} - Illustration`}
+                className="max-w-full h-auto max-h-[500px] object-contain rounded-lg mx-auto"
+              />
+            </div>
+          )}
 
           {/* Partage */}
           <div className="mt-8 pt-6 border-t border-gray-200 flex items-center justify-between flex-wrap gap-4">
@@ -229,9 +243,9 @@ const ArticlePage: React.FC = () => {
             <h2 className="text-2xl md:text-3xl font-bold text-green-800 mb-6">
               Autres actualités
             </h2>
-            <div 
+            <div
               ref={scrollRef}
-              className="flex overflow-x-auto gap-6 pb-6 scrollbar-hide" 
+              className="flex overflow-x-auto gap-6 pb-6 scrollbar-hide"
               style={{ scrollBehavior: 'smooth' }}
             >
               {otherArticles.map((otherArticle) => (
@@ -281,9 +295,8 @@ const ArticlePage: React.FC = () => {
                         container.scrollTo({ left: card.offsetLeft, behavior: 'smooth' });
                       }
                     }}
-                    className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-                      activeIndex === index ? 'bg-green-600' : 'bg-gray-300'
-                    }`}
+                    className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${activeIndex === index ? 'bg-green-600' : 'bg-gray-300'
+                      }`}
                     aria-label={`Aller à l'actualité ${index + 1}`}
                   />
                 ))}

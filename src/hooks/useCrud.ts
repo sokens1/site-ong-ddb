@@ -25,7 +25,7 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
     try {
       setLoading(true);
       setError(null);
-      
+
       // Essayer d'abord avec id (qui devrait toujours exister)
       let { data: fetchedData, error: fetchError } = await supabase
         .from(tableName)
@@ -38,13 +38,13 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
           .from(tableName)
           .select('*')
           .order('created_at', { ascending: false });
-        
+
         if (retry.error) {
           // Si les deux échouent, essayer sans tri
           const noOrder = await supabase
             .from(tableName)
             .select('*');
-          
+
           if (noOrder.error) throw noOrder.error;
           fetchedData = noOrder.data;
         } else {
@@ -55,7 +55,7 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
       setData(fetchedData || []);
     } catch (err: any) {
       let errorMessage = 'Erreur lors du chargement des données';
-      
+
       // Messages d'erreur plus explicites
       if (err.code === 'PGRST116' || err.code === '42703') {
         errorMessage = `La colonne de tri n'existe pas dans la table "${tableName}"`;
@@ -64,7 +64,7 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
       } else if (err.message) {
         errorMessage = err.message;
       }
-      
+
       setError(errorMessage);
       console.error(`Error fetching ${tableName}:`, err);
     } finally {
@@ -75,7 +75,7 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
   const create = async (item: Partial<T>): Promise<T | null> => {
     try {
       setError(null);
-      
+
       // Nettoyer les valeurs vides (les convertir en null pour éviter les erreurs)
       // Ne pas mapper automatiquement car Supabase respecte les noms de colonnes exacts
       const cleanedItem: any = {};
@@ -85,11 +85,11 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
           cleanedItem[key] = value === '' ? null : value;
         }
       });
-      
+
       console.log(`Creating ${tableName} with data:`, cleanedItem);
       console.log(`Cleaned item keys:`, Object.keys(cleanedItem));
       console.log(`Cleaned item values:`, Object.values(cleanedItem));
-      
+
       const { data: newItem, error: createError } = await supabase
         .from(tableName)
         .insert(cleanedItem)
@@ -106,7 +106,7 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
         console.error('Data being inserted:', JSON.stringify(cleanedItem, null, 2));
         throw createError;
       }
-      
+
       if (newItem) {
         setData((prev) => [newItem, ...prev]);
         return newItem;
@@ -114,7 +114,7 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
       return null;
     } catch (err: any) {
       let errorMessage = 'Erreur lors de la création';
-      
+
       if (err.code === '23502') {
         errorMessage = `Une colonne requise est manquante. Vérifiez que tous les champs obligatoires sont remplis.`;
       } else if (err.code === '23503') {
@@ -124,7 +124,7 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
       } else if (err.message) {
         errorMessage = err.message;
       }
-      
+
       setError(errorMessage);
       console.error(`Error creating ${tableName}:`, err);
       console.error('Item data:', item);
@@ -135,18 +135,20 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
   const update = async (id: number, item: Partial<T>): Promise<T | null> => {
     try {
       setError(null);
-      
+
       // Nettoyer les valeurs vides (les convertir en null pour éviter les erreurs)
       const cleanedItem: any = {};
       Object.entries(item).forEach(([key, value]) => {
+        // Ne pas inclure id et created_at dans la mise à jour
+        if (key === 'id' || key === 'created_at') return;
         if (value !== undefined) {
           // Convertir les chaînes vides en null
           cleanedItem[key] = value === '' ? null : value;
         }
       });
-      
+
       console.log(`Updating ${tableName} with data:`, cleanedItem);
-      
+
       const { data: updatedItem, error: updateError } = await supabase
         .from(tableName)
         .update(cleanedItem)
@@ -162,7 +164,7 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
         console.error('Data being updated:', JSON.stringify(cleanedItem, null, 2));
         throw updateError;
       }
-      
+
       if (updatedItem) {
         setData((prev) => prev.map((d) => (d.id === id ? updatedItem : d)));
         return updatedItem;
@@ -170,7 +172,7 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
       return null;
     } catch (err: any) {
       let errorMessage = 'Erreur lors de la mise à jour';
-      
+
       if (err.code === '23502') {
         errorMessage = `Une colonne requise est manquante.`;
       } else if (err.code === '23503') {
@@ -180,7 +182,7 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
       } else if (err.message) {
         errorMessage = err.message;
       }
-      
+
       setError(errorMessage);
       console.error(`Error updating ${tableName}:`, err);
       console.error('Item data:', item);

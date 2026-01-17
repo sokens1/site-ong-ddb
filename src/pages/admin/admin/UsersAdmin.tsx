@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { supabase } from '../../supabaseClient';
-import DataTable from '../../components/admin/DataTable';
-import Modal from '../../components/admin/Modal';
-import SearchBar from '../../components/admin/SearchBar';
-import { Plus, Edit, Trash2, User, Shield, Mail, UserCheck } from 'lucide-react';
+import { supabase } from '../../../supabaseClient';
+import DataTable from '../../../components/admin/DataTable';
+import Modal from '../../../components/admin/Modal';
+import SearchBar from '../../../components/admin/SearchBar';
+import { Plus, Mail } from 'lucide-react';
+import useUserRole from '../../../hooks/useUserRole';
 
 interface UserProfile {
   id: string;
@@ -32,6 +33,7 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 const UsersAdmin: React.FC = () => {
+  const { canEdit, canDelete } = useUserRole();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -170,14 +172,14 @@ const UsersAdmin: React.FC = () => {
 
         // Créer l'utilisateur avec signUp (accessible côté client)
         const { data: newUser, error: createError } = await supabase.auth.signUp({
-          email: formData.email,
+          email: formData.email || '',
           password: password,
           options: {
             data: {
               full_name: formData.full_name,
               role: formData.role,
             },
-            emailRedirectTo: window.location.origin + '/admin/login',
+            emailRedirectTo: window.location.origin + '/admin/auth/callback',
           },
         });
 
@@ -239,9 +241,8 @@ const UsersAdmin: React.FC = () => {
       label: 'Rôle',
       render: (value: string) => (
         <span
-          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-            ROLE_COLORS[value] || ROLE_COLORS.membre
-          }`}
+          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${ROLE_COLORS[value] || ROLE_COLORS.membre
+            }`}
         >
           {ROLE_LABELS[value] || value}
         </span>
@@ -298,13 +299,13 @@ const UsersAdmin: React.FC = () => {
       </div>
 
       <DataTable
-        data={filteredUsers}
         columns={columns}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
+        data={filteredUsers}
+        onEdit={canEdit('users') ? handleEdit : undefined}
+        onDelete={canDelete('users') ? handleDelete : undefined}
+        title="Gestion des Utilisateurs"
+        isLoading={loading}
       />
-
-      {/* Modal de création/modification */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
