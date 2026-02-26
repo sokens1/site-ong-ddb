@@ -169,14 +169,14 @@ const Join: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Upload CV - Réactivé
     let cvUrl = null;
     if (formData.cv) {
       setUploadProgress(0);
       const fileExt = formData.cv.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExt}`;
-      
+
       // Simulate upload progress
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
@@ -192,10 +192,10 @@ const Join: React.FC = () => {
         const { error: uploadError } = await supabase.storage
           .from('cv-uploads')
           .upload(fileName, formData.cv);
-        
+
         clearInterval(progressInterval);
         setUploadProgress(100);
-        
+
         if (uploadError) {
           console.error('Error uploading CV:', uploadError);
           alert("Une erreur est survenue lors de l'upload de votre CV. Le formulaire sera soumis sans le CV.");
@@ -225,11 +225,62 @@ const Join: React.FC = () => {
       captcha: formData.captcha,
       cv_url: cvUrl
     }]);
-    
+
     if (error) {
       console.error('Error submitting form:', error);
       alert("Une erreur est survenue lors de l'envoi de votre candidature.");
     } else {
+      // 1. Create in-app notifications for admin users
+      try {
+        const { data: adminProfiles } = await supabase
+          .from('user_profiles')
+          .select('id')
+          .in('role', ['admin', 'charge_communication']);
+
+        if (adminProfiles) {
+          for (const profile of adminProfiles) {
+            await supabase.from('notifications').insert([{
+              user_id: profile.id,
+              type: 'new_submission',
+              title: 'Nouvelle candidature',
+              message: `${formData.fullname} a soumis une candidature (${formData.interest || 'Non spécifié'})`,
+              link: '/admin/submissions',
+              is_read: false,
+            }]);
+          }
+        }
+      } catch (notifErr) {
+        console.error('Error creating notifications:', notifErr);
+      }
+
+      // 2. Send acknowledgment email to candidate via Brevo Edge Function
+      try {
+        await supabase.functions.invoke('send-submission-ack', {
+          body: {
+            email: formData.email,
+            fullname: formData.fullname,
+          },
+        });
+      } catch (emailErr) {
+        console.error('Error sending ack email:', emailErr);
+        // Silent failure - don't block user experience
+      }
+
+      // 3. Send notification email to admins via Brevo Edge Function
+      try {
+        await supabase.functions.invoke('notify-new-submission', {
+          body: {
+            candidateName: formData.fullname,
+            candidateEmail: formData.email,
+            interest: formData.interest || 'Non spécifié',
+            city: formData.city || 'Non spécifié',
+          },
+        });
+      } catch (adminEmailErr) {
+        console.error('Error sending admin notification email:', adminEmailErr);
+        // Silent failure
+      }
+
       setShowModal(true);
       setFormData({ civility: '', fullname: '', email: '', phone: '', city: '', interest: '', skills: '', motivation: '', cv: null, captcha: false });
       setUploadProgress(0);
@@ -288,37 +339,34 @@ const Join: React.FC = () => {
 
           <AnimatedSection className="lg:w-1/2 bg-white p-8 rounded-lg shadow-md">
             <motion.h3 variants={itemVariants} className="text-2xl font-bold text-green-800 mb-6">Devenez membre</motion.h3>
-            
+
             {/* Indicateur de progression */}
             <motion.div variants={itemVariants} className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <div className={`flex items-center ${currentStep >= 1 ? 'text-green-600' : 'text-gray-400'}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                    currentStep >= 1 ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-500'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${currentStep >= 1 ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-500'
+                    }`}>
                     1
                   </div>
                   <span className="ml-2 text-sm font-medium">Informations personnelles</span>
                 </div>
                 <div className={`flex items-center ${currentStep >= 2 ? 'text-green-600' : 'text-gray-400'}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                    currentStep >= 2 ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-500'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${currentStep >= 2 ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-500'
+                    }`}>
                     2
                   </div>
                   <span className="ml-2 text-sm font-medium">Profil & motivation</span>
                 </div>
                 <div className={`flex items-center ${currentStep >= 3 ? 'text-green-600' : 'text-gray-400'}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                    currentStep >= 3 ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-500'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${currentStep >= 3 ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-500'
+                    }`}>
                     3
                   </div>
                   <span className="ml-2 text-sm font-medium">Finalisation</span>
                 </div>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
+                <div
                   className="bg-green-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${(currentStep / 3) * 100}%` }}
                 ></div>
@@ -326,87 +374,86 @@ const Join: React.FC = () => {
             </motion.div>
 
             <motion.form onSubmit={handleSubmit} variants={containerVariants} className="space-y-4">
-              
+
               {/* Étape 1: Informations personnelles */}
               {currentStep === 1 && (
                 <motion.div variants={itemVariants} className="space-y-4">
                   <h4 className="text-lg font-semibold text-green-800 mb-4">Informations personnelles</h4>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="civility" className="block text-gray-700 font-medium mb-2">Civilité</label>
-                  <select id="civility" value={formData.civility} onChange={handleInputChange} className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600">
-                    <option value="">Sélectionnez</option>
-                    <option value="M">Monsieur</option>
-                    <option value="Mme">Madame</option>
-                    <option value="Mlle">Mademoiselle</option>
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="fullname" className="block text-gray-700 font-medium mb-2">Nom complet</label>
-                  <input type="text" id="fullname" value={formData.fullname} onChange={handleInputChange} required className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600" />
-                </div>
+                    <div>
+                      <label htmlFor="civility" className="block text-gray-700 font-medium mb-2">Civilité</label>
+                      <select id="civility" value={formData.civility} onChange={handleInputChange} className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600">
+                        <option value="">Sélectionnez</option>
+                        <option value="M">Monsieur</option>
+                        <option value="Mme">Madame</option>
+                        <option value="Mlle">Mademoiselle</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="fullname" className="block text-gray-700 font-medium mb-2">Nom complet</label>
+                      <input type="text" id="fullname" value={formData.fullname} onChange={handleInputChange} required className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600" />
+                    </div>
                   </div>
-                  
+
                   <div>
-                <label htmlFor="email" className="block text-gray-700 font-medium mb-2">Adresse e-mail</label>
-                <input type="email" id="email" value={formData.email} onChange={handleInputChange} required className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600" />
+                    <label htmlFor="email" className="block text-gray-700 font-medium mb-2">Adresse e-mail</label>
+                    <input type="email" id="email" value={formData.email} onChange={handleInputChange} required className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600" />
                   </div>
-                  
+
                   <div>
-                <label htmlFor="phone" className="block text-gray-700 font-medium mb-2">Téléphone</label>
-                <input type="tel" id="phone" value={formData.phone} onChange={handleInputChange} className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600" />
+                    <label htmlFor="phone" className="block text-gray-700 font-medium mb-2">Téléphone</label>
+                    <input type="tel" id="phone" value={formData.phone} onChange={handleInputChange} className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600" />
                   </div>
-                  
+
                   <div>
-                <label htmlFor="city" className="block text-gray-700 font-medium mb-2">Ville</label>
-                <input type="text" id="city" value={formData.city} onChange={handleInputChange} className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600" />
+                    <label htmlFor="city" className="block text-gray-700 font-medium mb-2">Ville</label>
+                    <input type="text" id="city" value={formData.city} onChange={handleInputChange} className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600" />
                   </div>
-              </motion.div>
+                </motion.div>
               )}
 
               {/* Étape 2: Profil & motivation */}
               {currentStep === 2 && (
                 <motion.div variants={itemVariants} className="space-y-4">
                   <h4 className="text-lg font-semibold text-green-800 mb-4">Profil & motivation</h4>
-                  
+
                   <div>
-                <label htmlFor="interest" className="block text-gray-700 font-medium mb-2">Domaine d'intérêt</label>
+                    <label htmlFor="interest" className="block text-gray-700 font-medium mb-2">Domaine d'intérêt</label>
                     <input type="text" id="interest" value={formData.interest} onChange={handleInputChange} placeholder="Décrivez votre domaine d'intérêt" className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600" />
                   </div>
-                  
+
                   <div>
                     <label htmlFor="skills" className="block text-gray-700 font-medium mb-2">Compétences <span className="text-red-500">*</span></label>
                     <textarea id="skills" rows={3} value={formData.skills} onChange={handleInputChange} required placeholder="Décrivez vos compétences et expériences" className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600"></textarea>
                   </div>
-                  
+
                   <div>
-                <label htmlFor="motivation" className="block text-gray-700 font-medium mb-2">Pourquoi souhaitez-vous nous rejoindre ?</label>
+                    <label htmlFor="motivation" className="block text-gray-700 font-medium mb-2">Pourquoi souhaitez-vous nous rejoindre ?</label>
                     <textarea id="motivation" rows={4} value={formData.motivation} onChange={handleInputChange} placeholder="Expliquez votre motivation pour rejoindre l'ONG DDB" className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600"></textarea>
                   </div>
-              </motion.div>
+                </motion.div>
               )}
 
               {/* Étape 3: Finalisation */}
               {currentStep === 3 && (
                 <motion.div variants={itemVariants} className="space-y-4">
                   <h4 className="text-lg font-semibold text-green-800 mb-4">Finalisation</h4>
-                  
+
                   <div>
                     <label className="block text-gray-700 font-medium mb-2">CV (PDF, DOC, DOCX) - Max 5MB <span className="text-gray-500 font-normal">- Optionnel</span></label>
                     <p className="text-xs text-gray-500 -mt-1 mb-3">
                       Le CV n'est pas obligatoire. Vous pouvez soumettre votre candidature sans l'ajouter.
                     </p>
-                    
+
                     {/* Zone de drop moderne */}
                     <div
-                      className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-all duration-300 ${
-                        isDragOver
-                          ? 'border-green-500 bg-green-50'
-                          : formData.cv
+                      className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-all duration-300 ${isDragOver
+                        ? 'border-green-500 bg-green-50'
+                        : formData.cv
                           ? 'border-green-400 bg-green-50'
                           : 'border-gray-300 hover:border-green-400 hover:bg-gray-50'
-                      }`}
+                        }`}
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
@@ -418,7 +465,7 @@ const Join: React.FC = () => {
                         accept=".pdf,.doc,.docx"
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                       />
-                      
+
                       {formData.cv ? (
                         <div className="space-y-3">
                           <div className="flex items-center justify-center">
@@ -430,7 +477,7 @@ const Join: React.FC = () => {
                             <p className="text-sm font-medium text-gray-900">{formData.cv.name}</p>
                             <p className="text-xs text-gray-500">{formatFileSize(formData.cv.size)}</p>
                           </div>
-                          
+
                           {/* Barre de progression */}
                           {uploadProgress > 0 && uploadProgress < 100 && (
                             <div className="w-full bg-gray-200 rounded-full h-2">
@@ -440,7 +487,7 @@ const Join: React.FC = () => {
                               ></div>
                             </div>
                           )}
-                          
+
                           {/* Statut d'upload */}
                           {uploadProgress === 100 && (
                             <div className="flex items-center justify-center text-green-600">
@@ -448,7 +495,7 @@ const Join: React.FC = () => {
                               <span className="text-sm font-medium">Upload terminé</span>
                             </div>
                           )}
-                          
+
                           <button
                             type="button"
                             onClick={removeFile}
@@ -491,12 +538,12 @@ const Join: React.FC = () => {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center">
-                <input type="checkbox" id="captcha" checked={formData.captcha} onChange={handleInputChange} className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded" />
-                <label htmlFor="captcha" className="ml-2 block text-gray-700">Je ne suis pas un robot</label>
+                    <input type="checkbox" id="captcha" checked={formData.captcha} onChange={handleInputChange} className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded" />
+                    <label htmlFor="captcha" className="ml-2 block text-gray-700">Je ne suis pas un robot</label>
                   </div>
-              </motion.div>
+                </motion.div>
               )}
 
               {/* Boutons de navigation */}
@@ -511,7 +558,7 @@ const Join: React.FC = () => {
                     Précédent
                   </button>
                 )}
-                
+
                 {currentStep < 3 ? (
                   <button
                     type="button"

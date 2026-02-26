@@ -65,7 +65,7 @@ const About: React.FC = () => {
 
   useEffect(() => {
     const slideInterval = setInterval(() => {
-      setCurrentIndex(prevIndex => 
+      setCurrentIndex(prevIndex =>
         prevIndex === historyImages.length - 1 ? 0 : prevIndex + 1
       );
     }, 3000); // Change slide every 3 seconds
@@ -111,7 +111,7 @@ const About: React.FC = () => {
     { type: 'image', value: '/images/logo-pnud.png', alt: 'PNUDLogo' },
     { type: 'image', value: '/images/logo-WWF.png', alt: 'WWF Logo' },
     { type: 'image', value: '/images/logo-fondation-lekedi.png', alt: 'Fondation Lekedi Logo' },
-    
+
   ];
 
   return (
@@ -139,14 +139,20 @@ const About: React.FC = () => {
                   "La protection de notre environnement n'est pas une option, c'est une nécessité pour assurer le bien-être des générations futures."
                 </p>
               </div>
-              <p className="text-right font-bold text-green-800 flex items-center justify-end gap-2">
-                <i className="fas fa-user-circle text-green-600"></i>
-                Franck Ondeno, Président
-              </p>
+              <div className="flex items-center justify-end gap-3 mt-2">
+                <p className="text-right font-bold text-green-800">
+                  Franck Ondeno, Président
+                </p>
+                <img
+                  src="/images/image-president.JPG"
+                  alt="Franck Ondeno, Président"
+                  className="w-14 h-14 rounded-full object-cover border-2 border-green-600 shadow-md flex-shrink-0"
+                />
+              </div>
             </motion.div>
           </AnimatedSection>
-          
-            
+
+
           <motion.div variants={itemVariants} className="lg:w-1/2 relative group">
             <div style={{ backgroundImage: `url(${historyImages[currentIndex]})` }} className='w-full h-[400px] rounded-2xl bg-center bg-cover duration-500'></div>
             {/* Left Arrow */}
@@ -160,7 +166,7 @@ const About: React.FC = () => {
             <div className='flex top-4 justify-center py-2'>
               {historyImages.map((_, slideIndex) => (
                 <div key={slideIndex} onClick={() => goToSlide(slideIndex)} className='text-2xl cursor-pointer'>
-                  <i className={`fas fa-circle mx-1 ${currentIndex === slideIndex ? 'text-green-600' : 'text-gray-300'}`} style={{fontSize: '12px'}}></i>
+                  <i className={`fas fa-circle mx-1 ${currentIndex === slideIndex ? 'text-green-600' : 'text-gray-300'}`} style={{ fontSize: '12px' }}></i>
                 </div>
               ))}
             </div>
@@ -206,14 +212,14 @@ const About: React.FC = () => {
                 Consultez les documents officiels qui définissent les objectifs, la structure organisationnelle et les règles de fonctionnement de notre ONG Développement Durable et Bien-Être.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <button 
+                <button
                   onClick={() => setIsDocumentModalOpen(true)}
                   className="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors duration-300 flex items-center justify-center text-lg font-medium"
                 >
                   <i className="fas fa-eye mr-3"></i>
                   Visualiser le document
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     const link = document.createElement('a');
                     link.href = '/documents/statuts-ong.pdf.pdf';

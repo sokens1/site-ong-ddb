@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Clock, Share2, Facebook, Twitter, Linkedin } from 'lucide-react';
+import { ArrowLeft, Share2, Facebook, Twitter, Linkedin } from 'lucide-react';
 
 interface NewsArticle {
   id: number;
@@ -142,7 +142,7 @@ const ArticlePage: React.FC = () => {
             >
               {/* En-tête de l'article */}
               <div className="mb-8">
-                <span className="text-red-600 font-bold text-xs uppercase tracking-widest mb-4 block">
+                <span className="text-green-600 font-bold text-xs uppercase tracking-widest mb-4 block">
                   {article.category}
                 </span>
                 <h1 className="text-4xl md:text-6xl font-serif font-bold text-gray-900 mb-6 leading-[1.1]">
@@ -153,11 +153,6 @@ const ArticlePage: React.FC = () => {
                   <span className="text-gray-900">Par ONG DDB</span>
                   <span className="text-gray-300">•</span>
                   <span>{article.date}</span>
-                  <span className="text-gray-300">•</span>
-                  <div className="flex items-center gap-1">
-                    <Clock size={14} />
-                    <span>6 min de lecture</span>
-                  </div>
                 </div>
               </div>
 

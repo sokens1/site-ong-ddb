@@ -5,7 +5,6 @@ import { useUserRole, UserRole } from '../../hooks/useUserRole';
 import {
   LayoutDashboard,
   FileText,
-  Video,
   Newspaper,
   Users,
   HelpCircle,
@@ -21,11 +20,11 @@ import { useNotifications } from '../../hooks/useNotifications';
 
 // Define which menu items each role can see
 const ROLE_MENU_ACCESS: Record<UserRole, string[]> = {
-  admin: ['dashboard', 'projects', 'reports', 'videos', 'news', 'team', 'faq', 'submissions', 'newsletter', 'documents', 'users'],
-  charge_communication: ['dashboard', 'projects', 'reports', 'videos', 'news', 'team', 'faq', 'submissions', 'newsletter', 'documents'],
-  chef_projet: ['dashboard', 'projects', 'reports', 'videos', 'news', 'team', 'faq', 'submissions', 'newsletter', 'documents'],
-  partenaire: ['dashboard', 'projects', 'reports', 'videos', 'news', 'team', 'documents'],
-  membre: ['dashboard', 'projects', 'reports', 'videos', 'news', 'team', 'faq', 'documents'],
+  admin: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'submissions', 'faq', 'newsletter', 'users'],
+  charge_communication: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'submissions', 'faq', 'newsletter'],
+  chef_projet: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'submissions', 'faq', 'newsletter'],
+  partenaire: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news'],
+  membre: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'faq'],
 };
 
 const AdminLayout: React.FC = () => {
@@ -143,13 +142,12 @@ const AdminLayout: React.FC = () => {
     { id: 'dashboard', path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'projects', path: '/admin/projects', label: 'Projets', icon: FolderKanban },
     { id: 'reports', path: '/admin/reports', label: 'Rapports', icon: FileText },
-    { id: 'videos', path: '/admin/videos', label: 'Vidéos', icon: Video },
-    { id: 'news', path: '/admin/news', label: 'Actualités', icon: Newspaper },
-    { id: 'team', path: '/admin/team', label: 'Équipe', icon: Users },
-    { id: 'faq', path: '/admin/faq', label: 'FAQ', icon: HelpCircle },
-    { id: 'submissions', path: '/admin/submissions', label: 'Candidatures', icon: Mail },
-    { id: 'newsletter', path: '/admin/newsletter', label: 'Newsletter', icon: Mail },
     { id: 'documents', path: '/admin/documents', label: 'Documents', icon: File },
+    { id: 'team', path: '/admin/team', label: 'Équipe', icon: Users },
+    { id: 'news', path: '/admin/news', label: 'Actualités', icon: Newspaper },
+    { id: 'submissions', path: '/admin/submissions', label: 'Candidatures', icon: Mail },
+    { id: 'faq', path: '/admin/faq', label: 'FAQ', icon: HelpCircle },
+    { id: 'newsletter', path: '/admin/newsletter', label: 'Newsletter', icon: Mail },
     { id: 'users', path: '/admin/users', label: 'Utilisateurs', icon: UserCog },
   ];
 

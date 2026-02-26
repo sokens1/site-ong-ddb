@@ -274,6 +274,57 @@ const CreateNewsPage: React.FC = () => {
               </div>
             </motion.div>
           </div>
+
+          {/* Sidebar: Autres actualités */}
+          <div className="hidden lg:block w-80 flex-shrink-0">
+            <div className="sticky top-24 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="bg-green-50 px-4 py-3 border-b border-green-100">
+                <h3 className="text-sm font-bold text-green-800">Autres actualités</h3>
+                <p className="text-xs text-green-600 mt-0.5">{data.filter(n => !isEditing || n.id !== parseInt(id!)).length} article(s)</p>
+              </div>
+              <div className="max-h-[calc(100vh-200px)] overflow-y-auto divide-y divide-gray-50">
+                {data
+                  .filter((n) => !isEditing || n.id !== parseInt(id!))
+                  .sort((a, b) => new Date(b.date || b.created_at || '').getTime() - new Date(a.date || a.created_at || '').getTime())
+                  .map((news) => (
+                    <button
+                      key={news.id}
+                      onClick={() => navigate(`/admin/news/edit/${news.id}`)}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors group flex gap-3"
+                    >
+                      {news.image && (
+                        <img
+                          src={news.image}
+                          alt={news.title}
+                          className="w-12 h-12 rounded-lg object-cover flex-shrink-0 border border-gray-100 group-hover:border-green-200 transition"
+                        />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-gray-800 truncate group-hover:text-green-700 transition-colors">
+                          {news.title}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-gray-400">
+                            {news.date ? new Date(news.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '-'}
+                          </span>
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${news.status === 'draft'
+                              ? 'bg-gray-100 text-gray-500'
+                              : 'bg-green-100 text-green-600'
+                            }`}>
+                            {news.status === 'draft' ? 'Brouillon' : 'Publié'}
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                {data.filter(n => !isEditing || n.id !== parseInt(id!)).length === 0 && (
+                  <div className="px-4 py-8 text-center text-gray-400 text-sm">
+                    Aucune autre actualité
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
