@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useCrud } from '../../../hooks/useCrud';
 import DataTable from '../../../components/admin/DataTable';
 import Modal from '../../../components/admin/Modal';
+import ConfirmationModal from '../../../components/admin/ConfirmationModal';
 import ImageUpload from '../../../components/admin/ImageUpload';
 import { LayoutGrid, List, Edit, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -39,6 +40,20 @@ const TeamAdmin: React.FC = () => {
     image: '',
   });
 
+  // Confirmation Modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'info' | 'success';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { },
+  });
+
   useEffect(() => {
     if (currentUserId) {
       supabase.from('user_profiles').select('*').eq('id', currentUserId).single().then(({ data }) => setActorProfile(data));
@@ -57,14 +72,20 @@ const TeamAdmin: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (item: TeamMember) => {
-    if (window.confirm(`Êtes-vous sûr de vouloir supprimer "${item.name}" ?`)) {
-      try {
-        await deleteMember(item.id);
-      } catch (err) {
-        alert('Erreur lors de la suppression');
+  const handleDelete = (item: TeamMember) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Supprimer le membre',
+      message: `Êtes-vous sûr de vouloir supprimer "${item.name}" de l'équipe ?`,
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteMember(item.id);
+        } catch (err) {
+          alert('Erreur lors de la suppression');
+        }
       }
-    }
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -416,6 +437,15 @@ const TeamAdmin: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+      />
     </div>
   );
 };

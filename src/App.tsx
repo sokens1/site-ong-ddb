@@ -1,4 +1,4 @@
-
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -41,9 +41,44 @@ import DocumentsAdmin from './pages/admin/partner/DocumentsAdmin';
 
 // Others
 import ContributionsAdmin from './pages/admin/ContributionsAdmin';
-import './index.css';
+import { supabase } from './supabaseClient';
 
 function App() {
+  React.useEffect(() => {
+    trackVisit();
+  }, []);
+
+  const trackVisit = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+
+      // Essayer d'insérer ou d'incrémenter le compteur pour aujourd'hui
+      const { error } = await supabase.rpc('increment_visit', { d: today });
+
+      if (error) {
+        // Si la fonction RPC n'existe pas, utiliser une approche directe simplifiée
+        const { data: existing } = await supabase
+          .from('site_visits')
+          .select('count')
+          .eq('visit_date', today)
+          .single();
+
+        if (existing) {
+          await supabase
+            .from('site_visits')
+            .update({ count: (existing.count || 0) + 1 })
+            .eq('visit_date', today);
+        } else {
+          await supabase
+            .from('site_visits')
+            .insert([{ visit_date: today, count: 1 }]);
+        }
+      }
+    } catch (err) {
+      console.error('Error tracking visit:', err);
+    }
+  };
+
   return (
     <Router>
       <Routes>

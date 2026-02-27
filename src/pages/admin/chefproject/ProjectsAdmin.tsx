@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCrud } from '../../../hooks/useCrud';
 import DataTable from '../../../components/admin/DataTable';
 import SearchBar from '../../../components/admin/SearchBar';
+import ConfirmationModal from '../../../components/admin/ConfirmationModal';
 import { List, Grid, Plus, CheckCircle, Clock, Edit, Trash2 } from 'lucide-react';
 import useUserRole from '../../../hooks/useUserRole';
 
@@ -52,6 +53,20 @@ const ProjectsAdmin: React.FC = () => {
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
     const [searchQuery, setSearchQuery] = useState('');
 
+    // Confirmation Modal state
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+        type?: 'danger' | 'info' | 'success';
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => { },
+    });
+
     const filteredProjects = useMemo(() => {
         if (!searchQuery.trim()) return projects;
         const q = searchQuery.toLowerCase();
@@ -75,14 +90,20 @@ const ProjectsAdmin: React.FC = () => {
         navigate(`/admin/projects/edit/${project.id}`);
     };
 
-    const handleDeleteProject = async (project: Project) => {
-        if (window.confirm(`Êtes-vous sûr de vouloir supprimer le projet "${project.title}" ?`)) {
-            try {
-                await deleteProject(project.id);
-            } catch (_err) {
-                alert('Erreur lors de la suppression du projet');
+    const handleDeleteProject = (project: Project) => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Supprimer le projet',
+            message: `Êtes-vous sûr de vouloir supprimer le projet "${project.title}" ? Cette action est irréversible.`,
+            type: 'danger',
+            onConfirm: async () => {
+                try {
+                    await deleteProject(project.id);
+                } catch (_err) {
+                    alert('Erreur lors de la suppression du projet');
+                }
             }
-        }
+        });
     };
 
 
@@ -347,6 +368,15 @@ const ProjectsAdmin: React.FC = () => {
                     )}
                 </div>
             )}
+
+            <ConfirmationModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                type={confirmModal.type}
+            />
         </div>
     );
 };

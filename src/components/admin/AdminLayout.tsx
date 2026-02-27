@@ -17,6 +17,8 @@ import {
   UserCog,
 } from 'lucide-react';
 import { useNotifications } from '../../hooks/useNotifications';
+import DiscussionSidebar from '../DiscussionSidebar';
+import { MessageSquare } from 'lucide-react';
 
 // Define which menu items each role can see
 const ROLE_MENU_ACCESS: Record<UserRole, string[]> = {
@@ -27,16 +29,31 @@ const ROLE_MENU_ACCESS: Record<UserRole, string[]> = {
   membre: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'faq'],
 };
 
+const ALL_MENU_ITEMS = [
+  { id: 'dashboard', path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'projects', path: '/admin/projects', label: 'Projets', icon: FolderKanban },
+  { id: 'reports', path: '/admin/reports', label: 'Rapports', icon: FileText },
+  { id: 'documents', path: '/admin/documents', label: 'Documents', icon: File },
+  { id: 'team', path: '/admin/team', label: 'Équipe', icon: Users },
+  { id: 'news', path: '/admin/news', label: 'Actualités', icon: Newspaper },
+  { id: 'submissions', path: '/admin/submissions', label: 'Candidatures', icon: Mail },
+  { id: 'faq', path: '/admin/faq', label: 'FAQ', icon: HelpCircle },
+  { id: 'newsletter', path: '/admin/newsletter', label: 'Newsletter', icon: Mail },
+  { id: 'users', path: '/admin/users', label: 'Utilisateurs', icon: UserCog },
+];
+
 const AdminLayout: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [discussionOpen, setDiscussionOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { role, userId } = useUserRole();
   const { notifications, unreadCount, markAllAsRead, markAsRead } = useNotifications(userId);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
   // Profile editing state
   const [isEditingEmail, setIsEditingEmail] = useState(false);
@@ -60,14 +77,51 @@ const AdminLayout: React.FC = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Fetch unread messages count
+  useEffect(() => {
+    if (userId) {
+      fetchUnreadMessageCount();
+
+      // Subscribe to changes in discussion_messages
+      const channel = supabase
+        .channel('global_unread_messages')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'discussion_messages'
+        }, () => {
+          fetchUnreadMessageCount();
+        })
+        .subscribe();
+
+      return () => { supabase.removeChannel(channel); };
+    }
+  }, [userId]);
+
+  const fetchUnreadMessageCount = async () => {
+    if (!userId) return;
+    try {
+      const { count, error } = await supabase
+        .from('discussion_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('recipient_id', userId)
+        .eq('is_read', false);
+
+      if (!error) {
+        setUnreadMessages(count || 0);
+      }
+    } catch (err) {
+      // Quiet fail
+    }
+  };
+
   // Route Protection Logic
   useEffect(() => {
     if (role && location.pathname.startsWith('/admin')) {
-      const currentPathId = allMenuItems.find(item => location.pathname === item.path || location.pathname.startsWith(item.path + '/'))?.id;
+      const currentPathId = ALL_MENU_ITEMS.find(item => location.pathname === item.path || location.pathname.startsWith(item.path + '/'))?.id;
       if (currentPathId) {
         const allowedIds = ROLE_MENU_ACCESS[role];
         if (allowedIds && !allowedIds.includes(currentPathId)) {
-          console.warn(`Access denied for role ${role} to ${location.pathname}`);
           navigate('/admin'); // Redirect to dashboard if unauthorized
         }
       }
@@ -138,31 +192,43 @@ const AdminLayout: React.FC = () => {
     }
   };
 
-  const allMenuItems = [
-    { id: 'dashboard', path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'projects', path: '/admin/projects', label: 'Projets', icon: FolderKanban },
-    { id: 'reports', path: '/admin/reports', label: 'Rapports', icon: FileText },
-    { id: 'documents', path: '/admin/documents', label: 'Documents', icon: File },
-    { id: 'team', path: '/admin/team', label: 'Équipe', icon: Users },
-    { id: 'news', path: '/admin/news', label: 'Actualités', icon: Newspaper },
-    { id: 'submissions', path: '/admin/submissions', label: 'Candidatures', icon: Mail },
-    { id: 'faq', path: '/admin/faq', label: 'FAQ', icon: HelpCircle },
-    { id: 'newsletter', path: '/admin/newsletter', label: 'Newsletter', icon: Mail },
-    { id: 'users', path: '/admin/users', label: 'Utilisateurs', icon: UserCog },
-  ];
 
-  // Filter menu items based on role
   const menuItems = useMemo(() => {
-    if (!role) return allMenuItems; // Show all while loading or if no role
+    if (!role) return ALL_MENU_ITEMS;
     const allowedIds = ROLE_MENU_ACCESS[role] || ROLE_MENU_ACCESS.membre;
-    return allMenuItems.filter(item => allowedIds.includes(item.id));
+    return ALL_MENU_ITEMS.filter(item => allowedIds.includes(item.id));
   }, [role]);
 
+  // Handle responsive sidebar behavior
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        setSidebarOpen(false);
+      } else {
+        setSidebarOpen(true);
+      }
+    };
+
+    // Initial check
+    handleResize();
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 flex overflow-x-hidden">
+      {/* Mobile Backdrop Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden animate-in fade-in duration-300"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-green-800 text-white transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0`}>
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-green-800 text-white transform transition-all duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0 shadow-2xl lg:shadow-none' : '-translate-x-full'
+        }`}>
         <div className="flex items-center justify-between h-16 px-4 border-b border-green-700">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
@@ -317,6 +383,29 @@ const AdminLayout: React.FC = () => {
         <main className="p-4 lg:p-6 w-full max-w-full overflow-x-hidden box-border">
           <Outlet context={{ role, userId }} />
         </main>
+
+        {/* Floating Discussion Button */}
+        <button
+          onClick={() => setDiscussionOpen(true)}
+          className="fixed bottom-6 right-6 z-[55] bg-green-600 text-white p-4 rounded-full shadow-2xl hover:scale-110 active:scale-90 transition-all group border-2 border-white"
+          title="Ouvrir la discussion"
+        >
+          <div className="relative">
+            <MessageSquare size={24} />
+            {unreadMessages > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold w-5 h-5 rounded-full border-2 border-white flex items-center justify-center animate-bounce">
+                {unreadMessages > 9 ? '9+' : unreadMessages}
+              </span>
+            )}
+          </div>
+        </button>
+
+        {/* Discussion Sidebar */}
+        <DiscussionSidebar
+          isOpen={discussionOpen}
+          onClose={() => setDiscussionOpen(false)}
+          userId={userId || ''}
+        />
       </div>
 
       {/* Profile Slide-over Modal */}

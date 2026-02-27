@@ -6,6 +6,7 @@ interface Column {
   label: string;
   render?: (value: any, row: any) => React.ReactNode;
   align?: 'left' | 'center' | 'right';
+  hiddenOnMobile?: boolean;
 }
 
 interface DataTableProps {
@@ -30,7 +31,7 @@ const DataTable: React.FC<DataTableProps> = ({
   itemsPerPage = 8,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
-  
+
   const totalPages = Math.ceil(data.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -83,7 +84,7 @@ const DataTable: React.FC<DataTableProps> = ({
                   return (
                     <th
                       key={column.key}
-                      className={`px-3 py-2 ${alignClass} text-xs font-medium text-gray-500 uppercase tracking-wider`}
+                      className={`px-3 py-2 ${alignClass} text-xs font-medium text-gray-500 uppercase tracking-wider ${column.hiddenOnMobile ? 'hidden sm:table-cell' : ''}`}
                     >
                       {column.label}
                     </th>
@@ -112,7 +113,7 @@ const DataTable: React.FC<DataTableProps> = ({
                     {columns.map((column) => {
                       const alignClass = column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : 'text-left';
                       return (
-                        <td key={column.key} className={`px-3 py-3 text-sm text-gray-900 overflow-hidden ${alignClass}`}>
+                        <td key={column.key} className={`px-3 py-3 text-sm text-gray-900 overflow-hidden ${alignClass} ${column.hiddenOnMobile ? 'hidden sm:table-cell' : ''}`}>
                           <div className={column.align === 'center' ? 'flex justify-center' : column.align === 'right' ? 'flex justify-end' : 'truncate max-w-full'}>
                             {column.render
                               ? column.render(row[column.key], row)
@@ -182,11 +183,10 @@ const DataTable: React.FC<DataTableProps> = ({
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`px-2 sm:px-3 py-1.5 text-sm border rounded-lg shrink-0 ${
-                        currentPage === page
-                          ? 'bg-green-600 text-white border-green-600'
-                          : 'border-gray-300 hover:bg-gray-50'
-                      }`}
+                      className={`px-2 sm:px-3 py-1.5 text-sm border rounded-lg shrink-0 ${currentPage === page
+                        ? 'bg-green-600 text-white border-green-600'
+                        : 'border-gray-300 hover:bg-gray-50'
+                        }`}
                     >
                       {page}
                     </button>

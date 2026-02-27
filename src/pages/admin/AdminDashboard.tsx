@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../../supabaseClient';
 import { FileText, Newspaper, Users, TrendingUp, Calendar, FolderKanban } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
@@ -17,6 +17,7 @@ interface DashboardStats {
     en_cours: number;
     termine: number;
   };
+  totalVisits: number;
 }
 
 interface MonthlyData {
@@ -38,19 +39,22 @@ const AdminDashboard: React.FC = () => {
     submissions: 0,
     newsletter: 0,
     projects: { total: 0, planifie: 0, en_cours: 0, termine: 0 },
+    totalVisits: 0
   });
 
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
+  const [dailyVisits, setDailyVisits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchStats();
     fetchMonthlyData();
+    fetchDailyVisits();
   }, []);
 
   const fetchStats = async () => {
     try {
-      const [reports, videos, news, team, faq, submissions, newsletter, projects] = await Promise.all([
+      const [reports, videos, news, team, faq, submissions, newsletter, projects, visits] = await Promise.all([
         supabase.from('reports').select('id', { count: 'exact', head: true }),
         supabase.from('videos').select('id', { count: 'exact', head: true }),
         supabase.from('news').select('id', { count: 'exact', head: true }),
@@ -59,6 +63,7 @@ const AdminDashboard: React.FC = () => {
         supabase.from('form_submissions').select('id', { count: 'exact', head: true }),
         supabase.from('newsletter_subscribers').select('id', { count: 'exact', head: true }),
         supabase.from('projects').select('status'),
+        supabase.from('site_visits').select('count'),
       ]);
 
       const projectStats = {
@@ -67,6 +72,8 @@ const AdminDashboard: React.FC = () => {
         en_cours: projects.data?.filter(p => p.status === 'en_cours').length || 0,
         termine: projects.data?.filter(p => p.status === 'termine').length || 0,
       };
+
+      const totalVisitsCount = visits.data?.reduce((acc, curr) => acc + (curr.count || 0), 0) || 0;
 
       setStats({
         reports: reports.count || 0,
@@ -77,6 +84,7 @@ const AdminDashboard: React.FC = () => {
         submissions: submissions.count || 0,
         newsletter: newsletter.count || 0,
         projects: projectStats,
+        totalVisits: totalVisitsCount,
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -87,48 +95,22 @@ const AdminDashboard: React.FC = () => {
 
   const fetchMonthlyData = async () => {
     try {
-      // Récupérer toutes les candidatures (sans filtre de date pour être sûr de tout récupérer)
-      let submissions = null;
-      let submissionsError = null;
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      sixMonthsAgo.setDate(1);
+      sixMonthsAgo.setHours(0, 0, 0, 0);
 
-      // Essayer avec tri, sinon sans tri
-      const submissionsWithOrder = await supabase
+      const { data: submissions, error: submissionsError } = await supabase
         .from('form_submissions')
         .select('created_at')
+        .gte('created_at', sixMonthsAgo.toISOString())
         .order('created_at', { ascending: true });
 
-      if (submissionsWithOrder.error) {
-        // Si le tri échoue, essayer sans tri
-        const submissionsNoOrder = await supabase
-          .from('form_submissions')
-          .select('created_at');
-        submissions = submissionsNoOrder.data;
-        submissionsError = submissionsNoOrder.error;
-      } else {
-        submissions = submissionsWithOrder.data;
-        submissionsError = submissionsWithOrder.error;
-      }
-
-      // Récupérer tous les abonnés newsletter
-      let newsletter = null;
-      let newsletterError = null;
-
-      const newsletterWithOrder = await supabase
+      const { data: newsletter, error: newsletterError } = await supabase
         .from('newsletter_subscribers')
         .select('created_at')
+        .gte('created_at', sixMonthsAgo.toISOString())
         .order('created_at', { ascending: true });
-
-      if (newsletterWithOrder.error) {
-        // Si le tri échoue, essayer sans tri
-        const newsletterNoOrder = await supabase
-          .from('newsletter_subscribers')
-          .select('created_at');
-        newsletter = newsletterNoOrder.data;
-        newsletterError = newsletterNoOrder.error;
-      } else {
-        newsletter = newsletterWithOrder.data;
-        newsletterError = newsletterWithOrder.error;
-      }
 
       if (submissionsError) {
         console.error('Error fetching submissions:', submissionsError);
@@ -233,28 +215,46 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const statCards = [
+  const fetchDailyVisits = async () => {
+    try {
+      const { data } = await supabase
+        .from('site_visits')
+        .select('visit_date, count')
+        .order('visit_date', { ascending: true })
+        .limit(30);
+
+      if (data) {
+        const formatted = data.map(v => ({
+          date: new Date(v.visit_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }),
+          visites: v.count
+        }));
+        setDailyVisits(formatted);
+      }
+    } catch (error) {
+      console.error('Error fetching daily visits:', error);
+    }
+  };
+
+  const statCards = useMemo(() => [
     { label: 'Projets', value: stats.projects.total, icon: FolderKanban, color: 'bg-blue-500', bgGradient: 'from-blue-500 to-blue-600' },
     { label: 'Rapports', value: stats.reports, icon: FileText, color: 'bg-purple-500', bgGradient: 'from-purple-500 to-purple-600' },
     { label: 'Actualités', value: stats.news, icon: Newspaper, color: 'bg-green-500', bgGradient: 'from-green-500 to-green-600' },
     { label: 'Engagement', value: stats.submissions + stats.newsletter, icon: Users, color: 'bg-pink-500', bgGradient: 'from-pink-500 to-pink-600' },
     { label: 'Membres équipe', value: stats.teamMembers, icon: Users, color: 'bg-yellow-500', bgGradient: 'from-yellow-500 to-yellow-600' },
-  ];
+  ], [stats]);
 
-  // Données pour le graphique en camembert (Contenu)
-  const pieData = [
+  const pieData = useMemo(() => [
     { name: 'Rapports', value: stats.reports },
     { name: 'Vidéos', value: stats.videos },
     { name: 'Actualités', value: stats.news },
     { name: 'FAQ', value: stats.faq },
-  ];
+  ].filter(d => d.value > 0), [stats]);
 
-  // Données pour le graphique des projets
-  const projectPieData = [
+  const projectPieData = useMemo(() => [
     { name: 'Planifiés', value: stats.projects.planifie },
     { name: 'En cours', value: stats.projects.en_cours },
     { name: 'Terminés', value: stats.projects.termine },
-  ].filter(item => item.value > 0);
+  ].filter(item => item.value > 0), [stats]);
 
   return (
     <div className="w-full max-w-full overflow-x-hidden">
@@ -297,6 +297,52 @@ const AdminDashboard: React.FC = () => {
                 </div>
               );
             })}
+          </div>
+
+          {/* Graphique des visites journalières */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-800">Visites Journalières</h2>
+              <div className="flex items-center gap-2 text-sm text-green-600 font-semibold">
+                <TrendingUp size={16} />
+                <span>En direct</span>
+              </div>
+            </div>
+            {dailyVisits.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={dailyVisits}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                  <XAxis
+                    dataKey="date"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="visites"
+                    stroke="#4f46e5"
+                    strokeWidth={3}
+                    dot={{ fill: '#4f46e5', strokeWidth: 2, r: 4, stroke: '#fff' }}
+                    activeDot={{ r: 6, strokeWidth: 0 }}
+                    name="Visites"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-gray-500 bg-gray-50 rounded-lg">
+                <p>Aucune donnée de visite pour le moment. Assurez-vous d'avoir lancé le script SQL.</p>
+              </div>
+            )}
           </div>
 
           {/* Graphiques */}
@@ -362,6 +408,8 @@ const AdminDashboard: React.FC = () => {
               )}
             </div>
           </div>
+
+
 
           {/* Graphique linéaire pour l'évolution temporelle */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">

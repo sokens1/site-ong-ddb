@@ -1,4 +1,7 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+// @ts-ignore
+import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
+
+declare const Deno: any;
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -6,17 +9,38 @@ const corsHeaders = {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-serve(async (req) => {
-    if (req.method === 'OPTIONS') {
+console.log("Edge Function 'send-submission-ack' bootstrapped.")
+
+serve(async (req: Request) => {
+    const { method } = req
+    console.log(`Method: ${method}`)
+
+    // Handle CORS Preflight
+    if (method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
 
     try {
-        const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY')!
+        const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY')
         const SENDER_EMAIL = Deno.env.get('SENDER_EMAIL') || 'sokensdigital@gmail.com'
         const SENDER_NAME = Deno.env.get('SENDER_NAME') || 'ONG DDB'
 
-        const { email, fullname } = await req.json()
+        if (!BREVO_API_KEY) throw new Error('BREVO_API_KEY is not set')
+
+        const bodyText = await req.text()
+        if (!bodyText) throw new Error('No body provided in request')
+
+        let body
+        try {
+            body = JSON.parse(bodyText)
+        } catch (e) {
+            throw new Error(`Invalid JSON: ${bodyText.substring(0, 50)}...`)
+        }
+
+        const { email, fullname } = body
+        if (!email || !fullname) throw new Error('Email or Fullname missing in JSON')
+
+        console.log(`Sending ack to ${email}...`)
 
         const res = await fetch('https://api.brevo.com/v3/smtp/email', {
             method: 'POST',
@@ -27,30 +51,43 @@ serve(async (req) => {
             body: JSON.stringify({
                 sender: { name: SENDER_NAME, email: SENDER_EMAIL },
                 to: [{ email, name: fullname }],
-                subject: 'Candidature reçue - ONG DDB',
+                subject: 'Accusé de réception de votre candidature - ONG DDB',
                 htmlContent: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 10px;">
-            <div style="background: #166534; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
-              <h1 style="color: white; margin: 0;">ONG DDB</h1>
-            </div>
-            <div style="padding: 30px;">
-              <h2 style="color: #166534;">Bonjour ${fullname},</h2>
-              <p>Nous avons bien reçu votre candidature et nous vous remercions de votre intérêt.</p>
-              <p>Notre équipe l'étudiera avec attention et reviendra vers vous prochainement.</p>
-              <br>
-              <p style="color: #6b7280; font-size: 14px;">Cordialement,<br>L'équipe ONG DDB</p>
-            </div>
-          </div>
-        `,
+                <div style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 40px; background-color: #ffffff;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <h1 style="color: #166534; font-size: 24px; margin: 0;">ONG DDB</h1>
+                        <p style="text-transform: uppercase; font-size: 12px; letter-spacing: 2px; color: #6b7280; margin-top: 5px;">Organisation Non Gouvernementale</p>
+                    </div>
+                    
+                    <p>Madame, Monsieur,</p>
+                    
+                    <p>Nous avons l'honneur d'accuser réception de votre candidature au sein de notre organisation, l'<b>ONG DDB</b>. Votre intérêt pour nos actions et votre volonté de contribuer à nos projets en faveur du développement durable sont vivement appréciés.</p>
+                    
+                    <p>Votre dossier est actuellement en cours d'examen par notre département des ressources humaines. Cette phase d'analyse vise à évaluer la cohérence entre votre profil et les besoins opérationnels de nos missions en cours.</p>
+                    
+                    <p>Nous ne manquerons pas de revenir vers vous dans les meilleurs délais pour vous informer de la suite donnée à votre demande. Si votre candidature est retenue pour une phase d'entretien, vous serez contacté directement via les coordonnées fournies dans votre formulaire.</p>
+                    
+                    <p>Nous vous remercions de la confiance que vous portez à l'ONG DDB et vous prions d'agréer, Madame, Monsieur, l'expression de nos salutations distinguées.</p>
+                    
+                    <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+                    
+                    <div style="font-size: 12px; color: #9ca3af; text-align: center;">
+                        ceci est un message automatique, merci de ne pas y répondre directement.
+                    </div>
+                </div>
+                `,
             }),
         })
 
-        const result = await res.json()
-        return new Response(JSON.stringify(result), {
+        const brevoData = await res.text()
+        console.log(`Brevo Status: ${res.status}, Body: ${brevoData}`)
+
+        return new Response(brevoData, {
             status: res.status,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
-    } catch (error) {
+    } catch (error: any) {
+        console.error(`Error: ${error.message}`)
         return new Response(JSON.stringify({ error: error.message }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }

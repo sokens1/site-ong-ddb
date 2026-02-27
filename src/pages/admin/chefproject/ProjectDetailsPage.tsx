@@ -12,7 +12,9 @@ import {
     Calendar,
     User,
     Paperclip,
-    Handshake
+    Handshake,
+    Eye,
+    Download
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -217,27 +219,39 @@ const ProjectDetailsPage: React.FC = () => {
                                     if (documents.length === 0) return null;
                                     return (
                                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                                            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                                <Paperclip size={20} /> Documents du projet
-                                            </h2>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                {documents.map((docUrl, idx) => (
-                                                    <a
-                                                        key={idx}
-                                                        href={docUrl}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="flex items-center gap-3 p-4 border border-gray-100 rounded-lg hover:bg-green-50 hover:border-green-200 transition-all group"
-                                                    >
-                                                        <div className="bg-green-100 p-2 rounded text-green-600 group-hover:bg-green-200">
-                                                            <FileText size={20} />
-                                                        </div>
-                                                        <div className="min-w-0">
-                                                            <p className="text-sm font-medium text-gray-900 truncate">Document {idx + 1}</p>
-                                                            <p className="text-xs text-blue-600">Voir le fichier</p>
-                                                        </div>
-                                                    </a>
-                                                ))}
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-left border-collapse">
+                                                    <thead className="bg-gray-50 border-b border-gray-100">
+                                                        <tr>
+                                                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Nom du document</th>
+                                                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase hidden md:table-cell">Action</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-50">
+                                                        {documents.map((docUrl, idx) => (
+                                                            <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                                                                <td className="px-4 py-4">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="bg-green-100 p-2 rounded-lg text-green-600">
+                                                                            <FileText size={18} />
+                                                                        </div>
+                                                                        <span className="text-sm font-medium text-gray-900">Document {idx + 1}</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-4 py-4">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <a href={docUrl} target="_blank" rel="noopener noreferrer" className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100" title="Visualiser">
+                                                                            <Eye size={16} />
+                                                                        </a>
+                                                                        <a href={docUrl} download className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100" title="Télécharger">
+                                                                            <Download size={16} />
+                                                                        </a>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
                                             </div>
                                         </div>
                                     );

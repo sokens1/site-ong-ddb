@@ -3,7 +3,7 @@ import DataTable from '../../../components/admin/DataTable';
 import SearchBar from '../../../components/admin/SearchBar';
 import Modal from '../../../components/admin/Modal';
 import FileUpload from '../../../components/admin/FileUpload';
-import { Plus, FileText, Download, Trash2 } from 'lucide-react';
+import { Plus, FileText, Download, Trash2, Eye } from 'lucide-react';
 import useUserRole from '../../../hooks/useUserRole';
 import { useNotifications } from '../../../hooks/useNotifications';
 import { useCrud } from '../../../hooks/useCrud';
@@ -12,7 +12,11 @@ import { supabase } from '../../../supabaseClient';
 interface Document {
     id: number;
     title: string;
-    file_url?: string;
+    description?: string;
+    file_url: string;
+    category?: string;
+    file_format?: string;
+    file_type?: string;
     project_id?: number | null;
     created_at?: string;
 }
@@ -113,13 +117,57 @@ const DocumentsAdmin: React.FC = () => {
     }, [documents, searchQuery]);
 
     const columns = [
-        { key: 'title', label: 'Titre' },
         {
-            key: 'file_url',
-            label: 'Fichier',
-            render: (val: string) => val ? <a href={val} target="_blank" rel="noopener" className="text-blue-600 hover:underline">Voir</a> : '-'
+            key: 'title',
+            label: 'Nom du document',
+            render: (val: string) => <span className="font-medium text-gray-800">{val}</span>
         },
-        { key: 'created_at', label: 'Date' }
+        {
+            key: 'created_at',
+            label: 'Date',
+            className: 'hidden md:table-cell',
+            render: (val: string) => val ? new Date(val).toLocaleDateString('fr-FR') : '-'
+        },
+        {
+            key: 'file_format',
+            label: 'Format',
+            className: 'hidden md:table-cell',
+            render: (val: string, row: Document) => val || row.file_url?.split('.').pop()?.toUpperCase() || 'N/A'
+        },
+        {
+            key: 'file_type',
+            label: 'Type',
+            className: 'hidden lg:table-cell',
+            render: (val: string) => <span className="text-xs bg-gray-100 px-2 py-1 rounded">{val || 'Bureautique'}</span>
+        },
+        {
+            key: 'actions',
+            label: 'Action',
+            render: (_: any, row: Document) => (
+                <div className="flex items-center gap-2">
+                    <a href={row.file_url} target="_blank" rel="noopener noreferrer" className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors" title="Visualiser">
+                        <Eye size={16} />
+                    </a>
+                    <a href={row.file_url} download className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors" title="Télécharger">
+                        <Download size={16} />
+                    </a>
+                    {canDelete('documents') && (
+                        <button
+                            onClick={async () => {
+                                if (window.confirm('Supprimer ce document ?')) {
+                                    await deleteDoc(row.id);
+                                    window.location.reload();
+                                }
+                            }}
+                            className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                            title="Supprimer"
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                    )}
+                </div>
+            )
+        }
     ];
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -178,12 +226,6 @@ const DocumentsAdmin: React.FC = () => {
                 data={filteredData}
                 isLoading={loading}
                 title="Documents"
-                onDelete={canDelete('documents') ? async (item) => {
-                    if (window.confirm('Supprimer ce document ?')) {
-                        await deleteDoc(item.id);
-                        window.location.reload();
-                    }
-                } : undefined}
             />
 
             <Modal

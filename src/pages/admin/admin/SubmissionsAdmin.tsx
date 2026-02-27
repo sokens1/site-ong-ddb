@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../../supabaseClient';
 import DataTable from '../../../components/admin/DataTable';
 import Modal from '../../../components/admin/Modal';
-import { Eye, Download, Calendar, X } from 'lucide-react';
+import ConfirmationModal from '../../../components/admin/ConfirmationModal';
+import { Eye, Download, Calendar, X, CheckCircle, Trash2 } from 'lucide-react';
 import useUserRole from '../../../hooks/useUserRole';
 import * as XLSX from 'xlsx';
 
@@ -17,6 +18,7 @@ interface Submission {
   skills?: string | null;
   motivation?: string | null;
   cv_url?: string | null;
+  status?: 'en_attente' | 'entretien' | 'accepte' | 'refuse';
   captcha?: boolean | null;
   created_at?: string;
 }
@@ -54,6 +56,20 @@ const SubmissionsAdmin: React.FC = () => {
   const [existingInterview, setExistingInterview] = useState<InterviewSchedule | null>(null);
   const [interviewLoading, setInterviewLoading] = useState(false);
 
+  // Confirmation Modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'info' | 'success';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { },
+  });
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -80,22 +96,12 @@ const SubmissionsAdmin: React.FC = () => {
         return;
       }
 
-      let { data: fetchedData, error: fetchError } = await supabase
+      const { data: fetchedData, error: fetchError } = await supabase
         .from('form_submissions')
         .select('*')
-        .order('id', { ascending: false });
+        .order('created_at', { ascending: false });
 
-      if (fetchError) {
-        const retry = await supabase.from('form_submissions').select('*').order('created_at', { ascending: false });
-        if (retry.error) {
-          const noOrder = await supabase.from('form_submissions').select('*');
-          if (noOrder.error) throw noOrder.error;
-          fetchedData = noOrder.data;
-        } else {
-          fetchedData = retry.data;
-        }
-      }
-
+      if (fetchError) throw fetchError;
       setData(fetchedData || []);
     } catch (err: any) {
       let errorMessage = 'Erreur lors du chargement des données';
@@ -174,8 +180,20 @@ const SubmissionsAdmin: React.FC = () => {
         console.error('Error sending interview email:', emailErr);
       }
 
+      // Update submission status to 'entretien' automatically
+      const { error: statusError } = await supabase
+        .from('form_submissions')
+        .update({ status: 'entretien' })
+        .eq('id', selectedSubmission.id);
+
+      if (statusError) throw statusError;
+
+      // Optimistic update
+      setData(prev => prev.map(s => s.id === (selectedSubmission as Submission).id ? { ...s, status: 'entretien' } : s));
+
       alert('Entretien programmé avec succès');
       setShowInterviewForm(false);
+      fetchData(); // Refresh list to see status change
       fetchInterview(selectedSubmission.id);
     } catch (err: any) {
       alert(`Erreur: ${err.message || 'Impossible de programmer l\'entretien'}`);
@@ -237,48 +255,137 @@ const SubmissionsAdmin: React.FC = () => {
     setShowExportModal(false);
   };
 
-  const columns = [
+  const columns = useMemo(() => [
     {
       key: 'fullname',
       label: 'Nom complet',
       render: (value: string, row: Submission) => (
-        <span>{row.civility ? `${row.civility} ` : ''}{value}</span>
+        <span className="font-medium text-gray-900">{row.civility ? `${row.civility} ` : ''}{value}</span>
       ),
     },
-    { key: 'email', label: 'Email' },
-    { key: 'phone', label: 'Téléphone' },
-    { key: 'city', label: 'Ville' },
+    { key: 'email', label: 'Email', hiddenOnMobile: true },
+    { key: 'phone', label: 'Téléphone', hiddenOnMobile: true },
+    { key: 'city', label: 'Ville', hiddenOnMobile: true },
+    {
+      key: 'status',
+      label: 'Statut',
+      hiddenOnMobile: true,
+      render: (value: string) => {
+        const statuses: any = {
+          en_attente: { label: 'En attente', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+          entretien: { label: 'Entretien', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+          accepte: { label: 'Accepté', color: 'bg-green-100 text-green-800 border-green-200' },
+          refuse: { label: 'Refusé', color: 'bg-red-100 text-red-800 border-red-200' },
+        };
+        const s = statuses[value] || statuses['en_attente'];
+        return (
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${s.color}`}>
+            {s.label}
+          </span>
+        );
+      }
+    },
     {
       key: 'interest',
       label: 'Intérêt',
-      render: (value: string) => <span className="max-w-xs truncate block">{value || '-'}</span>,
+      hiddenOnMobile: true,
+      render: (value: string) => <span className="max-w-[150px] truncate block text-xs text-gray-500">{value || '-'}</span>,
     },
     {
       key: 'cv_url',
       label: 'CV',
+      hiddenOnMobile: true,
       render: (value: string) => value ? (
-        <a href={value} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Télécharger</a>
+        <div className="flex items-center gap-2">
+          <a href={value} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors" title="Visualiser">
+            <Eye size={14} />
+          </a>
+          <a href={value} download className="p-1.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors" title="Télécharger">
+            <Download size={14} />
+          </a>
+        </div>
       ) : '-',
     },
     {
       key: 'created_at',
       label: 'Date',
+      hiddenOnMobile: true,
       render: (value: string) => value ? new Date(value).toLocaleDateString('fr-FR') : '-',
     },
     {
       key: 'actions',
       label: 'Actions',
       render: (_: any, row: Submission) => (
-        <button
-          onClick={() => setSelectedSubmission(row)}
-          className="text-green-600 hover:text-green-800 transition-colors"
-          title="Voir les détails"
-        >
-          <Eye size={18} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSelectedSubmission(row)}
+            className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+            title="Détails & Entretien"
+          >
+            <Eye size={16} />
+          </button>
+
+          <button
+            onClick={() => {
+              setConfirmModal({
+                isOpen: true,
+                title: 'Accepter la candidature',
+                message: `Voulez-vous vraiment accepter la candidature de ${row.fullname} ?`,
+                type: 'success',
+                onConfirm: async () => {
+                  try {
+                    const { error } = await supabase
+                      .from('form_submissions')
+                      .update({ status: 'accepte' })
+                      .eq('id', row.id);
+
+                    if (error) throw error;
+                    setData(prev => prev.map(s => s.id === row.id ? { ...s, status: 'accepte' } : s));
+                    alert('Candidature acceptée avec succès !');
+                  } catch (err: any) {
+                    alert(`Erreur: ${err.message}`);
+                  }
+                }
+              });
+            }}
+            className="p-1.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors"
+            title="Accepter"
+          >
+            <CheckCircle size={16} />
+          </button>
+
+          {canDelete('submissions') && (
+            <button
+              onClick={() => {
+                setConfirmModal({
+                  isOpen: true,
+                  title: 'Supprimer la candidature',
+                  message: `Êtes-vous sûr de vouloir supprimer définitivement la candidature de ${row.fullname} ?`,
+                  type: 'danger',
+                  onConfirm: async () => {
+                    try {
+                      const { error } = await supabase
+                        .from('form_submissions')
+                        .delete()
+                        .eq('id', row.id);
+                      if (error) throw error;
+                      setData(prev => prev.filter(s => s.id !== row.id));
+                    } catch (err: any) {
+                      alert(`Erreur: ${err.message}`);
+                    }
+                  }
+                });
+              }}
+              className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+              title="Supprimer"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
+        </div>
       ),
     },
-  ];
+  ], [canDelete, userId]);
 
   return (
     <div className="w-full max-w-full overflow-x-hidden">
@@ -304,13 +411,6 @@ const SubmissionsAdmin: React.FC = () => {
       <DataTable
         columns={columns}
         data={data}
-        onDelete={canDelete('submissions') ? async (row: Submission) => {
-          if (window.confirm('Supprimer cette candidature ?')) {
-            const { error } = await supabase.from('form_submissions').delete().eq('id', row.id);
-            if (error) alert(error.message);
-            else fetchData();
-          }
-        } : undefined}
         title="Candidatures reçues"
         isLoading={loading}
       />
@@ -437,6 +537,25 @@ const SubmissionsAdmin: React.FC = () => {
                     ? new Date(selectedSubmission.created_at).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                     : '-'}
                 </p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Statut actuel</label>
+                <div className="mt-1">
+                  {(() => {
+                    const statuses: Record<string, { label: string, color: string }> = {
+                      en_attente: { label: 'En attente', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+                      entretien: { label: 'Entretien', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+                      accepte: { label: 'Accepté', color: 'bg-green-100 text-green-800 border-green-200' },
+                      refuse: { label: 'Refusé', color: 'bg-red-100 text-red-800 border-red-200' },
+                    };
+                    const s = statuses[selectedSubmission.status || 'en_attente'] || statuses['en_attente'];
+                    return (
+                      <span className={`text-[10px] font-bold px-3 py-1 rounded-full border ${s.color}`}>
+                        {s.label}
+                      </span>
+                    );
+                  })()}
+                </div>
               </div>
             </div>
 
@@ -575,6 +694,15 @@ const SubmissionsAdmin: React.FC = () => {
           </div>
         )}
       </Modal>
+
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+      />
     </div>
   );
 };

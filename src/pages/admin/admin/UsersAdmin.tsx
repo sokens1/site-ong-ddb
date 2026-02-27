@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../../../supabaseClient';
 import DataTable from '../../../components/admin/DataTable';
 import Modal from '../../../components/admin/Modal';
+import ConfirmationModal from '../../../components/admin/ConfirmationModal';
 import SearchBar from '../../../components/admin/SearchBar';
 import { Plus, Mail } from 'lucide-react';
 import useUserRole from '../../../hooks/useUserRole';
@@ -46,6 +47,20 @@ const UsersAdmin: React.FC = () => {
     role: 'membre',
   });
   const [password, setPassword] = useState('');
+
+  // Confirmation Modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'info' | 'success';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { },
+  });
 
   useEffect(() => {
     fetchUsers();
@@ -121,22 +136,26 @@ const UsersAdmin: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (user: UserProfile) => {
-    if (window.confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur "${user.email}" ?\n\nNote: Le compte d'authentification restera actif, seul le profil sera supprimé.`)) {
-      try {
-        // Supprimer le profil de la table user_profiles
-        const { error: deleteError } = await supabase
-          .from('user_profiles')
-          .delete()
-          .eq('id', user.id);
+  const handleDelete = (user: UserProfile) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Supprimer l\'utilisateur',
+      message: `Êtes-vous sûr de vouloir supprimer l'utilisateur "${user.email}" ?\n\nNote: Le compte d'authentification restera actif, seul le profil sera supprimé.`,
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          const { error: deleteError } = await supabase
+            .from('user_profiles')
+            .delete()
+            .eq('id', user.id);
 
-        if (deleteError) throw deleteError;
-
-        await fetchUsers();
-      } catch (err: any) {
-        alert(`Erreur: ${err.message || 'Erreur lors de la suppression'}`);
+          if (deleteError) throw deleteError;
+          await fetchUsers();
+        } catch (err: any) {
+          alert(`Erreur: ${err.message || 'Erreur lors de la suppression'}`);
+        }
       }
-    }
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -394,6 +413,15 @@ const UsersAdmin: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+      />
     </div>
   );
 };
