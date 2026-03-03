@@ -41,17 +41,20 @@ const AnimatedSection: React.FC<{ children: React.ReactNode; className?: string 
 
 const Join: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState({
-    civility: '',
-    fullname: '',
-    email: '',
-    phone: '',
-    city: '',
-    interest: '',
-    skills: '',
-    motivation: '',
-    cv: null as File | null,
-    captcha: false,
+  const [formData, setFormData] = useState(() => {
+    const savedData = localStorage.getItem('joinFormData');
+    return savedData ? JSON.parse(savedData) : {
+      civility: '',
+      fullname: '',
+      email: '',
+      phone: '',
+      city: '',
+      interest: '',
+      skills: '',
+      motivation: '',
+      cv: null,
+      captcha: false,
+    };
   });
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -60,6 +63,8 @@ const Join: React.FC = () => {
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
   const [faqItems, setFaqItems] = useState<any[]>([]);
   const [contributionTypes, setContributionTypes] = useState<any[]>([]);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchFaqItems = async () => {
@@ -170,6 +175,9 @@ const Join: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!isStepValid(3)) return;
+    setIsSubmitting(true);
+
     // Upload CV - Réactivé
     let cvUrl = null;
     if (formData.cv) {
@@ -213,7 +221,7 @@ const Join: React.FC = () => {
     }
 
     // Submit form data
-    const { error } = await supabase.from('form_submissions').insert([{
+    const { data: submissionData, error } = await supabase.from('form_submissions').insert([{
       civility: formData.civility,
       fullname: formData.fullname,
       email: formData.email,
@@ -222,18 +230,17 @@ const Join: React.FC = () => {
       interest: formData.interest,
       skills: formData.skills,
       motivation: formData.motivation,
-      // captcha: formData.captcha, // Not a DB column
       cv_url: cvUrl,
       status: 'en_attente'
-    }]);
+    }]).select('id').single();
 
     if (error) {
       console.error('Error submitting form:', error);
       alert("Une erreur est survenue lors de l'envoi de votre candidature.");
     } else {
-      // 1. Create in-app notifications for admin users - DISABLED client-side
-      // Notifications should be handled by Database Triggers or Edge Functions to avoid RLS issues
-      /* 
+      const newSubmissionId = submissionData.id;
+
+      // 1. Create in-app notifications for admin users
       try {
         const { data: adminProfiles } = await supabase
           .from('user_profiles')
@@ -241,21 +248,20 @@ const Join: React.FC = () => {
           .in('role', ['admin', 'charge_communication']);
 
         if (adminProfiles) {
-          for (const profile of adminProfiles) {
-            await supabase.from('notifications').insert([{
-              user_id: profile.id,
-              type: 'new_submission',
-              title: 'Nouvelle candidature',
-              message: `${formData.fullname} a soumis une candidature (${formData.interest || 'Non spécifié'})`,
-              link: '/admin/submissions',
-              is_read: false,
-            }]);
-          }
+          const notifications = adminProfiles.map(profile => ({
+            user_id: profile.id,
+            type: 'new_submission',
+            title: 'Nouvelle candidature',
+            message: `${formData.fullname} a soumis une candidature.`,
+            link: `/admin/submissions?highlight=${newSubmissionId}`,
+            is_read: false,
+            submission_id: newSubmissionId
+          }));
+          await supabase.from('notifications').insert(notifications);
         }
       } catch (notifErr) {
         console.error('Error creating notifications:', notifErr);
       }
-      */
 
       // 2. Send acknowledgment email to candidate via Brevo Edge Function
       try {
@@ -289,6 +295,7 @@ const Join: React.FC = () => {
       setFormData({ civility: '', fullname: '', email: '', phone: '', city: '', interest: '', skills: '', motivation: '', cv: null, captcha: false });
       setUploadProgress(0);
       setCurrentStep(1); // Reset to first step
+      localStorage.removeItem('joinFormData'); // Clear saved data
     }
   };
 
@@ -576,11 +583,14 @@ const Join: React.FC = () => {
                 ) : (
                   <button
                     type="submit"
-                    disabled={!isStepValid(currentStep)}
+                    disabled={!isStepValid(currentStep) || isSubmitting}
                     className="btn btn-primary btn-enhanced pulse-on-hover text-white font-bold py-2 px-6 rounded disabled:opacity-50 disabled:cursor-not-allowed ml-auto"
                   >
-                    <i className="fas fa-paper-plane mr-2"></i>
-                    Envoyer ma candidature
+                    {isSubmitting ? (
+                      <><i className=\"fas fa-spinner fa-spin mr-2\"></i>Envoi en cours...</>
+                    ) : (
+                      <><i className=\"fas fa-paper-plane mr-2\"></i>Envoyer ma candidature</>
+                    )}
                   </button>
                 )}
               </motion.div>
