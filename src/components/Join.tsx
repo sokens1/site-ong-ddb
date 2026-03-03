@@ -587,9 +587,9 @@ const Join: React.FC = () => {
                     className="btn btn-primary btn-enhanced pulse-on-hover text-white font-bold py-2 px-6 rounded disabled:opacity-50 disabled:cursor-not-allowed ml-auto"
                   >
                     {isSubmitting ? (
-                      <><i className=\"fas fa-spinner fa-spin mr-2\"></i>Envoi en cours...</>
+                      <><i className="fas fa-spinner fa-spin mr-2"></i>Envoi en cours...</>
                     ) : (
-                      <><i className=\"fas fa-paper-plane mr-2\"></i>Envoyer ma candidature</>
+                      <><i className="fas fa-paper-plane mr-2"></i>Envoyer ma candidature</>
                     )}
                   </button>
                 )}
