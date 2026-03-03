@@ -222,15 +222,18 @@ const Join: React.FC = () => {
       interest: formData.interest,
       skills: formData.skills,
       motivation: formData.motivation,
-      captcha: formData.captcha,
-      cv_url: cvUrl
+      // captcha: formData.captcha, // Not a DB column
+      cv_url: cvUrl,
+      status: 'en_attente'
     }]);
 
     if (error) {
       console.error('Error submitting form:', error);
       alert("Une erreur est survenue lors de l'envoi de votre candidature.");
     } else {
-      // 1. Create in-app notifications for admin users
+      // 1. Create in-app notifications for admin users - DISABLED client-side
+      // Notifications should be handled by Database Triggers or Edge Functions to avoid RLS issues
+      /* 
       try {
         const { data: adminProfiles } = await supabase
           .from('user_profiles')
@@ -252,6 +255,7 @@ const Join: React.FC = () => {
       } catch (notifErr) {
         console.error('Error creating notifications:', notifErr);
       }
+      */
 
       // 2. Send acknowledgment email to candidate via Brevo Edge Function
       try {
