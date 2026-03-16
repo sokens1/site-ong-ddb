@@ -40,40 +40,37 @@ serve(async (req: Request) => {
           <html>
             <head>
               <style>
-                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #1f2937; margin: 0; padding: 0; }
-                .email-wrapper { background-color: #f3f4f6; padding: 40px 20px; }
-                .email-content { background-color: #ffffff; max-width: 600px; margin: 0 auto; padding: 40px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e5e7eb; }
-                .email-subject { font-size: 16px; font-weight: bold; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 2px solid #10b981; color: #111827; }
+                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #1f2937; margin: 0; padding: 20px; background-color: #ffffff; }
+                .email-container { max-width: 800px; margin: 0; }
+                .email-subject { font-size: 16px; font-weight: bold; margin-bottom: 25px; padding-bottom: 10px; border-bottom: 1px solid #10b981; color: #111827; }
                 .email-body { font-size: 15px; margin-bottom: 30px; white-space: pre-wrap; }
                 .email-body p { margin-top: 0; margin-bottom: 1.2em; display: block; }
                 .email-body ul, .email-body ol { margin-bottom: 1.2em; padding-left: 20px; }
                 .email-body li { margin-bottom: 0.5em; }
                 .attachment-block { margin-top: 40px; padding-top: 20px; border-top: 1px solid #f3f4f6; }
                 .attachment-button { display: inline-block; background-color: #10b981; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 14px; }
-                .footer { margin-top: 40px; text-align: center; color: #6b7280; font-size: 12px; border-top: 1px solid #f3f4f6; padding-top: 20px; }
+                .footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid #f3f4f6; color: #6b7280; font-size: 12px; }
               </style>
             </head>
             <body>
-              <div class="email-wrapper">
-                <div class="email-content">
-                  <div class="email-subject">
-                    Objet : ${subject}
-                  </div>
-                  <div class="email-body">
-                    ${htmlContent}
-                  </div>
-                  
-                  ${attachmentUrl ? `
-                  <div class="attachment-block">
-                    <p style="margin-bottom: 10px; font-size: 14px; font-weight: bold;">📎 Pièce jointe :</p>
-                    <a href="${attachmentUrl}" class="attachment-button">Consulter le document</a>
-                  </div>
-                  ` : ''}
+              <div class="email-container">
+                <div class="email-subject">
+                  Objet : ${subject}
+                </div>
+                <div class="email-body">
+                  ${htmlContent}
+                </div>
+                
+                ${attachmentUrl ? `
+                <div class="attachment-block">
+                  <p style="margin-bottom: 10px; font-size: 14px; font-weight: bold;">📎 Pièce jointe :</p>
+                  <a href="${attachmentUrl}" class="attachment-button">Consulter le document</a>
+                </div>
+                ` : ''}
 
-                  <div class="footer">
-                    <p>Cet e-mail vous est envoyé par l'ONG DDB.</p>
-                    <p>Pour vous désabonner, veuillez vous rendre sur notre site internet.</p>
-                  </div>
+                <div class="footer">
+                  <p style="margin: 0;">Cet e-mail vous est envoyé par l'ONG DDB.</p>
+                  <p style="margin: 5px 0 0 0;">Pour vous désabonner, veuillez vous rendre sur notre site internet.</p>
                 </div>
               </div>
             </body>
