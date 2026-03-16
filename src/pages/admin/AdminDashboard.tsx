@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../../supabaseClient';
-import { FileText, Newspaper, Users, TrendingUp, Calendar, FolderKanban } from 'lucide-react';
+import { FileText, Newspaper, Users, TrendingUp, Calendar, FolderKanban, Mail } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 interface DashboardStats {
@@ -18,6 +18,7 @@ interface DashboardStats {
     termine: number;
   };
   totalVisits: number;
+  newslettersSent: number;
 }
 
 interface MonthlyData {
@@ -39,7 +40,8 @@ const AdminDashboard: React.FC = () => {
     submissions: 0,
     newsletter: 0,
     projects: { total: 0, planifie: 0, en_cours: 0, termine: 0 },
-    totalVisits: 0
+    totalVisits: 0,
+    newslettersSent: 0
   });
 
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
@@ -54,7 +56,7 @@ const AdminDashboard: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const [reports, videos, news, team, faq, submissions, newsletter, projects, visits] = await Promise.all([
+      const [reports, videos, news, team, faq, submissions, newsletter, projects, visits, sentNewsletters] = await Promise.all([
         supabase.from('reports').select('id', { count: 'exact', head: true }),
         supabase.from('videos').select('id', { count: 'exact', head: true }),
         supabase.from('news').select('id', { count: 'exact', head: true }),
@@ -64,6 +66,7 @@ const AdminDashboard: React.FC = () => {
         supabase.from('newsletter_subscribers').select('id', { count: 'exact', head: true }),
         supabase.from('projects').select('status'),
         supabase.from('site_visits').select('count'),
+        supabase.from('sent_newsletters').select('id', { count: 'exact', head: true }),
       ]);
 
       const projectStats = {
@@ -85,6 +88,7 @@ const AdminDashboard: React.FC = () => {
         newsletter: newsletter.count || 0,
         projects: projectStats,
         totalVisits: totalVisitsCount,
+        newslettersSent: sentNewsletters.count || 0,
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -241,6 +245,7 @@ const AdminDashboard: React.FC = () => {
     { label: 'Actualités', value: stats.news, icon: Newspaper, color: 'bg-green-500', bgGradient: 'from-green-500 to-green-600' },
     { label: 'Engagement', value: stats.submissions + stats.newsletter, icon: Users, color: 'bg-pink-500', bgGradient: 'from-pink-500 to-pink-600' },
     { label: 'Membres équipe', value: stats.teamMembers, icon: Users, color: 'bg-yellow-500', bgGradient: 'from-yellow-500 to-yellow-600' },
+    { label: 'Newsletters envoyées', value: stats.newslettersSent, icon: Mail, color: 'bg-teal-500', bgGradient: 'from-teal-500 to-teal-600' },
   ], [stats]);
 
   const pieData = useMemo(() => [
@@ -278,7 +283,7 @@ const AdminDashboard: React.FC = () => {
       ) : (
         <>
           {/* Cartes de statistiques */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
             {statCards.map((stat) => {
               const Icon = stat.icon;
               return (

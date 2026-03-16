@@ -30,6 +30,13 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   }, [value]);
 
+  useEffect(() => {
+    // S'assurer que les paragraphes utilisent <p> par défaut au montage
+    if (typeof document !== 'undefined') {
+      document.execCommand('defaultParagraphSeparator', false, 'p');
+    }
+  }, []);
+
   const updateActiveCommands = () => {
     if (editorRef.current) {
       setActiveCommands({
@@ -72,7 +79,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           const listType = command === 'insertUnorderedList' ? 'ul' : 'ol';
           const list = document.createElement(listType);
           const listItem = document.createElement('li');
-          
+
           if (range.collapsed) {
             // Si rien n'est sélectionné, créer une liste avec un élément vide
             listItem.textContent = '\u00A0'; // Espace insécable
@@ -88,7 +95,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             list.appendChild(listItem);
             range.insertNode(list);
           }
-          
+
           editorRef.current.focus();
         }
       }
@@ -137,11 +144,10 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           <button
             type="button"
             onClick={() => execCommand('bold')}
-            className={`p-2 rounded hover:bg-gray-200 transition ${
-              activeCommands.bold
-                ? 'bg-gray-300 text-green-600'
-                : 'text-gray-700'
-            }`}
+            className={`p-2 rounded hover:bg-gray-200 transition ${activeCommands.bold
+              ? 'bg-gray-300 text-green-600'
+              : 'text-gray-700'
+              }`}
             title="Gras (Ctrl+B)"
           >
             <Bold size={16} />
@@ -149,11 +155,10 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           <button
             type="button"
             onClick={() => execCommand('italic')}
-            className={`p-2 rounded hover:bg-gray-200 transition ${
-              activeCommands.italic
-                ? 'bg-gray-300 text-green-600'
-                : 'text-gray-700'
-            }`}
+            className={`p-2 rounded hover:bg-gray-200 transition ${activeCommands.italic
+              ? 'bg-gray-300 text-green-600'
+              : 'text-gray-700'
+              }`}
             title="Italique (Ctrl+I)"
           >
             <Italic size={16} />
@@ -161,11 +166,10 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           <button
             type="button"
             onClick={() => execCommand('underline')}
-            className={`p-2 rounded hover:bg-gray-200 transition ${
-              activeCommands.underline
-                ? 'bg-gray-300 text-green-600'
-                : 'text-gray-700'
-            }`}
+            className={`p-2 rounded hover:bg-gray-200 transition ${activeCommands.underline
+              ? 'bg-gray-300 text-green-600'
+              : 'text-gray-700'
+              }`}
             title="Souligné (Ctrl+U)"
           >
             <Underline size={16} />
@@ -197,7 +201,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           onCompositionStart={handleCompositionStart}
           onCompositionEnd={handleCompositionEnd}
           onKeyDown={handleKeyDown}
-          className="min-h-[120px] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+          onBlur={handleInput}
+          className="min-h-[120px] max-h-[250px] overflow-y-auto px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm break-words"
           style={{
             minHeight: `${rows * 24}px`,
           }}

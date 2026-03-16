@@ -26,7 +26,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
       <div className="flex items-center justify-center min-h-screen px-4 py-4">
         <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose}></div>
 
-        <div className={`relative bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all ${sizeClasses[size]} w-[calc(100vw-2rem)] sm:w-auto max-h-[90vh] flex flex-col`}>
+        <div className={`relative bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all align-middle ${sizeClasses[size]} w-full max-h-[90vh] flex flex-col`}>
           <div className="bg-white px-4 pt-4 pb-4 sm:p-5 max-w-full overflow-x-hidden flex-shrink-0">
             <div className="flex justify-between items-center mb-3 gap-4">
               <h3 className="text-lg sm:text-xl font-bold text-gray-900 truncate flex-1">{title}</h3>

@@ -73,7 +73,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
     } catch (err: any) {
       console.error('Error uploading file:', err);
       let errorMessage = 'Erreur lors de l\'upload du fichier';
-      
+
       if (err.message?.includes('Bucket not found')) {
         errorMessage = `Le bucket "${bucket}" n'existe pas. Veuillez le créer dans Supabase Storage (Storage > New bucket).`;
       } else if (err.message?.includes('row-level security') || err.message?.includes('RLS')) {
@@ -81,7 +81,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
       } else if (err.message) {
         errorMessage = err.message;
       }
-      
+
       setError(errorMessage);
       setFileName(null);
     } finally {
@@ -162,7 +162,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onClick={handleClick}
-          className="border-2 border-dashed border-gray-300 rounded-lg p-6 sm:p-8 text-center cursor-pointer hover:border-green-500 transition w-full"
+          className="border-2 border-dashed border-gray-300 rounded-lg p-3 sm:p-4 text-center cursor-pointer hover:border-green-500 transition w-full"
         >
           <input
             ref={fileInputRef}
@@ -174,16 +174,16 @@ const FileUpload: React.FC<FileUploadProps> = ({
           />
           {uploading ? (
             <div className="flex flex-col items-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mb-4"></div>
-              <p className="text-gray-600">Upload en cours...</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mb-2"></div>
+              <p className="text-gray-600 text-sm">Upload en cours...</p>
             </div>
           ) : (
             <div className="flex flex-col items-center">
-              <Upload className="text-gray-400 mb-4" size={48} />
-              <p className="text-gray-600 mb-2">
+              <Upload className="text-gray-400 mb-2" size={24} />
+              <p className="text-gray-600 text-sm mb-1">
                 Cliquez ou glissez-déposez un fichier ici
               </p>
-              <p className="text-sm text-gray-400">
+              <p className="text-xs text-gray-400">
                 Jusqu'à {maxSizeMB}MB
               </p>
             </div>

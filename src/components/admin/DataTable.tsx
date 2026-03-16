@@ -18,6 +18,9 @@ interface DataTableProps {
   title: string;
   isLoading?: boolean;
   itemsPerPage?: number;
+  selectable?: boolean;
+  selectedRowIds?: (string | number)[];
+  onSelectionChange?: (selectedIds: (string | number)[]) => void;
 }
 
 const DataTable: React.FC<DataTableProps> = ({
@@ -29,6 +32,9 @@ const DataTable: React.FC<DataTableProps> = ({
   title,
   isLoading = false,
   itemsPerPage = 8,
+  selectable = false,
+  selectedRowIds = [],
+  onSelectionChange,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -79,6 +85,22 @@ const DataTable: React.FC<DataTableProps> = ({
           <table className="w-full divide-y divide-gray-200 table-fixed">
             <thead className="bg-gray-50">
               <tr>
+                {selectable && (
+                  <th className="px-3 py-2 text-left w-12">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300 text-green-600 focus:ring-green-500 w-4 h-4"
+                      checked={data.length > 0 && selectedRowIds.length === data.length}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          onSelectionChange?.(data.map(d => d.id));
+                        } else {
+                          onSelectionChange?.([]);
+                        }
+                      }}
+                    />
+                  </th>
+                )}
                 {columns.map((column) => {
                   const alignClass = column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : 'text-left';
                   return (
@@ -110,6 +132,22 @@ const DataTable: React.FC<DataTableProps> = ({
               ) : (
                 paginatedData.map((row, index) => (
                   <tr key={row.id || index} className="hover:bg-gray-50">
+                    {selectable && (
+                      <td className="px-3 py-3 w-12">
+                        <input
+                          type="checkbox"
+                          className="rounded border-gray-300 text-green-600 focus:ring-green-500 w-4 h-4 cursor-pointer"
+                          checked={selectedRowIds.includes(row.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              onSelectionChange?.([...selectedRowIds, row.id]);
+                            } else {
+                              onSelectionChange?.(selectedRowIds.filter(id => id !== row.id));
+                            }
+                          }}
+                        />
+                      </td>
+                    )}
                     {columns.map((column) => {
                       const alignClass = column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : 'text-left';
                       return (
