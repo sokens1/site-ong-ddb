@@ -593,13 +593,13 @@ const Join: React.FC = () => {
                   <motion.h3 variants={itemVariants} className="text-2xl font-bold text-green-800 mb-2">Choisissez votre démarche</motion.h3>
                   <p className="text-sm text-gray-400 mb-6">Sélectionnez l'une des options ci-dessous pour commencer.</p>
                   
-                  {/* Linear row of cards */}
-                  <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
+                  {/* Responsive grid of cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pb-4">
                     {selectionCards.map(card => (
                       <button
                         key={card.type}
                         onClick={() => setActiveForm(card.type)}
-                        className={`min-w-[160px] flex-1 flex flex-col items-center text-center gap-3 border-2 rounded-2xl p-5 transition-all duration-300 snap-center shadow-sm ${card.bg}`}
+                        className={`flex flex-col items-center text-center gap-3 border-2 rounded-2xl p-5 transition-all duration-300 shadow-sm ${card.bg}`}
                       >
                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${card.iconBg}`}>
                           <i className={`${card.icon} ${card.accent} text-xl`}></i>
