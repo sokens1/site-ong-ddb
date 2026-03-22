@@ -228,7 +228,7 @@ const News: React.FC = () => {
         </AnimatedSection>
 
         <AnimatedSection className="relative group">
-          <div ref={newsScrollRef} className="flex overflow-x-auto snap-x snap-mandatory gap-8 pb-6 scrollbar-hide" style={{ scrollBehavior: 'smooth' }}>
+          <div ref={newsScrollRef} className="flex overflow-x-auto snap-x gap-8 pb-6 scrollbar-hide" style={{ scrollBehavior: 'smooth' }}>
             {feedItems.map((item, index) => {
               if (item.isViewMore) {
                 return (

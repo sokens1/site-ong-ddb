@@ -84,7 +84,7 @@ const EventsSection: React.FC = () => {
             <p className="text-sm text-gray-400">Revenez bientôt pour découvrir nos prochains événements.</p>
           </div>
         ) : (
-          <div className="flex overflow-x-auto snap-x snap-mandatory gap-6 pb-8 scrollbar-hide pt-4 px-4 -mx-4">
+          <div className="flex overflow-x-auto snap-x gap-6 pb-8 scrollbar-hide pt-4 px-4 -mx-4">
             {events.map((event, i) => (
               <motion.div
                 key={event.id}

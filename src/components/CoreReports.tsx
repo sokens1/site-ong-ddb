@@ -75,7 +75,7 @@ const CoreReports: React.FC = () => {
            animate={isInView ? 'visible' : 'hidden'}
            className="relative group"
         >
-          <div ref={scrollContainerRef} className="flex overflow-x-auto snap-x snap-mandatory gap-6 pb-8 scrollbar-hide pt-4 px-4 -mx-4" style={{ scrollBehavior: 'smooth' }}>
+          <div ref={scrollContainerRef} className="flex overflow-x-auto snap-x gap-6 pb-8 scrollbar-hide pt-4 px-4 -mx-4" style={{ scrollBehavior: 'smooth' }}>
             {reportsData.map((report) => (
               <motion.div
                 key={report.id}
