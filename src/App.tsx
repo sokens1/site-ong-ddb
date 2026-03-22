@@ -1,14 +1,19 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import BackToTop from './components/BackToTop';
-import HomePage from './pages/HomePage';
-import AboutPage from './pages/AboutPage';
-import ActionsPage from './pages/ActionsPage';
-import NewsPage from './pages/NewsPage';
-import ArticlePage from './pages/ArticlePage';
-import JoinPage from './pages/JoinPage';
+
+// Lazy load public pages
+const HomePage = lazy(() => import('./pages/HomePage'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
+const ActionsPage = lazy(() => import('./pages/ActionsPage'));
+const NewsPage = lazy(() => import('./pages/NewsPage'));
+const ArticlePage = lazy(() => import('./pages/ArticlePage'));
+const JoinPage = lazy(() => import('./pages/JoinPage'));
+const EventDetailPage = lazy(() => import('./pages/EventDetailPage'));
+const EventsPage = lazy(() => import('./pages/EventsPage'));
+
 import AdminLogin from './pages/AdminLogin';
 import AdminLayout from './components/admin/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -38,6 +43,11 @@ import EditActionPage from './pages/admin/chefproject/EditActionPage';
 
 // Partner
 import DocumentsAdmin from './pages/admin/partner/DocumentsAdmin';
+
+// New modules
+import DonationsAdmin from './pages/admin/donations/DonationsAdmin';
+import EventsAdmin from './pages/admin/events/EventsAdmin';
+import CreateEventPage from './pages/admin/events/CreateEventPage';
 
 // Others
 import ContributionsAdmin from './pages/admin/ContributionsAdmin';
@@ -79,8 +89,15 @@ function App() {
     }
   };
 
+  const LoadingFallback = () => (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
+
   return (
     <Router>
+      <Suspense fallback={<LoadingFallback />}>
       <Routes>
         {/* Public routes */}
         <Route path="/" element={
@@ -131,6 +148,22 @@ function App() {
             <BackToTop />
           </div>
         } />
+        <Route path="/events/:id" element={
+          <div className="bg-gray-50">
+            <Header />
+            <EventDetailPage />
+            <Footer />
+            <BackToTop />
+          </div>
+        } />
+        <Route path="/events" element={
+          <div className="bg-gray-50">
+            <Header />
+            <EventsPage />
+            <Footer />
+            <BackToTop />
+          </div>
+        } />
 
         {/* Auth callback route - must be before protected routes */}
         <Route path="/admin/auth/callback" element={<AuthCallback />} />
@@ -158,6 +191,10 @@ function App() {
           <Route path="faq" element={<FaqAdmin />} />
           <Route path="contributions" element={<ContributionsAdmin />} />
           <Route path="submissions" element={<SubmissionsAdmin />} />
+          <Route path="donations" element={<DonationsAdmin />} />
+          <Route path="events" element={<EventsAdmin />} />
+          <Route path="events/create" element={<CreateEventPage />} />
+          <Route path="events/edit/:id" element={<CreateEventPage />} />
           <Route path="newsletter" element={<NewsletterAdmin />} />
           <Route path="documents" element={<DocumentsAdmin />} />
           <Route path="users" element={<UsersAdmin />} />
@@ -176,6 +213,7 @@ function App() {
           </div>
         } />
       </Routes>
+      </Suspense>
     </Router>
   );
 }

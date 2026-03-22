@@ -4,25 +4,18 @@ import { motion, useInView } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 // Interfaces
-interface NewsArticle {
-  id?: number;
+interface FeedItem {
+  type: 'news' | 'video';
+  id: number;
   title: string;
   image: string;
-  image2?: string;
   category: string;
   date: string;
   description: string;
-  content: string;
-  status?: string;
+  link: string;
+  isViewMore?: boolean;
 }
 
-interface TeamMember {
-  id: Key | null | undefined;
-  name: string;
-  image: string;
-  position: string;
-  description: string;
-}
 
 // Hooks
 const useIsMobile = () => {
@@ -74,17 +67,13 @@ const AnimatedSection: React.FC<{ children: React.ReactNode; className?: string 
 const News: React.FC = () => {
   const navigate = useNavigate();
   // State
-  const [news, setNews] = useState<NewsArticle[]>([]);
-  const [team, setTeam] = useState<TeamMember[]>([]);
+  const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [teamActiveIndex, setTeamActiveIndex] = useState(0);
   const isMobile = useIsMobile();
 
   // Refs
   const newsScrollRef = useRef<HTMLDivElement>(null);
-  const teamScrollRef = useRef<HTMLDivElement>(null);
   const autoScrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const teamAutoScrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Functions
   const scrollNews = (direction: 'left' | 'right') => {
@@ -103,43 +92,82 @@ const News: React.FC = () => {
     const fetchNews = async () => {
       try {
         const now = new Date().toISOString().split('T')[0];
-        const { data, error } = await supabase
+        
+        // Fetch News
+        const { data: newsData, error: newsError } = await supabase
           .from('news')
           .select('*')
           .eq('status', 'published')
           .lte('date', now)
-          .order('date', { ascending: false });
+          .order('date', { ascending: false })
+          .limit(5);
 
-        if (error) {
-          console.error('Error fetching news:', error);
-          setNews([]);
-        } else {
-          setNews(data || []);
-        }
-      } catch (err) {
-        console.error('Unexpected error fetching news:', err);
-        setNews([]);
-      }
-    };
+        // Fetch Videos
+        const { data: videosData, error: videosError } = await supabase
+          .from('videos')
+          .select('*')
+          .lte('date', now)
+          .order('date', { ascending: false })
+          .limit(5);
 
-    const fetchTeam = async () => {
-      try {
-        const { data, error } = await supabase.from('team_members').select('*').order('id', { ascending: true });
-        if (error) {
-          console.error('Error fetching team members:', error);
-          // Ne pas bloquer l'application si la requête échoue
-          setTeam([]);
-        } else {
-          setTeam(data || []);
+        if (newsError) console.error('Error fetching news:', newsError);
+        if (videosError) console.error('Error fetching videos:', videosError);
+
+        let merged: FeedItem[] = [];
+
+        if (newsData) {
+          merged = merged.concat(newsData.map(n => ({
+            type: 'news',
+            id: n.id,
+            title: n.title,
+            image: n.image,
+            category: 'Blog',
+            date: n.date,
+            description: n.description,
+            link: `/article/${n.id}`
+          })));
         }
+
+        if (videosData) {
+          merged = merged.concat(videosData.map(v => ({
+            type: 'video',
+            id: v.id,
+            title: v.title,
+            image: v.thumbnailpath || '/images/image-presentation-3.jpg',
+            category: 'Vidéo',
+            date: v.date,
+            description: v.description || '',
+            link: v.videourl || v.filepath || ''
+          })));
+        }
+
+        // Sort combined
+        merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
+        // Take top 5
+        let finalFeed = merged.slice(0, 5);
+        
+        // Add "View More" card
+        finalFeed.push({
+          type: 'news',
+          id: -1,
+          title: 'Voir plus d\'actualités',
+          image: '/images/image-presentation-3.jpg',
+          category: 'Plus',
+          date: '',
+          description: 'Découvrez l\'ensemble de nos articles de blog et de nos vidéos.',
+          link: '/news',
+          isViewMore: true
+        });
+
+        setFeedItems(finalFeed);
       } catch (err) {
-        console.error('Unexpected error fetching team:', err);
-        setTeam([]);
+        console.error('Unexpected error fetching feed:', err);
+        setFeedItems([]);
       }
     };
 
     fetchNews();
-    fetchTeam();
   }, []);
 
   useEffect(() => {
@@ -147,7 +175,7 @@ const News: React.FC = () => {
       if (autoScrollIntervalRef.current) clearInterval(autoScrollIntervalRef.current);
       autoScrollIntervalRef.current = setInterval(() => {
         setActiveIndex(prevIndex => {
-          const nextIndex = (prevIndex + 1) % news.length;
+          const nextIndex = (prevIndex + 1) % feedItems.length;
           const container = newsScrollRef.current;
           if (container?.children[nextIndex]) {
             const card = container.children[nextIndex] as HTMLElement;
@@ -158,7 +186,7 @@ const News: React.FC = () => {
       }, 8000);
     };
 
-    if (isMobile && news.length > 0) {
+    if (isMobile && feedItems.length > 0) {
       startAutoScroll();
     } else {
       if (autoScrollIntervalRef.current) clearInterval(autoScrollIntervalRef.current);
@@ -167,34 +195,7 @@ const News: React.FC = () => {
     return () => {
       if (autoScrollIntervalRef.current) clearInterval(autoScrollIntervalRef.current);
     };
-  }, [isMobile, news.length]);
-
-  useEffect(() => {
-    const startTeamAutoScroll = () => {
-      if (teamAutoScrollIntervalRef.current) clearInterval(teamAutoScrollIntervalRef.current);
-      teamAutoScrollIntervalRef.current = setInterval(() => {
-        setTeamActiveIndex(prevIndex => {
-          const nextIndex = (prevIndex + 1) % team.length;
-          const container = teamScrollRef.current;
-          if (container?.children[nextIndex]) {
-            const card = container.children[nextIndex] as HTMLElement;
-            container.scrollTo({ left: card.offsetLeft, behavior: 'smooth' });
-          }
-          return nextIndex;
-        });
-      }, 6000);
-    };
-
-    if (isMobile && team.length > 0) {
-      startTeamAutoScroll();
-    } else {
-      if (teamAutoScrollIntervalRef.current) clearInterval(teamAutoScrollIntervalRef.current);
-    }
-
-    return () => {
-      if (teamAutoScrollIntervalRef.current) clearInterval(teamAutoScrollIntervalRef.current);
-    };
-  }, [isMobile, team.length]);
+  }, [isMobile, feedItems.length]);
 
   useEffect(() => {
     const container = newsScrollRef.current;
@@ -214,24 +215,6 @@ const News: React.FC = () => {
     return () => container?.removeEventListener('scroll', handleScroll);
   }, [activeIndex]);
 
-  useEffect(() => {
-    const container = teamScrollRef.current;
-    let scrollTimeout: NodeJS.Timeout;
-    const handleScroll = () => {
-      if (!container) return;
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
-        const scrollLeft = container.scrollLeft;
-        const cardWidth = container.children[0]?.clientWidth || 0;
-        const gap = 16; // Assuming gap-4
-        const newIndex = Math.round(scrollLeft / (cardWidth + gap));
-        if (newIndex !== teamActiveIndex) setTeamActiveIndex(newIndex);
-      }, 150);
-    };
-    container?.addEventListener('scroll', handleScroll);
-    return () => container?.removeEventListener('scroll', handleScroll);
-  }, [teamActiveIndex]);
-
   // Render
   return (
     <section id="news" className="py-20 bg-white">
@@ -244,39 +227,68 @@ const News: React.FC = () => {
           <motion.div variants={itemVariants} className="w-24 h-1 bg-green-600 mx-auto"></motion.div>
         </AnimatedSection>
 
-        <AnimatedSection className="relative group mb-16">
+        <AnimatedSection className="relative group">
           <div ref={newsScrollRef} className="flex overflow-x-auto snap-x snap-mandatory gap-8 pb-6 scrollbar-hide" style={{ scrollBehavior: 'smooth' }}>
-            {news.map((article, index) => (
-              <motion.div
-                key={index}
-                variants={itemVariants}
-                className="flex-shrink-0 snap-start w-80 md:w-96"
-              >
-                <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 h-full flex flex-col">
-                  <div className="h-48 overflow-hidden">
-                    <img src={article.image} alt={article.title} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="p-4 sm:p-6 flex flex-col flex-grow">
-                    <div className="text-green-600 font-bold mb-2 text-sm">{article.category} • {article.date}</div>
-                    <h3 className="text-lg sm:text-xl font-bold text-green-800 mb-3 line-clamp-2">{article.title}</h3>
-                    <p className="text-gray-700 mb-4 text-sm sm:text-base line-clamp-3 flex-grow">{article.description}</p>
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mt-auto">
-                      <button onClick={() => { if (article.id) { navigate(`/article/${article.id}`); } }} className="text-green-600 font-medium hover:text-green-800 transition-colors duration-200 text-left">
-                        Lire l'article →
-                      </button>
-                      <div className="flex space-x-3 justify-start sm:justify-end">
-                        <button onClick={() => { if (navigator.share) { navigator.share({ title: article.title, text: article.description, url: window.location.href }); } else { navigator.clipboard.writeText(window.location.href); alert('Lien copié !'); } }} className="text-gray-500 hover:text-green-600 transition-colors duration-200 p-1" title="Partager">
-                          <i className="fas fa-share text-sm"></i>
-                        </button>
-                        <button onClick={() => { const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`; window.open(fbUrl, '_blank', 'width=600,height=400'); }} className="text-gray-500 hover:text-blue-600 transition-colors duration-200 p-1" title="Partager sur Facebook">
-                          <i className="fab fa-facebook-f text-sm"></i>
-                        </button>
+            {feedItems.map((item, index) => {
+              if (item.isViewMore) {
+                return (
+                  <motion.div
+                    key="view-more"
+                    variants={itemVariants}
+                    className="flex-shrink-0 snap-start w-80 md:w-96 flex items-center justify-center p-4"
+                  >
+                    <div className="bg-green-50 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 w-full h-full min-h-[350px] flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-green-200 hover:border-green-400 group cursor-pointer" onClick={() => navigate(item.link)}>
+                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <i className="fas fa-arrow-right text-green-600 text-2xl"></i>
+                      </div>
+                      <h3 className="text-xl font-bold text-green-800 mb-2">{item.title}</h3>
+                      <p className="text-green-600/80 text-sm">{item.description}</p>
+                    </div>
+                  </motion.div>
+                );
+              }
+
+              return (
+                <motion.div
+                  key={`${item.type}-${item.id}`}
+                  variants={itemVariants}
+                  className="flex-shrink-0 snap-start w-80 md:w-96"
+                >
+                  <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 h-full flex flex-col group relative">
+                    <div className="h-48 overflow-hidden relative">
+                      <img src={item.image} alt={item.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded text-xs font-bold text-green-700 shadow flex items-center gap-1.5">
+                        {item.category === 'Vidéo' ? <i className="fas fa-play text-red-500"></i> : <i className="fas fa-newspaper text-blue-500"></i>}
+                        {item.category}
+                      </div>
+                    </div>
+                    <div className="p-4 sm:p-6 flex flex-col flex-grow relative">
+                      {item.date && <div className="text-gray-400 font-medium mb-2 text-xs">{new Date(item.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>}
+                      <h3 className="text-lg sm:text-lg font-bold text-gray-800 mb-3 line-clamp-2 group-hover:text-green-700 transition-colors">
+                        {item.title}
+                      </h3>
+                      <p className="text-gray-600 mb-4 text-sm line-clamp-3 flex-grow">{item.description}</p>
+                      <div className="pt-4 border-t border-gray-100 mt-auto flex items-center justify-between">
+                        {item.type === 'video' ? (
+                          <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-green-600 font-bold hover:text-green-800 transition-colors text-sm flex items-center gap-1.5 group-hover:translate-x-1">
+                            Regarder la vidéo <i className="fas fa-arrow-right"></i>
+                          </a>
+                        ) : (
+                          <button onClick={() => navigate(item.link)} className="text-green-600 font-bold hover:text-green-800 transition-colors text-sm flex items-center gap-1.5 group-hover:translate-x-1 outline-none before:absolute before:inset-0">
+                            Lire l'article <i className="fas fa-arrow-right"></i>
+                          </button>
+                        )}
+                        <div className="flex space-x-3 items-center relative z-10">
+                          <button onClick={(e) => { e.stopPropagation(); if (navigator.share) { navigator.share({ title: item.title, text: item.description, url: window.location.origin + item.link }); } }} className="text-gray-400 hover:text-green-600 transition-colors p-1 relative z-10" title="Partager">
+                            <i className="fas fa-share-alt"></i>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </div>
           {!isMobile && (
             <>
@@ -292,7 +304,7 @@ const News: React.FC = () => {
 
         {isMobile && (
           <div className="flex justify-center gap-2 -mt-8 mb-12">
-            {news.map((_, index) => (
+            {feedItems.map((_, index) => (
               <button
                 key={index}
                 onClick={() => {
@@ -304,141 +316,11 @@ const News: React.FC = () => {
                   }
                 }}
                 className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${activeIndex === index ? 'bg-green-600' : 'bg-gray-300'}`}
-                aria-label={`Aller à l'actualité ${index + 1}`}
+                aria-label={`Aller à l'élément ${index + 1}`}
               />
             ))}
           </div>
         )}
-
-        <AnimatedSection className="text-center mb-16">
-          <motion.h2 variants={itemVariants} className="text-3xl md:text-4xl font-bold text-green-800 mb-4">
-            Notre Bureau Directeur
-          </motion.h2>
-          <motion.div variants={itemVariants} className="w-24 h-1 bg-green-600 mx-auto mb-8"></motion.div>
-
-          {/* Version Desktop - Disposition hiérarchisée */}
-          {!isMobile && (
-            <>
-              {/* Premier membre seul en haut au centre */}
-              {team.length > 0 && (
-                <motion.div variants={itemVariants} className="text-center mb-12">
-                  <img src={team[0].image} alt={team[0].name} className="w-40 h-40 rounded-full mx-auto mb-4 object-cover shadow-lg" />
-                  <h3 className="font-bold text-green-800 text-xl">{team[0].name}</h3>
-                  <p className="text-gray-600">{team[0].position}</p>
-                </motion.div>
-              )}
-
-              {/* Membres 2, 3, 4 en ligne (selon l'ordre des ID) */}
-              {team.length > 1 && (
-                <div className="flex justify-center flex-wrap gap-8 mb-8">
-                  {team.slice(1, 4).map((member) => (
-                    <motion.div key={member.id} variants={itemVariants} className="text-center w-64">
-                      <img src={member.image} alt={member.name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg" />
-                      <h3 className="font-bold text-green-800 text-xl">{member.name}</h3>
-                      <p className="text-gray-600">{member.position}</p>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-
-              {/* Membres 5, 6, 7 en ligne (selon l'ordre des ID) */}
-              {team.length > 4 && (
-                <div className="flex justify-center flex-wrap gap-8 mb-8">
-                  {team.slice(4, 7).map((member) => (
-                    <motion.div key={member.id} variants={itemVariants} className="text-center w-64">
-                      <img src={member.image} alt={member.name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg" />
-                      <h3 className="font-bold text-green-800 text-xl">{member.name}</h3>
-                      <p className="text-gray-600">{member.position}</p>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-
-              {/* Membres 8, 9, 10 en ligne (selon l'ordre des ID) */}
-              {team.length > 7 && (
-                <div className="flex justify-center flex-wrap gap-8 mb-8">
-                  {team.slice(7, 10).map((member) => (
-                    <motion.div key={member.id} variants={itemVariants} className="text-center w-64">
-                      <img src={member.image} alt={member.name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg" />
-                      <h3 className="font-bold text-green-800 text-xl">{member.name}</h3>
-                      <p className="text-gray-600">{member.position}</p>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-
-              {/* Reste des membres (selon l'ordre des ID) */}
-              {team.length > 10 && (
-                <div className="flex justify-center flex-wrap gap-8">
-                  {team.slice(10).map((member) => (
-                    <motion.div key={member.id} variants={itemVariants} className="text-center w-64">
-                      <img src={member.image} alt={member.name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg" />
-                      <h3 className="font-bold text-green-800 text-xl">{member.name}</h3>
-                      <p className="text-gray-600">{member.position}</p>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-
-          {/* Version Mobile - Défilement horizontal */}
-          {isMobile && (
-            <div className="relative group">
-              <div ref={teamScrollRef} className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-6 scrollbar-hide" style={{ scrollBehavior: 'smooth' }}>
-                {team.map((member) => (
-                  <motion.div
-                    key={member.id}
-                    variants={itemVariants}
-                    className="flex-shrink-0 snap-start w-48"
-                  >
-                    <div className="text-center">
-                      <img src={member.image} alt={member.name} className="w-24 h-24 rounded-full mx-auto mb-3 object-cover shadow-lg" />
-                      <h3 className="font-bold text-green-800 text-base">{member.name}</h3>
-                      <p className="text-gray-600 text-sm">{member.position}</p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-
-              {/* Indicateurs de pagination pour mobile */}
-              <div className="flex justify-center gap-2 mt-4">
-                {team.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => {
-                      setTeamActiveIndex(index);
-                      const container = teamScrollRef.current;
-                      if (container?.children[index]) {
-                        const card = container.children[index] as HTMLElement;
-                        container.scrollTo({ left: card.offsetLeft, behavior: 'smooth' });
-                      }
-                    }}
-                    className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${teamActiveIndex === index ? 'bg-green-600' : 'bg-gray-300'}`}
-                    aria-label={`Aller au membre ${index + 1}`}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Section connexion pour les membres - après toutes les photos */}
-          <motion.div
-            variants={itemVariants}
-            className="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-8 max-w-md mx-auto"
-          >
-            <p className="text-gray-700 mb-3 font-medium">
-              Membre du Bureau Directeur ?
-            </p>
-            <button
-              onClick={() => navigate('/admin/login')}
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200 shadow-md hover:shadow-lg"
-            >
-              <i className="fas fa-sign-in-alt mr-2"></i>
-              Connectez-vous
-            </button>
-          </motion.div>
-        </AnimatedSection>
       </div>
 
     </section>

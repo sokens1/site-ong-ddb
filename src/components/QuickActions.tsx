@@ -36,8 +36,15 @@ const QuickActions: React.FC = () => {
       id: 'park',
       title: 'Actualités',
       image: '/images/image-presentation-3.jpg',
-      link: '/actions',
-      description: 'Nos projets de conservation'
+      link: '/news',
+      description: 'Nos dernières actualités'
+    },
+    {
+      id: 'events',
+      title: 'Nos événements',
+      image: '/images/image-action-1.jpg',
+      link: '/events',
+      description: 'Participez à nos activités'
     },
     {
       id: 'visits',
@@ -101,7 +108,7 @@ const QuickActions: React.FC = () => {
         
         {/* Version Desktop - Grille */}
         {!isMobile && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
             {actions.map((action) => (
               <Link
                 key={action.id}

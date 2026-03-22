@@ -15,6 +15,8 @@ import {
   FolderKanban,
   File,
   UserCog,
+  Gift,
+  CalendarDays,
 } from 'lucide-react';
 import { useNotifications } from '../../hooks/useNotifications';
 import DiscussionSidebar from '../DiscussionSidebar';
@@ -22,8 +24,8 @@ import { MessageSquare } from 'lucide-react';
 
 // Define which menu items each role can see
 const ROLE_MENU_ACCESS: Record<UserRole, string[]> = {
-  admin: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'submissions', 'faq', 'newsletter', 'users'],
-  charge_communication: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'submissions', 'faq', 'newsletter'],
+  admin: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'submissions', 'donations', 'events', 'faq', 'newsletter', 'users'],
+  charge_communication: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'submissions', 'donations', 'events', 'faq', 'newsletter'],
   chef_projet: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'submissions', 'faq', 'newsletter'],
   partenaire: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news'],
   membre: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'faq'],
@@ -37,6 +39,8 @@ const ALL_MENU_ITEMS = [
   { id: 'team', path: '/admin/team', label: 'Équipe', icon: Users },
   { id: 'news', path: '/admin/news', label: 'Actualités', icon: Newspaper },
   { id: 'submissions', path: '/admin/submissions', label: 'Candidatures', icon: Mail },
+  { id: 'donations', path: '/admin/donations', label: 'Dons', icon: Gift },
+  { id: 'events', path: '/admin/events', label: 'Événements', icon: CalendarDays },
   { id: 'faq', path: '/admin/faq', label: 'FAQ', icon: HelpCircle },
   { id: 'newsletter', path: '/admin/newsletter', label: 'Newsletter', icon: Mail },
   { id: 'users', path: '/admin/users', label: 'Utilisateurs', icon: UserCog },

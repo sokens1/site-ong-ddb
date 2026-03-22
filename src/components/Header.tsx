@@ -56,7 +56,7 @@ const Header: React.FC = () => {
                       : 'text-green-800 hover:text-green-600'
                   }`}
                 >
-                  Nos actions
+                  Nos rapports
                 </Link>
               </li>
               <li>
@@ -69,6 +69,18 @@ const Header: React.FC = () => {
                   }`}
                 >
                   Actualités
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/events"
+                  className={`font-medium transition ${
+                    isActive('/events') 
+                      ? 'text-green-600 border-b-2 border-green-600' 
+                      : 'text-green-800 hover:text-green-600'
+                  }`}
+                >
+                  Nos événements
                 </Link>
               </li>
               <li>
@@ -125,7 +137,7 @@ const Header: React.FC = () => {
                   isActive('/actions') ? 'text-green-600' : 'text-green-800'
                 }`}
               >
-                Nos actions
+                Nos rapports
               </Link>
             </li>
             <li className="py-2 border-b">
@@ -137,6 +149,17 @@ const Header: React.FC = () => {
                 }`}
               >
                 Actualités
+              </Link>
+            </li>
+            <li className="py-2 border-b">
+              <Link
+                to="/events"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block font-medium w-full text-left ${
+                  isActive('/events') ? 'text-green-600' : 'text-green-800'
+                }`}
+              >
+                Nos événements
               </Link>
             </li>
             <li className="py-2">

@@ -119,7 +119,7 @@ const Footer: React.FC = () => {
                   onClick={() => navigate('/actions')}
                   className="hover:text-green-300 transition text-left"
                 >
-                  Nos actions
+                  Nos rapports
                 </button>
               </li>
               <li>

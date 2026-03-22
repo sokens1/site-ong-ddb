@@ -19,6 +19,7 @@ interface Submission {
   motivation?: string | null;
   cv_url?: string | null;
   status?: 'en_attente' | 'entretien' | 'accepte' | 'refuse';
+  type?: 'membership' | 'partnership' | null;
   captcha?: boolean | null;
   created_at?: string;
 }
@@ -39,6 +40,7 @@ const SubmissionsAdmin: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+  const [typeFilter, setTypeFilter] = useState<'all' | 'membership' | 'partnership'>('all');
 
   // Export state
   const [showExportModal, setShowExportModal] = useState(false);
@@ -255,7 +257,24 @@ const SubmissionsAdmin: React.FC = () => {
     setShowExportModal(false);
   };
 
+  const filteredData = useMemo(() => {
+    if (typeFilter === 'all') return data;
+    return data.filter(s => s.type === typeFilter || (!s.type && typeFilter === 'membership'));
+  }, [data, typeFilter]);
+
   const columns = useMemo(() => [
+    {
+      key: 'type',
+      label: 'Rôle',
+      render: (value: string) => {
+        const types: any = {
+          membership: { label: 'Membre', color: 'bg-green-100 text-green-800' },
+          partnership: { label: 'Partenaire', color: 'bg-blue-100 text-blue-800' },
+        };
+        const t = types[value] || types['membership'];
+        return <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${t.color}`}>{t.label}</span>;
+      }
+    },
     {
       key: 'fullname',
       label: 'Nom complet',
@@ -391,6 +410,15 @@ const SubmissionsAdmin: React.FC = () => {
     <div className="w-full max-w-full overflow-x-hidden">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
         <h1 className="text-2xl font-bold text-gray-800">Candidatures</h1>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+            {(['all', 'membership', 'partnership'] as const).map(tab => (
+              <button key={tab} onClick={() => setTypeFilter(tab)}
+                className={`px-3 py-1.5 font-medium transition-colors ${ typeFilter === tab ? 'bg-green-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50' }`}>
+                {tab === 'all' ? 'Tous' : tab === 'membership' ? 'Membres' : 'Partenaires'}
+              </button>
+            ))}
+          </div>
         <button
           onClick={() => {
             setExportStartDate('');
@@ -402,6 +430,7 @@ const SubmissionsAdmin: React.FC = () => {
           <Download size={18} />
           Exporter (XLSX)
         </button>
+        </div>
       </div>
 
       {error && (
@@ -410,7 +439,7 @@ const SubmissionsAdmin: React.FC = () => {
 
       <DataTable
         columns={columns}
-        data={data}
+        data={filteredData}
         title="Candidatures reçues"
         isLoading={loading}
       />

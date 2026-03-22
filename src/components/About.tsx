@@ -106,13 +106,6 @@ const About: React.FC = () => {
     }
   ];
 
-  const partners = [
-    { type: 'image', value: '/images/logo-unicef.png', alt: 'UNICEF Logo' },
-    { type: 'image', value: '/images/logo-pnud.png', alt: 'PNUDLogo' },
-    { type: 'image', value: '/images/logo-WWF.png', alt: 'WWF Logo' },
-    { type: 'image', value: '/images/logo-fondation-lekedi.png', alt: 'Fondation Lekedi Logo' },
-
-  ];
 
   return (
     <section id="about" className="py-20 bg-white">
@@ -236,24 +229,6 @@ const About: React.FC = () => {
           </div>
         </AnimatedSection>
 
-        <AnimatedSection className="text-center">
-          <motion.h3 variants={itemVariants} className="text-2xl font-bold text-green-800 mb-8">Nos partenaires</motion.h3>
-          <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">
-            {partners.map((partner, index) => (
-              <motion.div
-                key={index}
-                variants={itemVariants}
-                className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center p-4 transition-all duration-300 hover:bg-green-50 hover:shadow-lg hover:scale-105"
-              >
-                {partner.type === 'image' ? (
-                  <img src={partner.value} alt={partner.alt} className="max-w-full max-h-full object-contain" />
-                ) : (
-                  <span className="font-bold text-gray-700 text-center text-sm">{partner.value}</span>
-                )}
-              </motion.div>
-            ))}
-          </div>
-        </AnimatedSection>
       </div>
 
       {/* Modal pour visualiser le document */}
