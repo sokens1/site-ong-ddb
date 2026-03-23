@@ -164,7 +164,7 @@ const EventDetailPage: React.FC = () => {
     const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate()).getTime();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 
-    if (eventDay === today) return { label: 'En cours', color: 'bg-blue-600' };
+    if (eventDay === today) return { label: 'En cours', color: 'bg-emerald-600' };
     if (eventDate.getTime() > now.getTime()) return { label: 'Bientôt', color: 'bg-green-600' };
     return { label: 'Terminé', color: 'bg-gray-500' };
   };
@@ -227,20 +227,20 @@ const EventDetailPage: React.FC = () => {
                 </div>
              </div>
              
-             {event.location && (
-               <>
-                 <div className="w-px bg-white/20 hidden md:block"></div>
-                 <div className="flex items-center gap-3 text-white">
-                    <div className="w-10 h-10 rounded-full bg-blue-500/30 flex items-center justify-center">
-                      <MapPin size={20} className="text-blue-200" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-blue-200 uppercase tracking-widest font-semibold mb-0.5">Lieu</p>
-                      <p className="font-medium text-sm md:text-base">{event.location}</p>
-                    </div>
-                 </div>
-               </>
-             )}
+              {event.location && (
+                <>
+                  <div className="w-px bg-white/20 hidden md:block"></div>
+                  <div className="flex items-center gap-3 text-white">
+                     <div className="w-10 h-10 rounded-full bg-green-500/30 flex items-center justify-center">
+                       <MapPin size={20} className="text-green-300" />
+                     </div>
+                     <div>
+                       <p className="text-xs text-green-200 uppercase tracking-widest font-semibold mb-0.5">Lieu</p>
+                       <p className="font-medium text-sm md:text-base">{event.location}</p>
+                     </div>
+                  </div>
+                </>
+              )}
           </div>
         </div>
       </div>
@@ -252,8 +252,12 @@ const EventDetailPage: React.FC = () => {
           <div className="lg:col-span-2 space-y-8">
              <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
                 {event.image_url && (
-                  <div className="h-[300px] sm:h-[400px] w-full bg-gray-100">
-                    <img src={event.image_url} alt={event.title} className="w-full h-full object-cover" />
+                  <div className="relative w-full bg-gray-50 flex items-center justify-center overflow-hidden h-[300px] sm:h-[500px] border-b border-gray-100">
+                    <img 
+                      src={event.image_url} 
+                      alt={event.title} 
+                      className="relative z-10 max-w-full max-h-full object-contain" 
+                    />
                   </div>
                 )}
                 
@@ -284,12 +288,23 @@ const EventDetailPage: React.FC = () => {
                          </p>
                        )}
                      </div>
-                     <button 
-                        onClick={() => setShowModal(true)}
-                        className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 px-10 rounded-xl transition-all shadow-md active:scale-95 text-lg flex justify-center items-center gap-2"
-                     >
-                       S'inscrire <Calendar size={18} />
-                     </button>
+                     {(() => {
+                       const status = getEventStatus(event.event_date);
+                       const isPast = status.label === 'Terminé';
+                       return (
+                         <button 
+                            onClick={() => setShowModal(true)}
+                            disabled={isPast}
+                            className={`w-full sm:w-auto font-bold py-3.5 px-10 rounded-xl transition-all text-lg flex justify-center items-center gap-2 ${
+                              isPast 
+                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                                : 'bg-green-600 hover:bg-green-700 text-white shadow-md active:scale-95'
+                            }`}
+                         >
+                           {isPast ? 'Événement terminé' : 'S\'inscrire'} <Calendar size={18} />
+                         </button>
+                       );
+                     })()}
                   </div>
                 </div>
              </div>

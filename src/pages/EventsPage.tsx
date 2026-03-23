@@ -28,7 +28,7 @@ const EventsPage: React.FC = () => {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 
     if (eventDay === today) {
-      return { label: 'En cours', color: 'bg-blue-600 text-white' };
+      return { label: 'En cours', color: 'bg-emerald-600 text-white' };
     } else if (eventDate.getTime() > now.getTime()) {
       return { label: 'Bientôt', color: 'bg-green-600 text-white' };
     } else {
@@ -160,11 +160,15 @@ const EventsPage: React.FC = () => {
                   viewport={{ once: true }}
                   className="relative bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 flex flex-col group"
                 >
-                  <div className="relative h-48 overflow-hidden bg-gray-100">
+                  <div className="relative h-48 overflow-hidden bg-gray-50 flex items-center justify-center border-b border-gray-100">
                     {event.image_url ? (
-                      <img src={event.image_url} alt={event.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      <img 
+                        src={event.image_url} 
+                        alt={event.title} 
+                        className="relative z-10 max-w-full max-h-full object-contain transition-transform duration-500 group-hover:scale-105" 
+                      />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-green-700 to-green-500 flex items-center justify-center">
+                      <div className="relative z-10 w-full h-full bg-gradient-to-br from-green-700 to-green-500 flex items-center justify-center">
                         <Calendar size={48} className="text-white/50" />
                       </div>
                     )}
