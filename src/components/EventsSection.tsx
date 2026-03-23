@@ -19,7 +19,34 @@ interface Event {
 const EventsSection: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const eventsScrollRef = React.useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const container = eventsScrollRef.current;
+    let scrollTimeout: NodeJS.Timeout;
+    const handleScroll = () => {
+      if (!container) return;
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        const scrollLeft = container.scrollLeft;
+        const cardWidth = container.children[0]?.clientWidth || 0;
+        const gap = 24; // gap-6
+        const newIndex = Math.round(scrollLeft / (cardWidth + gap));
+        if (newIndex !== activeIndex) setActiveIndex(newIndex);
+      }, 100);
+    };
+    container?.addEventListener('scroll', handleScroll);
+    return () => container?.removeEventListener('scroll', handleScroll);
+  }, [activeIndex]);
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -84,7 +111,7 @@ const EventsSection: React.FC = () => {
             <p className="text-sm text-gray-400">Revenez bientôt pour découvrir nos prochains événements.</p>
           </div>
         ) : (
-          <div className="flex overflow-x-auto snap-x gap-6 pb-8 scrollbar-hide pt-4 px-4 -mx-4">
+          <div ref={eventsScrollRef} className="flex overflow-x-auto snap-x gap-6 pb-8 scrollbar-hide pt-4 px-4 -mx-4" style={{ scrollBehavior: 'smooth' }}>
             {events.map((event, i) => (
               <motion.div
                 key={event.id}
@@ -92,7 +119,7 @@ const EventsSection: React.FC = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: i * 0.1 }}
                 viewport={{ once: true }}
-                className="relative bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 flex flex-col group flex-shrink-0 snap-start w-80 md:w-96"
+                className="relative bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 flex flex-col group flex-shrink-0 snap-start w-[85vw] md:w-96"
               >
                 <div className="relative h-48 overflow-hidden bg-gray-50 flex items-center justify-center border-b border-gray-100">
                   {event.image_url ? (
@@ -163,7 +190,7 @@ const EventsSection: React.FC = () => {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: events.length * 0.1 }}
               viewport={{ once: true }}
-              className="flex-shrink-0 snap-start w-80 md:w-96 flex items-center justify-center p-4"
+              className="flex-shrink-0 snap-start w-[85vw] md:w-96 flex items-center justify-center p-4"
             >
               <div 
                 onClick={() => navigate('/events')}
@@ -177,6 +204,25 @@ const EventsSection: React.FC = () => {
               </div>
             </motion.div>
 
+          </div>
+        )}
+
+        {isMobile && events.length > 0 && (
+          <div className="flex justify-center gap-2 mt-4 mb-4">
+            {[...events, { id: 'more' }].map((_, index) => (
+              <button
+                key={index}
+                onClick={() => {
+                  const container = eventsScrollRef.current;
+                  if (container?.children[index]) {
+                    const card = container.children[index] as HTMLElement;
+                    container.scrollTo({ left: card.offsetLeft, behavior: 'smooth' });
+                  }
+                }}
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${activeIndex === index ? 'bg-green-600 w-5' : 'bg-green-200'}`}
+                aria-label={`Aller à l'élément ${index + 1}`}
+              />
+            ))}
           </div>
         )}
       </div>

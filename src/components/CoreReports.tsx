@@ -34,10 +34,36 @@ const itemVariants = {
 
 const CoreReports: React.FC = () => {
   const [reportsData, setReportsData] = useState<Report[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef(null);
   const isInView = useInView(animationRef, { once: true, margin: '-150px' });
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    let scrollTimeout: NodeJS.Timeout;
+    const handleScroll = () => {
+      if (!container) return;
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        const scrollLeft = container.scrollLeft;
+        const cardWidth = container.children[0]?.clientWidth || 0;
+        const gap = 24; // gap-6
+        const newIndex = Math.round(scrollLeft / (cardWidth + gap));
+        if (newIndex !== activeIndex) setActiveIndex(newIndex);
+      }, 100);
+    };
+    container?.addEventListener('scroll', handleScroll);
+    return () => container?.removeEventListener('scroll', handleScroll);
+  }, [activeIndex]);
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
@@ -80,7 +106,7 @@ const CoreReports: React.FC = () => {
               <motion.div
                 key={report.id}
                 variants={itemVariants}
-                className="flex-shrink-0 snap-start w-80 md:w-96"
+                className="flex-shrink-0 snap-start w-[85vw] md:w-96"
               >
                 <ReportCard report={report} />
               </motion.div>
@@ -89,7 +115,7 @@ const CoreReports: React.FC = () => {
             {/* View More Card */}
             <motion.div
               variants={itemVariants}
-              className="flex-shrink-0 snap-start w-80 md:w-96 flex items-center justify-center p-4"
+              className="flex-shrink-0 snap-start w-[85vw] md:w-96 flex items-center justify-center p-4"
             >
               <div 
                 onClick={() => navigate('/actions')}
@@ -122,6 +148,25 @@ const CoreReports: React.FC = () => {
             </>
           )}
         </motion.div>
+
+        {isMobile && reportsData.length > 0 && (
+          <div className="flex justify-center gap-2 mt-4 mb-4">
+            {[...reportsData, { id: 'more' }].map((_, index) => (
+              <button
+                key={index}
+                onClick={() => {
+                  const container = scrollContainerRef.current;
+                  if (container?.children[index]) {
+                    const card = container.children[index] as HTMLElement;
+                    container.scrollTo({ left: card.offsetLeft, behavior: 'smooth' });
+                  }
+                }}
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${activeIndex === index ? 'bg-green-600 w-5' : 'bg-green-200'}`}
+                aria-label={`Aller à l'élément ${index + 1}`}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

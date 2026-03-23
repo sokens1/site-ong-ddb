@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, Key } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { motion, useInView } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -229,13 +229,13 @@ const News: React.FC = () => {
 
         <AnimatedSection className="relative group">
           <div ref={newsScrollRef} className="flex overflow-x-auto snap-x gap-8 pb-6 scrollbar-hide" style={{ scrollBehavior: 'smooth' }}>
-            {feedItems.map((item, index) => {
+            {feedItems.map((item) => {
               if (item.isViewMore) {
                 return (
                   <motion.div
                     key="view-more"
                     variants={itemVariants}
-                    className="flex-shrink-0 snap-start w-80 md:w-96 flex items-center justify-center p-4"
+                    className="flex-shrink-0 snap-start w-[85vw] md:w-96 flex items-center justify-center p-4"
                   >
                     <div className="bg-green-50 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 w-full h-full min-h-[350px] flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-green-200 hover:border-green-400 group cursor-pointer" onClick={() => navigate(item.link)}>
                       <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -252,7 +252,7 @@ const News: React.FC = () => {
                 <motion.div
                   key={`${item.type}-${item.id}`}
                   variants={itemVariants}
-                  className="flex-shrink-0 snap-start w-80 md:w-96"
+                  className="flex-shrink-0 snap-start w-[85vw] md:w-96"
                 >
                   <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 h-full flex flex-col group relative">
                     <div className="h-48 overflow-hidden relative">
@@ -303,7 +303,7 @@ const News: React.FC = () => {
         </AnimatedSection>
 
         {isMobile && (
-          <div className="flex justify-center gap-2 -mt-8 mb-12">
+          <div className="flex justify-center gap-2 mt-4 mb-4">
             {feedItems.map((_, index) => (
               <button
                 key={index}
@@ -315,7 +315,7 @@ const News: React.FC = () => {
                     container.scrollTo({ left: card.offsetLeft, behavior: 'smooth' });
                   }
                 }}
-                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${activeIndex === index ? 'bg-green-600' : 'bg-gray-300'}`}
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${activeIndex === index ? 'bg-green-600 w-5' : 'bg-green-200'}`}
                 aria-label={`Aller à l'élément ${index + 1}`}
               />
             ))}
