@@ -8,6 +8,8 @@ import { motion } from 'framer-motion';
 import { supabase } from '../../../supabaseClient';
 
 import ConfirmationModal from '../../../components/admin/ConfirmationModal';
+import Modal from '../../../components/admin/Modal';
+import EventTicket from '../../../components/EventTicket';
 
 interface Event {
   id: number;
@@ -17,6 +19,7 @@ interface Event {
   location: string;
   image_url: string;
   max_slots: number | null;
+  price?: number | null;
   status: 'draft' | 'published' | 'cancelled';
   created_at?: string;
 }
@@ -27,6 +30,7 @@ interface Registration {
   fullname: string;
   email: string;
   phone?: string;
+  ticket_ref?: string;
   created_at?: string;
 }
 
@@ -55,6 +59,7 @@ const CreateEventPage: React.FC = () => {
     location: '',
     image_url: '',
     max_slots: null,
+    price: 0,
     status: 'published',
   });
 
@@ -68,6 +73,9 @@ const CreateEventPage: React.FC = () => {
   const [confirmModal, setConfirmModal] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void; type?: 'danger'|'info'|'success'}>({
     isOpen: false, title: '', message: '', onConfirm: () => {}
   });
+
+  const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null);
+  const [showTicketModal, setShowTicketModal] = useState(false);
 
   useEffect(() => {
     if (isEditing && id && eventsData) {
@@ -125,6 +133,7 @@ const CreateEventPage: React.FC = () => {
         location: formData.location || '',
         image_url: formData.image_url || '',
         max_slots: formData.max_slots ? parseInt(String(formData.max_slots)) : null,
+        price: formData.price ? parseFloat(String(formData.price)) : 0,
         status: formData.status || 'draft',
       };
 
@@ -246,14 +255,14 @@ const CreateEventPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Places disponibles (vide = illimité)</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Tarif (en FCFA)</label>
                     <input
                       type="number"
-                      min="1"
-                      value={formData.max_slots === null ? '' : formData.max_slots}
-                      onChange={(e) => setFormData({ ...formData, max_slots: e.target.value ? parseInt(e.target.value) : null })}
-                      placeholder="Ex: 100"
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                      min="0"
+                      value={formData.price === null ? '' : formData.price}
+                      onChange={(e) => setFormData({ ...formData, price: e.target.value ? parseFloat(e.target.value) : 0 })}
+                      placeholder="0 pour gratuit"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all font-mono"
                     />
                   </div>
 
@@ -327,9 +336,18 @@ const CreateEventPage: React.FC = () => {
                             {reg.phone && <span><i className="fas fa-phone mr-1.5 text-gray-400"></i>{reg.phone}</span>}
                           </div>
                         </div>
-                        <button onClick={() => handleDeleteRegistration(reg.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors place-self-end sm:place-self-auto" title="Supprimer l'inscription">
-                          <Trash2 size={18} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                           <button 
+                             onClick={() => { setSelectedRegistration(reg); setShowTicketModal(true); }}
+                             className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-bold"
+                             title="Voir le billet"
+                           >
+                             BILLET
+                           </button>
+                           <button onClick={() => handleDeleteRegistration(reg.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors place-self-end sm:place-self-auto" title="Supprimer l'inscription">
+                             <Trash2 size={18} />
+                           </button>
+                        </div>
                      </div>
                    ))}
 
@@ -369,6 +387,32 @@ const CreateEventPage: React.FC = () => {
         message={confirmModal.message} 
         type={confirmModal.type} 
       />
+
+      {selectedRegistration && (
+        <Modal 
+          isOpen={showTicketModal} 
+          onClose={() => setShowTicketModal(false)}
+          title={`Billet de ${selectedRegistration.fullname}`}
+          size="xl"
+        >
+          <div className="p-4">
+            {selectedRegistration && (
+              <EventTicket 
+                event={{
+                  title: formData.title || '',
+                  event_date: formData.event_date || '',
+                  location: formData.location || '',
+                  price: formData.price
+                }}
+                registration={{
+                  fullname: selectedRegistration.fullname,
+                  ticket_ref: selectedRegistration.ticket_ref || `DDB-${selectedRegistration.id}`
+                }}
+              />
+            )}
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

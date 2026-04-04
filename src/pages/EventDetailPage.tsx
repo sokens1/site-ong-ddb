@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { motion } from 'framer-motion';
-import { Calendar, MapPin, Users, X, CheckCircle, ChevronLeft } from 'lucide-react';
+import { Calendar, MapPin, Users, X, CheckCircle, ChevronLeft, Loader2 } from 'lucide-react';
+import EventTicket from '../components/EventTicket';
+import { toPng } from 'html-to-image';
+import { jsPDF } from 'jspdf';
 
 interface Event {
   id: number;
@@ -20,6 +23,9 @@ const EventRegistrationModal: React.FC<{ event: Event; onClose: () => void }> = 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ticketRef, setTicketRef] = useState<string | null>(null);
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, [e.target.id]: e.target.value }));
@@ -39,21 +45,76 @@ const EventRegistrationModal: React.FC<{ event: Event; onClose: () => void }> = 
 
     if (insertError) {
       setError("Une erreur est survenue lors de l'inscription. Veuillez réessayer.");
+      setIsSubmitting(false);
     } else {
-      try {
-        await supabase.functions.invoke('send-event-confirmation', {
-          body: {
-            email: formData.email,
-            fullname: formData.fullname,
-            eventTitle: event.title,
-            eventDate: event.event_date,
-            eventLocation: event.location,
-          }
-        });
-      } catch { /* silent fail */ }
+      // Fetch the generated ticket_ref
+      const { data: regData } = await supabase
+        .from('event_registrations')
+        .select('ticket_ref')
+        .eq('event_id', event.id)
+        .eq('email', formData.email)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+        
+      const generatedRef = regData?.ticket_ref || `DDB-TEMP-${Date.now()}`;
+      setTicketRef(generatedRef);
       setSuccess(true);
+      setIsSubmitting(false);
+      
+      // Start PDF generation and Email sending automatically
+      generateAndSendEmail(generatedRef);
     }
-    setIsSubmitting(false);
+  };
+
+  const generateAndSendEmail = async (ref: string) => {
+    setPdfGenerating(true);
+    try {
+      // Wait a bit for the ticket to render in the modal
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const element = document.getElementById('ddb-premium-ticket');
+      if (!element) throw new Error("Ticket element not found");
+
+      // Generate PNG
+      const dataUrl = await toPng(element, { 
+        pixelRatio: 2,
+        backgroundColor: '#064e3b',
+        cacheBust: true,
+        style: {
+          borderRadius: '0' // Avoid rounded corners in capture if needed
+        }
+      });
+
+      // Create PDF
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'px',
+        format: [800, 320]
+      });
+      
+      pdf.addImage(dataUrl, 'PNG', 0, 0, 800, 320);
+      const pdfBase64 = pdf.output('datauristring').split(',')[1];
+
+      // Call Edge Function with PDF attachment
+      await supabase.functions.invoke('send-event-confirmation', {
+        body: {
+          email: formData.email,
+          fullname: formData.fullname,
+          eventTitle: event.title,
+          eventDate: event.event_date,
+          eventLocation: event.location,
+          ticketRef: ref,
+          price: (event as any).price,
+          pdfAttachment: pdfBase64
+        }
+      });
+      setEmailSent(true);
+    } catch (err) {
+      console.error("Erreur PDF/Email:", err);
+    } finally {
+      setPdfGenerating(false);
+    }
   };
 
   return (
@@ -61,26 +122,62 @@ const EventRegistrationModal: React.FC<{ event: Event; onClose: () => void }> = 
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden"
+        className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="bg-green-800 text-white p-6 relative">
-          <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white">
-            <X size={20} />
+          <button 
+            onClick={onClose} 
+            className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full transition-colors z-20"
+            aria-label="Fermer"
+          >
+            <X size={24} />
           </button>
-          <h3 className="text-xl font-bold mb-1">S'inscrire à l'événement</h3>
-          <p className="text-green-200 text-sm line-clamp-1">{event.title}</p>
+          <h3 className="text-xl font-bold mb-1">
+            {success ? "Inscription Réussie !" : "S'inscrire à l'événement"}
+          </h3>
+          <p className="text-green-200 text-sm line-clamp-1">
+            {success ? "Vérifiez vos e-mails pour votre billet" : event.title}
+          </p>
         </div>
 
         <div className="p-6">
           {success ? (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="text-green-600" size={32} />
+            <div className="text-center py-4">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="text-green-600" size={24} />
               </div>
-              <h4 className="text-xl font-bold text-gray-900 mb-2">Inscription confirmée !</h4>
-              <p className="text-gray-500 mb-6">Vous êtes bien inscrit à <strong>{event.title}</strong>. Merci pour votre engagement.</p>
-              <button onClick={onClose} className="bg-green-700 text-white font-bold py-2 px-8 rounded-xl hover:bg-green-800 transition-colors w-full sm:w-auto">
+              <h4 className="text-xl font-bold text-gray-900 mb-1">Inscription confirmée !</h4>
+              <p className="text-gray-500 mb-4 text-sm">
+                Merci <strong>{formData.fullname}</strong>. 
+                {emailSent ? " Votre billet PDF a été envoyé par email." : " Nous préparons votre billet..."}
+              </p>
+              
+              {pdfGenerating && (
+                <div className="flex items-center justify-center gap-2 text-green-700 text-xs font-bold mb-4 animate-pulse">
+                  <Loader2 className="animate-spin" size={14} />
+                  GÉNÉRATION DU BILLET PDF...
+                </div>
+              )}
+              
+              <div className="mb-8 w-full overflow-x-auto pb-4 scrollbar-hide">
+                <div className="min-w-[700px] md:min-w-0 scale-[0.6] sm:scale-[0.8] md:scale-100 origin-top-left md:origin-top flex justify-center">
+                  <EventTicket 
+                    event={{
+                      title: event.title,
+                      event_date: event.event_date,
+                      location: event.location,
+                      price: (event as any).price
+                    }}
+                    registration={{
+                      fullname: formData.fullname,
+                      ticket_ref: ticketRef || 'DDB-PENDING'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <button onClick={onClose} className="bg-gray-100 text-gray-600 font-bold py-2 px-8 rounded-xl hover:bg-gray-200 transition-colors w-full sm:w-auto">
                 Fermer
               </button>
             </div>

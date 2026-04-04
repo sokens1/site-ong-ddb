@@ -27,7 +27,7 @@ serve(async (req: Request) => {
         const bodyText = await req.text()
         if (!bodyText) throw new Error('Empty request body')
 
-        const { email, fullname, eventTitle, eventDate, eventLocation } = JSON.parse(bodyText)
+        const { email, fullname, eventTitle, eventDate, eventLocation, ticketRef, price, pdfAttachment } = JSON.parse(bodyText)
 
         if (!email || !fullname || !eventTitle || !eventDate) {
             throw new Error('Missing required fields for event ticket')
@@ -43,8 +43,8 @@ serve(async (req: Request) => {
         });
 
         // Generate dynamic QR Code Data
-        const qrData = encodeURIComponent(`ONG DDB Ticket\nName: ${fullname}\nEvent: ${eventTitle}\nDate: ${formattedDate}`);
-        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${qrData}&color=0f5132&bgcolor=ffffff`;
+        const qrData = ticketRef || `DDB-${fullname}-${eventTitle}`;
+        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}&color=064e3b&bgcolor=ffffff`;
 
         const finalHtmlContent = `
           <!DOCTYPE html>
@@ -52,70 +52,66 @@ serve(async (req: Request) => {
             <head>
               <meta charset="utf-8">
               <style>
-                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; margin: 0; padding: 40px 20px; }
-                .ticket-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-                .ticket-header { background-color: #14532d; color: #ffffff; padding: 30px; text-align: center; }
-                .ticket-header h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
-                .ticket-header p { margin: 5px 0 0 0; color: #bbf7d0; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; }
-                .ticket-body { padding: 40px 30px; text-align: center; }
-                .greeting { font-size: 20px; font-weight: bold; color: #111827; margin-bottom: 20px; }
-                .message { font-size: 15px; color: #4b5563; line-height: 1.6; margin-bottom: 30px; }
-                .event-card { background-color: #f0fdf4; border: 2px dashed #86efac; border-radius: 12px; padding: 25px; margin-bottom: 30px; }
-                .event-title { font-size: 22px; font-weight: bold; color: #166534; margin: 0 0 15px 0; }
-                .event-detail { font-size: 15px; color: #14532d; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; }
-                .event-detail strong { margin-right: 5px; }
-                .qr-section { margin-top: 30px; padding-top: 30px; border-top: 1px solid #e5e7eb; }
-                .qr-code { width: 150px; height: 150px; border: 4px solid #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; }
-                .qr-text { font-size: 12px; color: #6b7280; margin-top: 10px; text-transform: uppercase; letter-spacing: 1px; }
-                .ticket-footer { background-color: #f8fafc; padding: 20px; text-align: center; font-size: 13px; color: #94a3b8; border-top: 1px solid #e5e7eb; }
+                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; margin: 0; padding: 40px 10px; color: #1e293b; }
+                .container { max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+                .header { text-align: center; margin-bottom: 30px; }
+                .logo { color: #064e3b; font-size: 24px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; }
+                .content { line-height: 1.6; font-size: 16px; }
+                .event-box { background: #f0fdf4; border: 1px solid #dcfce7; padding: 20px; border-radius: 12px; margin: 25px 0; }
+                .event-title { font-weight: 800; color: #064e3b; font-size: 18px; margin-bottom: 10px; }
+                .footer { text-align: center; margin-top: 40px; font-size: 12px; color: #64748b; }
+                .btn { display: inline-block; background: #064e3b; color: white !important; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: 700; margin-top: 20px; }
               </style>
             </head>
             <body>
-              <div class="ticket-container">
-                <div class="ticket-header">
-                  <h1>Billet d'entrée</h1>
-                  <p>ONG DDB Événements</p>
+              <div class="container">
+                <div class="header">
+                  <div class="logo">ONG DDB</div>
                 </div>
-                
-                <div class="ticket-body">
-                  <div class="greeting">Bonjour ${fullname},</div>
-                  <div class="message">
-                    Votre inscription a été confirmée avec succès. Veuillez présenter ce billet (sur votre téléphone ou imprimé) lors de votre arrivée à l'événement.
-                  </div>
+                <div class="content">
+                  <p>Bonjour <strong>${fullname}</strong>,</p>
+                  <p>Nous avons le plaisir de vous confirmer votre inscription pour l'événement suivant :</p>
                   
-                  <div class="event-card">
-                    <h2 class="event-title">${eventTitle}</h2>
-                    <div class="event-detail">
-                      <strong>Date :</strong> ${formattedDate}
+                  <div class="event-box">
+                    <div class="event-title">${eventTitle}</div>
+                    <div style="font-size: 14px; color: #166534;">
+                      📅 ${formattedDate}<br>
+                      📍 ${eventLocation || 'Lieu à confirmer'}
                     </div>
-                    ${eventLocation ? `
-                    <div class="event-detail">
-                      <strong>Lieu :</strong> ${eventLocation}
-                    </div>
-                    ` : ''}
                   </div>
+
+                  <p><strong>Votre billet officiel est joint à cet e-mail en format PDF.</strong></p>
+                  <p>Veuillez le conserver sur votre téléphone ou l'imprimer pour le présenter à l'entrée.</p>
                   
-                  <div class="qr-section">
-                    <img src="${qrCodeUrl}" alt="QR Code Billet" class="qr-code" />
-                    <div class="qr-text">Billet Personnel - Ne pas partager</div>
+                  <div style="text-align: center;">
+                    <a href="https://ong-ddb.org/events" class="btn">Voir d'autres événements</a>
                   </div>
                 </div>
                 
-                <div class="ticket-footer">
-                  Ce billet vous donne accès à l'événement indiqué. L'accès peut être refusé si le billet n'est pas valide ou s'il a déjà été scanné.<br><br>
-                  © ${new Date().getFullYear()} ONG DDB. Tous droits réservés.
+                <div class="footer">
+                  © ${new Date().getFullYear()} ONG DDB - Agissons pour un avenir durable.<br>
+                  Contact : ${SENDER_EMAIL}
                 </div>
               </div>
             </body>
           </html>
         `;
 
-        const payload = {
+        const payload: any = {
             sender: { name: SENDER_NAME, email: SENDER_EMAIL },
             to: [{ email: email, name: fullname }],
-            subject: `Votre Billet : ${eventTitle}`,
+            subject: `Votre Billet PDF : ${eventTitle} - ONG DDB`,
             htmlContent: finalHtmlContent
         };
+
+        if (pdfAttachment) {
+            payload.attachment = [
+                {
+                    content: pdfAttachment,
+                    name: `Billet_${eventTitle.replace(/[^a-z0-9]/gi, '_')}.pdf`
+                }
+            ];
+        }
 
         const res = await fetch('https://api.brevo.com/v3/smtp/email', {
             method: 'POST',

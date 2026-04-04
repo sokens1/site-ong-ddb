@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../supabaseClient';
-import { Calendar, MapPin, Users, ArrowRight } from 'lucide-react';
+import { Calendar, MapPin, Users, ArrowRight, Tag } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 interface Event {
@@ -13,6 +13,7 @@ interface Event {
   location: string;
   image_url: string | null;
   max_slots: number | null;
+  price?: number | null;
   status: string;
 }
 
@@ -171,6 +172,12 @@ const EventsSection: React.FC = () => {
                         <div className="flex items-center gap-2 text-sm text-gray-500">
                           <Users size={14} className="text-green-600 flex-shrink-0" />
                           <span>{event.max_slots} places limitées</span>
+                        </div>
+                      )}
+                      {event.price !== undefined && event.price !== null && (
+                        <div className="flex items-center gap-2 text-sm font-bold text-green-700 bg-green-50 w-fit px-2 py-0.5 rounded-lg">
+                          <Tag size={12} />
+                          <span>{event.price > 0 ? `${new Intl.NumberFormat('fr-FR').format(event.price)} FCFA` : 'Gratuit'}</span>
                         </div>
                       )}
                     </div>
