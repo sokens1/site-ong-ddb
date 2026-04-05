@@ -139,7 +139,7 @@ const About: React.FC = () => {
                 <img
                   src="/images/image-president.JPG"
                   alt="Franck Ondeno, Président"
-                  className="w-14 h-14 rounded-full object-cover border-2 border-green-600 shadow-md flex-shrink-0"
+                  className="w-14 h-14 rounded-full object-cover object-top border-2 border-green-600 shadow-md flex-shrink-0"
                 />
               </div>
             </motion.div>
