@@ -17,6 +17,9 @@ import {
   UserCog,
   Gift,
   CalendarDays,
+  ScanLine,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { useNotifications } from '../../hooks/useNotifications';
 import DiscussionSidebar from '../DiscussionSidebar';
@@ -53,6 +56,7 @@ const AdminLayout: React.FC = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [discussionOpen, setDiscussionOpen] = useState(false);
+  const [eventsMenuOpen, setEventsMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { role, userId } = useUserRole();
@@ -231,9 +235,9 @@ const AdminLayout: React.FC = () => {
       )}
 
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-green-800 text-white transform transition-all duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0 shadow-2xl lg:shadow-none' : '-translate-x-full'
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-green-800 text-white transform transition-all duration-300 ease-in-out flex flex-col ${sidebarOpen ? 'translate-x-0 shadow-2xl lg:shadow-none' : '-translate-x-full'
         }`}>
-        <div className="flex items-center justify-between h-16 px-4 border-b border-green-700">
+        <div className="flex items-center justify-between h-16 px-4 border-b border-green-700 flex-shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
               <span className="text-green-800 font-bold text-xl">D</span>
@@ -248,10 +252,56 @@ const AdminLayout: React.FC = () => {
           </button>
         </div>
 
-        <nav className="mt-4 px-2 space-y-1">
+        <nav className="flex-1 overflow-y-auto mt-4 px-2 space-y-1 pb-4">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
+
+            // Events accordion
+            if (item.id === 'events') {
+              const isEventsActive = location.pathname.startsWith('/admin/events') || location.pathname.startsWith('/admin/scan');
+              return (
+                <div key={item.id}>
+                  <button
+                    onClick={() => setEventsMenuOpen(!eventsMenuOpen)}
+                    className={`flex items-center w-full px-4 py-2.5 rounded-lg transition-all text-sm font-medium ${
+                      isEventsActive ? 'bg-green-700 text-white shadow-inner' : 'text-green-100 hover:bg-green-700/50 hover:text-white'
+                    }`}
+                  >
+                    <CalendarDays size={18} className="mr-3" />
+                    Gestion des événements
+                    <span className="ml-auto">
+                      {eventsMenuOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    </span>
+                  </button>
+                  {eventsMenuOpen && (
+                    <div className="ml-4 mt-1 space-y-1 border-l-2 border-green-600/40 pl-3">
+                      <Link
+                        to="/admin/events"
+                        onClick={() => { if (window.innerWidth < 1024) setSidebarOpen(false); }}
+                        className={`flex items-center px-3 py-2 rounded-lg transition-all text-sm font-medium ${
+                          location.pathname.startsWith('/admin/events') ? 'bg-green-700 text-white' : 'text-green-100 hover:bg-green-700/50 hover:text-white'
+                        }`}
+                      >
+                        <CalendarDays size={16} className="mr-2.5" />
+                        Événements
+                      </Link>
+                      <Link
+                        to="/admin/scan"
+                        onClick={() => { if (window.innerWidth < 1024) setSidebarOpen(false); }}
+                        className={`flex items-center px-3 py-2 rounded-lg transition-all text-sm font-medium ${
+                          location.pathname === '/admin/scan' ? 'bg-green-700 text-white' : 'text-green-100 hover:bg-green-700/50 hover:text-white'
+                        }`}
+                      >
+                        <ScanLine size={16} className="mr-2.5" />
+                        Scan billets
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             return (
               <Link
                 key={item.path}
@@ -269,7 +319,7 @@ const AdminLayout: React.FC = () => {
           })}
         </nav>
 
-        <div className="absolute bottom-0 w-full p-4 border-t border-green-700 bg-green-800/50 backdrop-blur-sm">
+        <div className="p-4 border-t border-green-700 bg-green-800/50 backdrop-blur-sm flex-shrink-0">
           <button
             onClick={handleLogout}
             className="flex items-center w-full px-4 py-2 text-red-100 hover:bg-red-500/20 hover:text-red-400 rounded-lg transition text-sm font-medium"
@@ -292,7 +342,9 @@ const AdminLayout: React.FC = () => {
               <Menu size={24} />
             </button>
             <h2 className="text-lg font-semibold text-gray-700 hidden md:block">
-              {menuItems.find(item => location.pathname === item.path)?.label || 'Administration'}
+              {location.pathname === '/admin/scan' ? 'Scan des billets' :
+               location.pathname.startsWith('/admin/events') ? 'Événements' :
+               menuItems.find(item => location.pathname === item.path)?.label || 'Administration'}
             </h2>
           </div>
 

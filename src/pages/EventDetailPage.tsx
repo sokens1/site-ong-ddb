@@ -32,6 +32,8 @@ interface Event {
   status: string;
   form_fields?: FormField[];
   feedback_config?: FeedbackConfig;
+  event_dates?: { date: string; label?: string }[];
+  logo_url?: string;
 }
 
 // ─── Registration Modal (Step-by-step) ───────────────────────────────────────
@@ -83,7 +85,7 @@ const generateTicketPDF = async (
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text("BILLET D'ENTRÉE — ONG Développement Durable et Bien-Être", 105, 14, { align: 'center' });
+  doc.text("BILLET D'ENTRÉE OFFICIEL", 105, 14, { align: 'center' });
 
   // Divider
   doc.setDrawColor(74, 222, 128);
@@ -108,7 +110,14 @@ const generateTicketPDF = async (
   // Fine print
   doc.setFontSize(8);
   doc.setTextColor(156, 163, 175);
-  doc.text('Ce billet est personnel et non cessible.', 10, 92);
+  doc.text('Ce billet est personnel et non cessible.', 10, 88);
+
+  // Miniature ONG DDB
+  doc.setFontSize(7);
+  doc.setTextColor(107, 114, 128);
+  doc.setFont('helvetica', 'italic');
+  doc.text('ONG Développement Durable et Bien-Être', 10, 94);
+  doc.setFont('helvetica', 'normal');
 
   // QR box background
   doc.setDrawColor(20, 83, 45);
@@ -151,15 +160,16 @@ const EventRegistrationModal: React.FC<{
   onClose: () => void;
   onGeneratePoster: (name: string) => void;
 }> = ({ event, onClose, onGeneratePoster }) => {
-  const customFields = event.form_fields || [];
+  const customFields = (event.form_fields || []).filter((f: any) => f && f.label && f.label.trim() !== '');
+  const hasCustomFields = customFields.length > 0;
   
-  // Default fields: only fullname and email (required for ticket & visual)
-  // Phone is removed from default fields
-  const allFields = [
-    { id: 'fullname', label: 'Votre nom & prénom', type: 'text', required: true, hint: 'Comment doit-on vous appeler ?' },
-    { id: 'email', label: 'Votre adresse email', type: 'email', required: true, hint: 'Pour recevoir votre billet de confirmation.' },
-    ...customFields
-  ];
+  // If there are custom fields, only display them. Otherwise show default name and email.
+  const allFields = hasCustomFields
+    ? customFields
+    : [
+        { id: 'fullname', label: 'Votre nom & prénom', type: 'text', required: true, hint: 'Comment doit-on vous appeler ?' },
+        { id: 'email', label: 'Votre adresse email', type: 'email', required: true, hint: 'Pour recevoir votre billet de confirmation.' }
+      ];
 
   const fieldsPerPage = 4;
   const totalSteps = Math.ceil(allFields.length / fieldsPerPage);
@@ -167,6 +177,7 @@ const EventRegistrationModal: React.FC<{
 
   const [formData, setFormData] = useState({ fullname: '', email: '' });
   const [customData, setCustomData] = useState<Record<string, any>>({});
+  const [registeredName, setRegisteredName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -198,6 +209,11 @@ const EventRegistrationModal: React.FC<{
           if (Array.isArray(val) && val.length === 0) return false;
           if (typeof val === 'string' && val.trim() === '') return false;
         }
+        // Custom email field format validation
+        if (field.label.toLowerCase().includes('email') || field.label.toLowerCase().includes('courriel')) {
+          const val = customData[field.id];
+          if (val && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return false;
+        }
       }
     }
     return true;
@@ -216,10 +232,44 @@ const EventRegistrationModal: React.FC<{
     setIsSubmitting(true);
     setError(null);
 
+    // Extract name and email from custom fields if custom fields are active
+    let ticketName = '';
+    let ticketEmail = '';
+
+    if (hasCustomFields) {
+      // Find email field
+      const emailField = customFields.find(f => f.label.toLowerCase().includes('email') || f.label.toLowerCase().includes('courriel') || f.label.toLowerCase().includes('mail'));
+      if (emailField) {
+        ticketEmail = customData[emailField.id] || '';
+      }
+
+      // Find name fields
+      const nameFields = customFields.filter(f => f.label.toLowerCase().includes('nom') || f.label.toLowerCase().includes('prénom') || f.label.toLowerCase().includes('prenom') || f.label.toLowerCase().includes('name') || f.label.toLowerCase().includes('fullname'));
+      if (nameFields.length > 0) {
+        ticketName = nameFields.map(f => customData[f.id] || '').filter(Boolean).join(' ');
+      }
+
+      // Fallbacks
+      if (!ticketEmail) {
+        const foundEmail = Object.values(customData).find(val => typeof val === 'string' && val.includes('@'));
+        ticketEmail = foundEmail || '';
+      }
+      if (!ticketName) {
+        const firstText = customFields.find(f => f.type === 'text');
+        if (firstText) ticketName = customData[firstText.id] || '';
+      }
+    } else {
+      ticketName = formData.fullname;
+      ticketEmail = formData.email;
+    }
+
+    const finalName = ticketName.trim() || 'Participant';
+    const finalEmail = ticketEmail.trim() || 'visiteur@lcoysgabon.org';
+
     const { error: insertError } = await supabase.from('event_registrations').insert([{
       event_id: event.id,
-      fullname: formData.fullname,
-      email: formData.email,
+      fullname: finalName,
+      email: finalEmail,
       phone: customData.phone || null,
       custom_data: customData,
     }]);
@@ -231,43 +281,41 @@ const EventRegistrationModal: React.FC<{
       return;
     }
 
-    // Inscription réussie en base → débloquer l'UI immédiatement
+    setRegisteredName(finalName);
     setSuccess(true);
     setIsSubmitting(false);
 
-    // Générer le PDF dans le navigateur et déclencher le téléchargement immédiatement
+    // Generate ticket PDF using the resolved name and email
     const cleanTitle = event.title.replace(/[^a-z0-9]/gi, '_');
     let pdfBase64 = '';
     try {
       const doc = await generateTicketPDF(
-        formData.fullname,
+        finalName,
         event.title,
         event.event_date,
         event.location
       );
-      // Téléchargement sécurisé et natif sans corruption
       doc.save(`Billet_${cleanTitle}.pdf`);
       
-      // Extraction base64 pour la pièce jointe Brevo
       const dataUri = doc.output('datauristring');
       pdfBase64 = dataUri.split('base64,')[1];
     } catch (pdfErr) {
       console.error('Erreur génération PDF (non bloquant):', pdfErr);
     }
 
-    // Envoyer le mail avec le PDF en pièce jointe en arrière-plan
+    // Send confirmation email
     try {
       const timeoutPromise = new Promise<null>((_, reject) =>
         setTimeout(() => reject(new Error('Timeout')), 25000)
       );
       const invokePromise = supabase.functions.invoke('send-event-confirmation', {
         body: {
-          email: formData.email,
-          fullname: formData.fullname,
+          email: finalEmail,
+          fullname: finalName,
           eventTitle: event.title,
           eventDate: event.event_date,
           eventLocation: event.location,
-          pdfBase64: pdfBase64, // PDF généré côté client
+          pdfBase64: pdfBase64,
           pdfName: `Billet_${cleanTitle}.pdf`,
         }
       });
@@ -427,7 +475,7 @@ const EventRegistrationModal: React.FC<{
                 <p className="font-bold text-green-800 mb-1 text-sm">Faites le savoir !</p>
                 <p className="text-xs text-green-700 mb-3">Générez votre affiche et partagez sur les réseaux sociaux.</p>
                 <button
-                  onClick={() => { onClose(); onGeneratePoster(formData.fullname); }}
+                  onClick={() => { onClose(); onGeneratePoster(registeredName || formData.fullname); }}
                   className="w-full bg-green-600 text-white font-bold py-2.5 px-4 rounded-xl hover:bg-green-700 transition-colors text-sm"
                 >
                   Générer mon visuel "J'y serai"
@@ -629,8 +677,8 @@ const EventDetailPage: React.FC = () => {
   const [posterState, setPosterState] = useState<{isOpen: boolean; name: string}>({ isOpen: false, name: '' });
 
   const fetchEventData = async () => {
+    if (!id) { setLoading(false); return; }
     setLoading(true);
-    if (!id) return;
     try {
       const { data, error } = await supabase.from('events').select('*').eq('id', id).single();
       if (!error && data) setEvent(data);
@@ -706,15 +754,29 @@ const EventDetailPage: React.FC = () => {
           </h1>
 
           <div className="flex flex-wrap gap-4 md:gap-8 bg-white/10 backdrop-blur-md border border-white/20 p-4 md:p-6 rounded-2xl w-fit">
-            <div className="flex items-center gap-3 text-white">
-              <div className="w-10 h-10 rounded-full bg-green-500/30 flex items-center justify-center">
+            <div className="flex items-start gap-3 text-white">
+              <div className="w-10 h-10 rounded-full bg-green-500/30 flex items-center justify-center mt-0.5">
                 <Calendar size={20} className="text-green-300" />
               </div>
               <div>
-                <p className="text-xs text-green-200 uppercase tracking-widest font-semibold mb-0.5">Date</p>
-                <p className="font-medium text-sm md:text-base">
-                  {new Date(event.event_date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                </p>
+                <p className="text-xs text-green-200 uppercase tracking-widest font-semibold mb-1">Date(s)</p>
+                <div className="space-y-1.5">
+                  <p className="font-medium text-sm md:text-base">
+                    {event.event_dates && event.event_dates.length > 0 && (
+                      <span className="bg-white/10 text-green-200 text-[10px] font-bold px-1.5 py-0.5 rounded mr-2 uppercase">Début</span>
+                    )}
+                    {new Date(event.event_date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                  {(event.event_dates || []).map((dateEntry, idx) => {
+                    if (!dateEntry.date) return null;
+                    return (
+                      <p key={idx} className="font-medium text-sm md:text-base">
+                        <span className="bg-white/10 text-green-200 text-[10px] font-bold px-1.5 py-0.5 rounded mr-2 uppercase">{dateEntry.label || `Jour ${idx + 2}`}</span>
+                        {new Date(dateEntry.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 

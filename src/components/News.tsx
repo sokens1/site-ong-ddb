@@ -93,19 +93,19 @@ const News: React.FC = () => {
       try {
         const now = new Date().toISOString().split('T')[0];
         
-        // Fetch News
+        // Fetch News (only required fields)
         const { data: newsData, error: newsError } = await supabase
           .from('news')
-          .select('*')
+          .select('id, title, image, date, description, status')
           .eq('status', 'published')
           .lte('date', now)
           .order('date', { ascending: false })
           .limit(5);
 
-        // Fetch Videos
+        // Fetch Videos (only required fields)
         const { data: videosData, error: videosError } = await supabase
           .from('videos')
-          .select('*')
+          .select('id, title, thumbnailpath, date, description, videourl, filepath')
           .lte('date', now)
           .order('date', { ascending: false })
           .limit(5);
@@ -256,7 +256,7 @@ const News: React.FC = () => {
                 >
                   <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 h-full flex flex-col group relative">
                     <div className="h-48 overflow-hidden relative">
-                      <img src={item.image} alt={item.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      <img src={item.image} alt={item.title} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                       <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded text-xs font-bold text-green-700 shadow flex items-center gap-1.5">
                         {item.category === 'Vidéo' ? <i className="fas fa-play text-red-500"></i> : <i className="fas fa-newspaper text-blue-500"></i>}
                         {item.category}

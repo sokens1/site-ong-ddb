@@ -53,7 +53,7 @@ const EventsSection: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('events')
-        .select('*')
+        .select('id, title, event_date, location, image_url, description, max_slots, status')
         .eq('status', 'published')
         .order('event_date', { ascending: false })
         .limit(5);
@@ -126,6 +126,7 @@ const EventsSection: React.FC = () => {
                     <img 
                       src={event.image_url} 
                       alt={event.title} 
+                      loading="lazy"
                       className="relative z-10 max-w-full max-h-full object-contain transition-transform duration-500 group-hover:scale-105" 
                     />
                   ) : (

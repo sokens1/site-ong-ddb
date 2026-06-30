@@ -33,6 +33,8 @@ interface Event {
   form_fields?: FormField[];
   feedback_config?: FeedbackConfig;
   created_at?: string;
+  event_dates?: { date: string; label?: string }[];
+  logo_url?: string;
 }
 
 interface Registration {
@@ -241,6 +243,8 @@ const CreateEventPage: React.FC = () => {
     status: 'published',
     form_fields: [],
     feedback_config: { show_stars: true, fields: [] },
+    event_dates: [],
+    logo_url: '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -274,7 +278,13 @@ const CreateEventPage: React.FC = () => {
           } catch (e) {}
         }
         const fc = eventItem.feedback_config ?? { show_stars: true, fields: [] };
-        setFormData({ ...eventItem, event_date: dateValue, feedback_config: fc });
+        setFormData({
+          ...eventItem,
+          event_date: dateValue,
+          feedback_config: fc,
+          event_dates: eventItem.event_dates || [],
+          logo_url: eventItem.logo_url || '',
+        });
         fetchRegistrations(parseInt(id));
         fetchFeedbacks(parseInt(id));
       }
@@ -326,6 +336,8 @@ const CreateEventPage: React.FC = () => {
         status: formData.status || 'draft',
         form_fields: formData.form_fields || [],
         feedback_config: formData.feedback_config ?? { show_stars: true, fields: [] },
+        event_dates: formData.event_dates || [],
+        logo_url: formData.logo_url || null,
       };
       if (isEditing && id) {
         await update(parseInt(id), dataToSubmit);
@@ -423,15 +435,27 @@ const CreateEventPage: React.FC = () => {
         {activeTab === 'info' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
             <form onSubmit={handleSave} className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Image de couverture *</label>
-                <p className="text-xs text-gray-400 mb-3">Une image est obligatoire pour illustrer l'événement sur la page publique.</p>
-                <ImageUpload
-                  value={formData.image_url || ''}
-                  onChange={(url) => setFormData({ ...formData, image_url: url })}
-                  bucket="ong-backend"
-                  folder="events"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Image de couverture *</label>
+                  <p className="text-xs text-gray-400 mb-3">Une image est obligatoire pour illustrer l'événement sur la page publique.</p>
+                  <ImageUpload
+                    value={formData.image_url || ''}
+                    onChange={(url) => setFormData({ ...formData, image_url: url })}
+                    bucket="ong-backend"
+                    folder="events"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Logo de l'événement (optionnel)</label>
+                  <p className="text-xs text-gray-400 mb-3">Sera affiché sur le visuel de l'événement et sur le ticket "J'y serai".</p>
+                  <ImageUpload
+                    value={formData.logo_url || ''}
+                    onChange={(url) => setFormData({ ...formData, logo_url: url })}
+                    bucket="ong-backend"
+                    folder="events"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -445,12 +469,71 @@ const CreateEventPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Date et heure *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Date et heure (Début) *</label>
                   <input
                     type="datetime-local" required value={formData.event_date || ''}
                     onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all"
                   />
+                </div>
+                <div className="sm:col-span-2 border border-gray-150 p-4 rounded-xl bg-gray-50/50 space-y-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700">Dates additionnelles (événement sur plusieurs jours)</label>
+                    <p className="text-xs text-gray-400">Ajoutez d'autres dates si l'événement se tient sur plusieurs jours.</p>
+                  </div>
+                  <div className="space-y-3">
+                    {(formData.event_dates || []).map((dateEntry, idx) => (
+                      <div key={idx} className="flex gap-3 items-center bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+                        <div className="flex-1">
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Libellé (ex: Jour 2, Session 2)</label>
+                          <input
+                            type="text"
+                            value={dateEntry.label || ''}
+                            onChange={(e) => {
+                              const newDates = [...(formData.event_dates || [])];
+                              newDates[idx] = { ...newDates[idx], label: e.target.value };
+                              setFormData({ ...formData, event_dates: newDates });
+                            }}
+                            placeholder={`Jour ${idx + 2}`}
+                            className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Date et heure</label>
+                          <input
+                            type="datetime-local"
+                            value={dateEntry.date || ''}
+                            onChange={(e) => {
+                              const newDates = [...(formData.event_dates || [])];
+                              newDates[idx] = { ...newDates[idx], date: e.target.value };
+                              setFormData({ ...formData, event_dates: newDates });
+                            }}
+                            className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newDates = (formData.event_dates || []).filter((_, i) => i !== idx);
+                            setFormData({ ...formData, event_dates: newDates });
+                          }}
+                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg mt-5 transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newDates = [...(formData.event_dates || []), { date: '', label: `Jour ${(formData.event_dates || []).length + 2}` }];
+                        setFormData({ ...formData, event_dates: newDates });
+                      }}
+                      className="flex items-center gap-1.5 text-xs text-green-600 hover:text-green-700 font-bold py-1.5 px-3 rounded-lg border border-dashed border-green-200 hover:bg-green-50/50 transition-colors"
+                    >
+                      <Plus size={14} /> Ajouter une date additionnelle
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Lieu</label>
