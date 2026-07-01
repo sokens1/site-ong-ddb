@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ChevronUp } from 'lucide-react';
 
 const BackToTop: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -29,7 +30,7 @@ const BackToTop: React.FC = () => {
       className={`back-to-top ${isVisible ? 'visible' : ''}`}
       aria-label="Retour en haut"
     >
-      <i className="fas fa-chevron-up"></i>
+      <ChevronUp size={22} strokeWidth={2.5} />
     </button>
   );
 };
