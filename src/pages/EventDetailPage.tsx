@@ -110,7 +110,6 @@ const generateTicketPDF = async (
   const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString('fr-FR', {
       day: 'numeric', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit',
     });
 
   // Build date line — "Du X au X" si plusieurs dates, sinon date unique
@@ -977,21 +976,18 @@ const EventDetailPage: React.FC = () => {
                     const extras = (event.event_dates || []).filter(d => d.date);
                     const fmtD = (d: string) =>
                       new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
-                    const fmtT = (d: string) =>
-                      new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
                     if (extras.length > 0) {
                       const last = extras[extras.length - 1].date;
                       return (
                         <p className="font-medium text-sm md:text-base">
-                          <span className="whitespace-nowrap">Du {fmtD(event.event_date)} à {fmtT(event.event_date)}</span>{' '}
-                          <span className="whitespace-nowrap">au {fmtD(last)} à {fmtT(last)}</span>
+                          <span className="whitespace-nowrap">Du {fmtD(event.event_date)}</span>{' '}
+                          <span className="whitespace-nowrap">au {fmtD(last)}</span>
                         </p>
                       );
                     }
                     return (
                       <p className="font-medium text-sm md:text-base">
-                        {new Date(event.event_date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}{' '}
-                        <span className="whitespace-nowrap">à {fmtT(event.event_date)}</span>
+                        {new Date(event.event_date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                       </p>
                     );
                   })()}

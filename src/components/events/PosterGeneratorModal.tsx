@@ -75,8 +75,17 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
     new Promise((resolve, reject) => {
       const img = new Image();
       img.crossOrigin = 'Anonymous';
-      img.onload = () => resolve(img);
-      img.onerror = reject;
+      const timer = setTimeout(() => reject(new Error('timeout')), 6000);
+      img.onload = () => { clearTimeout(timer); resolve(img); };
+      img.onerror = () => {
+        clearTimeout(timer);
+        // Fallback sans CORS (pour les URLs sans header Access-Control)
+        const img2 = new Image();
+        const timer2 = setTimeout(() => reject(new Error('timeout')), 4000);
+        img2.onload = () => { clearTimeout(timer2); resolve(img2); };
+        img2.onerror = () => { clearTimeout(timer2); reject(new Error('error')); };
+        img2.src = src;
+      };
       img.src = src;
     });
 
@@ -152,63 +161,79 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
 
     setIsGenerating(true);
 
-    try { await document.fonts.load('bold 76px "Dancing Script"'); } catch { /* silent */ }
+    // Collecter toutes les URLs à charger
+    const orgUrls  = event.organizer_logos || [];
+    const partUrls = event.partner_logos   || [];
+    const allUrls: (string | null)[] = [
+      event.image_url ?? null,
+      event.logo_url  ?? null,
+      photo           ?? null,
+      ...orgUrls,
+      ...partUrls,
+    ];
 
-    canvas.width = 1080;
+    // Chargement parallèle de toutes les images + font simultanément
+    const [loaded] = await Promise.all([
+      Promise.all(allUrls.map(url =>
+        url ? loadImage(url).catch(() => null) : Promise.resolve(null)
+      )),
+      document.fonts.load('bold 76px "Dancing Script"').catch(() => {}),
+    ]);
+
+    const bgImg   = loaded[0];
+    const logoImg = loaded[1];
+    const userImg = loaded[2];
+    const orgImgs  = loaded.slice(3, 3 + orgUrls.length) as (HTMLImageElement | null)[];
+    const partImgs = loaded.slice(3 + orgUrls.length)    as (HTMLImageElement | null)[];
+
+    canvas.width  = 1080;
     canvas.height = 1350;
 
     // Background
     ctx.fillStyle = '#064e3b';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    if (event.image_url) {
-      try {
-        const bgImg = await loadImage(event.image_url);
-        const ratio = Math.max(canvas.width / bgImg.width, (canvas.height * 0.75) / bgImg.height);
-        const dw = bgImg.width * ratio, dh = bgImg.height * ratio;
-        const dx = (canvas.width - dw) / 2;
-        ctx.globalAlpha = 0.35;
-        ctx.drawImage(bgImg, dx, 0, dw, dh);
-        ctx.globalAlpha = 1;
-        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.72);
-        grad.addColorStop(0, 'rgba(6,78,59,0)');
-        grad.addColorStop(1, 'rgba(6,78,59,1)');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, canvas.width, canvas.height * 0.72);
-      } catch { /* silent */ }
+    if (bgImg) {
+      const ratio = Math.max(canvas.width / bgImg.width, (canvas.height * 0.75) / bgImg.height);
+      const dw = bgImg.width * ratio, dh = bgImg.height * ratio;
+      const dx = (canvas.width - dw) / 2;
+      ctx.globalAlpha = 0.35;
+      ctx.drawImage(bgImg, dx, 0, dw, dh);
+      ctx.globalAlpha = 1;
+      const grad = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.72);
+      grad.addColorStop(0, 'rgba(6,78,59,0)');
+      grad.addColorStop(1, 'rgba(6,78,59,1)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height * 0.72);
     }
 
-    // Logo top-left — étiquette blanche agrandie
-    if (event.logo_url) {
-      try {
-        const logo = await loadImage(event.logo_url);
-        const lh = 148;
-        const lw = Math.min((logo.width / logo.height) * lh, 520);
-        const bx = 48, by = 42, bpadH = 32, bpadV = 22;
-        ctx.fillStyle = '#ffffff';
-        drawRoundedRect(ctx, bx, by, lw + bpadH * 2, lh + bpadV * 2, 24);
-        ctx.fill();
-        ctx.drawImage(logo, bx + bpadH, by + bpadV, lw, lh);
-      } catch { /* silent */ }
+    // Logo top-left — étiquette blanche
+    if (logoImg) {
+      const lh = 148;
+      const lw = Math.min((logoImg.width / logoImg.height) * lh, 520);
+      const bx = 48, by = 42, bpadH = 32, bpadV = 22;
+      ctx.fillStyle = '#ffffff';
+      drawRoundedRect(ctx, bx, by, lw + bpadH * 2, lh + bpadV * 2, 24);
+      ctx.fill();
+      ctx.drawImage(logoImg, bx + bpadH, by + bpadV, lw, lh);
     }
 
     // Dates at top
     let dateStr = '';
     if (event.event_date) {
       const mainDate = new Date(event.event_date);
-      const day = mainDate.getDate();
+      const day   = mainDate.getDate();
       const month = mainDate.toLocaleDateString('fr-FR', { month: 'long' });
-      const year = mainDate.getFullYear();
-      if (event.event_dates && event.event_dates.length > 0) {
-        const last = event.event_dates[event.event_dates.length - 1];
-        if (last.date) {
-          const lastDate = new Date(last.date);
-          const lastDay = lastDate.getDate();
-          const lastMonth = lastDate.toLocaleDateString('fr-FR', { month: 'long' });
-          dateStr = month === lastMonth
-            ? `DU ${day} AU ${lastDay} ${month.toUpperCase()} ${year}`
-            : `DU ${day} ${month.toUpperCase()} AU ${lastDay} ${lastMonth.toUpperCase()} ${year}`;
-        }
+      const year  = mainDate.getFullYear();
+      const extras = (event.event_dates || []).filter(d => d.date);
+      if (extras.length > 0) {
+        const last = extras[extras.length - 1];
+        const lastDate  = new Date(last.date);
+        const lastDay   = lastDate.getDate();
+        const lastMonth = lastDate.toLocaleDateString('fr-FR', { month: 'long' });
+        dateStr = month === lastMonth
+          ? `DU ${day} AU ${lastDay} ${month.toUpperCase()} ${year}`
+          : `DU ${day} ${month.toUpperCase()} AU ${lastDay} ${lastMonth.toUpperCase()} ${year}`;
       } else {
         dateStr = mainDate.toLocaleDateString('fr-FR', {
           weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
@@ -219,7 +244,7 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
     if (dateStr) {
       ctx.font = 'bold 28px "Montserrat", "Segoe UI", sans-serif';
       ctx.textAlign = 'center';
-      const tw = ctx.measureText(dateStr).width;
+      const tw   = ctx.measureText(dateStr).width;
       const dateX = canvas.width / 2 + (event.logo_url ? 80 : 0);
       ctx.fillStyle = 'rgba(255,255,255,0.12)';
       drawRoundedRect(ctx, dateX - tw / 2 - 24, 88, tw + 48, 60, 12);
@@ -232,22 +257,19 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
     const cx = canvas.width / 2, cy = canvas.height / 2 - 110;
     const size = 460, radius = 30, angleDeg = -4;
 
-    if (photo) {
-      try {
-        const userImg = await loadImage(photo);
-        drawRotatedRoundedRect(ctx, cx, cy, size + 20, size + 20, radius + 5, angleDeg);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-        ctx.save();
-        drawRotatedRoundedRect(ctx, cx, cy, size, size, radius, angleDeg);
-        ctx.clip();
-        const imgR = Math.max(size / userImg.width, size / userImg.height);
-        const dw = userImg.width * imgR, dh = userImg.height * imgR;
-        ctx.translate(cx, cy);
-        ctx.rotate((angleDeg * Math.PI) / 180);
-        ctx.drawImage(userImg, -dw / 2, -dh / 2, dw, dh);
-        ctx.restore();
-      } catch { /* silent */ }
+    if (userImg) {
+      drawRotatedRoundedRect(ctx, cx, cy, size + 20, size + 20, radius + 5, angleDeg);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.save();
+      drawRotatedRoundedRect(ctx, cx, cy, size, size, radius, angleDeg);
+      ctx.clip();
+      const imgR = Math.max(size / userImg.width, size / userImg.height);
+      const dw = userImg.width * imgR, dh = userImg.height * imgR;
+      ctx.translate(cx, cy);
+      ctx.rotate((angleDeg * Math.PI) / 180);
+      ctx.drawImage(userImg, -dw / 2, -dh / 2, dw, dh);
+      ctx.restore();
     } else {
       drawRotatedRoundedRect(ctx, cx, cy, size + 20, size + 20, radius + 5, angleDeg);
       ctx.fillStyle = 'rgba(255,255,255,0.15)';
@@ -259,10 +281,10 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
     ctx.font = '76px "Dancing Script", cursive';
     const labelText = "J'y serai !";
     const textW = ctx.measureText(labelText).width;
-    const padX = 35;
-    const tagW = textW + padX * 2;
-    const tagH = 92;
-    const tagX = 630, tagY = 800;
+    const padX  = 35;
+    const tagW  = textW + padX * 2;
+    const tagH  = 92;
+    const tagX  = 630, tagY = 800;
     ctx.translate(tagX + tagW / 2, tagY + tagH / 2);
     ctx.rotate(-4 * Math.PI / 180);
     ctx.fillStyle = '#ffffff';
@@ -280,73 +302,53 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
     if (name.length > 25) { fontSize = 42; nameLineHeight = 52; }
     else if (name.length > 18) { fontSize = 54; nameLineHeight = 66; }
     ctx.font = `bold ${fontSize}px "Segoe UI", Arial, sans-serif`;
-    const displayName = name.toUpperCase() || 'MON NOM';
-    const nameMaxWidth = 940;
-    const nameTextWidth = ctx.measureText(displayName).width;
-    const nameLines = Math.ceil(nameTextWidth / nameMaxWidth);
-    const nameStartY = canvas.height / 2 + 358 - ((nameLines - 1) * nameLineHeight) / 2;
+    const displayName    = name.toUpperCase() || 'MON NOM';
+    const nameMaxWidth   = 940;
+    const nameTextWidth  = ctx.measureText(displayName).width;
+    const nameLines      = Math.ceil(nameTextWidth / nameMaxWidth);
+    const nameStartY     = canvas.height / 2 + 358 - ((nameLines - 1) * nameLineHeight) / 2;
     wrapText(ctx, displayName, canvas.width / 2, nameStartY, nameMaxWidth, nameLineHeight);
 
     // Détection des logos disponibles
-    const hasOrgLogos = !!(event.organizer_logos && event.organizer_logos.length > 0);
-    const hasPartnerLogos = !!(event.partner_logos && event.partner_logos.length > 0);
-    const hasAnyLogos = hasOrgLogos || hasPartnerLogos;
-    const hasBothRows = hasOrgLogos && hasPartnerLogos;
+    const hasOrgLogos     = orgImgs.some(Boolean);
+    const hasPartnerLogos = partImgs.some(Boolean);
+    const hasAnyLogos     = hasOrgLogos || hasPartnerLogos;
+    const hasBothRows     = hasOrgLogos && hasPartnerLogos;
 
-    // Dimensions de chaque rangée
-    const ROW_PAD = 22;          // padding haut/bas dans la zone
-    const ORG_H   = 72;          // hauteur cible rangée organisateurs
-    const PART_H  = 58;          // hauteur cible rangée partenaires
-    const SEP_GAP = 20;          // espace au-dessus/en-dessous du séparateur
-
-    // Hauteur de zone calculée depuis le contenu présent
+    const ROW_PAD = 22, ORG_H = 72, PART_H = 58, SEP_GAP = 20;
     let zoneHeight = 0;
-    if (hasBothRows) {
-      zoneHeight = ROW_PAD + ORG_H + SEP_GAP + PART_H + ROW_PAD; // ~194px
-    } else if (hasAnyLogos) {
-      zoneHeight = ROW_PAD + ORG_H + ROW_PAD;                     // ~116px
-    }
+    if (hasBothRows)    zoneHeight = ROW_PAD + ORG_H + SEP_GAP + PART_H + ROW_PAD;
+    else if (hasAnyLogos) zoneHeight = ROW_PAD + ORG_H + ROW_PAD;
 
     const whiteZoneY = hasAnyLogos ? canvas.height - zoneHeight : canvas.height + 10;
 
-    // ── Helper : dessine une rangée de logos centrée à un Y donné
-    // Normalisation par moyenne géométrique → même poids visuel pour tous les logos
-    const drawLogoRow = async (urls: string[], targetGM: number, rowCenterY: number) => {
-      const gap = 32;
-      const maxW = canvas.width - 160;
-      const MAX_H = targetGM * 1.35; // plafond : évite les logos trop hauts
-      const MIN_H = targetGM * 0.52; // plancher : évite les logos trop petits
+    // Dessine une rangée de logos (synchrone — images déjà chargées)
+    const drawLogoRow = (imgs: (HTMLImageElement | null)[], targetGM: number, rowCenterY: number) => {
+      const gap   = 32;
+      const maxW  = canvas.width - 160;
+      const MAX_H = targetGM * 1.35;
+      const MIN_H = targetGM * 0.52;
+      const valid = imgs.filter((img): img is HTMLImageElement => img !== null);
+      if (valid.length === 0) return;
 
-      const imgs: HTMLImageElement[] = [];
-      for (const url of urls) {
-        try { imgs.push(await loadImage(url)); } catch { /* silent */ }
-      }
-      if (imgs.length === 0) return;
-
-      // Pour chaque logo : superficie cible = targetGM² (aire constante, ratio préservé)
-      let dims = imgs.map(img => {
+      let dims = valid.map(img => {
         const gm = Math.sqrt(img.width * img.height);
-        const s = targetGM / gm;
-        let w = img.width * s;
-        let h = img.height * s;
-        // Clamp height pour éviter les extrêmes tout en restant cohérent
+        const s  = targetGM / gm;
+        let w = img.width * s, h = img.height * s;
         if (h > MAX_H) { const r = MAX_H / h; h = MAX_H; w *= r; }
         if (h < MIN_H) { const r = MIN_H / h; h = MIN_H; w *= r; }
         return { w, h };
       });
-
-      // Réduction globale si la rangée est trop large
-      const totalW = dims.reduce((a, d) => a + d.w, 0) + gap * (imgs.length - 1);
+      const totalW = dims.reduce((a, d) => a + d.w, 0) + gap * (valid.length - 1);
       if (totalW > maxW) {
         const gs = maxW / totalW;
         dims = dims.map(d => ({ w: d.w * gs, h: d.h * gs }));
       }
-
-      const totalFinalW = dims.reduce((a, d) => a + d.w, 0) + gap * (imgs.length - 1);
+      const totalFinalW = dims.reduce((a, d) => a + d.w, 0) + gap * (valid.length - 1);
       let lx = (canvas.width - totalFinalW) / 2;
-      for (let i = 0; i < imgs.length; i++) {
+      for (let i = 0; i < valid.length; i++) {
         const { w, h } = dims[i];
-        ctx.drawImage(imgs[i], lx, rowCenterY - h / 2, w, h);
+        ctx.drawImage(valid[i], lx, rowCenterY - h / 2, w, h);
         lx += w + gap;
       }
     };
@@ -355,8 +357,6 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
     if (hasAnyLogos) {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, whiteZoneY, canvas.width, canvas.height - whiteZoneY);
-
-      // Bordure supérieure
       ctx.strokeStyle = '#d1fae5';
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -365,11 +365,7 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
       ctx.stroke();
 
       if (hasBothRows) {
-        // Rangée org en haut
-        const orgCenterY = whiteZoneY + ROW_PAD + ORG_H / 2;
-        await drawLogoRow(event.organizer_logos!, ORG_H, orgCenterY);
-
-        // Séparateur
+        drawLogoRow(orgImgs,  ORG_H,  whiteZoneY + ROW_PAD + ORG_H / 2);
         const sepY = whiteZoneY + ROW_PAD + ORG_H + SEP_GAP / 2;
         ctx.strokeStyle = '#e5e7eb';
         ctx.lineWidth = 1.5;
@@ -377,16 +373,11 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
         ctx.moveTo(80, sepY);
         ctx.lineTo(canvas.width - 80, sepY);
         ctx.stroke();
-
-        // Rangée partenaires en bas
-        const partCenterY = whiteZoneY + ROW_PAD + ORG_H + SEP_GAP + PART_H / 2;
-        await drawLogoRow(event.partner_logos!, PART_H, partCenterY);
-
+        drawLogoRow(partImgs, PART_H, whiteZoneY + ROW_PAD + ORG_H + SEP_GAP + PART_H / 2);
       } else {
-        // Une seule rangée : org ou partenaires, centrée verticalement
-        const urls = hasOrgLogos ? event.organizer_logos! : event.partner_logos!;
-        const rowH = hasOrgLogos ? ORG_H : PART_H;
-        await drawLogoRow(urls, rowH, whiteZoneY + zoneHeight / 2);
+        const imgs = hasOrgLogos ? orgImgs : partImgs;
+        const rowH = hasOrgLogos ? ORG_H   : PART_H;
+        drawLogoRow(imgs, rowH, whiteZoneY + zoneHeight / 2);
       }
     }
 
@@ -400,10 +391,14 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
   const downloadPoster = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const link = document.createElement('a');
-    link.download = `jy-serai-${name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+    try {
+      const link = document.createElement('a');
+      link.download = `jy-serai-${name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch {
+      alert("Impossible de télécharger : une image source bloque l'export (URL non sécurisée). Vérifiez que les logos sont hébergés en HTTPS.");
+    }
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
