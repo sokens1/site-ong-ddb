@@ -22,6 +22,7 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
   const [photo, setPhoto] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const isDrawing = useRef(false); // guard contre les appels concurrents
 
   // ── Swipe-to-close ────────────────────────────────────────────────────────
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -154,12 +155,16 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
 
   // ── Draw poster ───────────────────────────────────────────────────────────
   const drawPoster = async () => {
+    if (isDrawing.current) return;       // évite les appels concurrents
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    isDrawing.current = true;
     setIsGenerating(true);
+
+    try {
 
     // Collecter toutes les URLs à charger
     const orgUrls  = event.organizer_logos || [];
@@ -172,12 +177,17 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
       ...partUrls,
     ];
 
-    // Chargement parallèle de toutes les images + font simultanément
+    // Chargement parallèle de toutes les images + font (avec timeout iOS)
+    const fontPromise = Promise.race([
+      document.fonts.load('bold 76px "Dancing Script"'),
+      new Promise(r => setTimeout(r, 2500)),
+    ]).catch(() => {});
+
     const [loaded] = await Promise.all([
       Promise.all(allUrls.map(url =>
         url ? loadImage(url).catch(() => null) : Promise.resolve(null)
       )),
-      document.fonts.load('bold 76px "Dancing Script"').catch(() => {}),
+      fontPromise,
     ]);
 
     const bgImg   = loaded[0];
@@ -381,7 +391,12 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
       }
     }
 
-    setIsGenerating(false);
+    } catch (err) {
+      console.error('Poster generation error:', err);
+    } finally {
+      isDrawing.current = false;
+      setIsGenerating(false);
+    }
   };
 
   useEffect(() => {
