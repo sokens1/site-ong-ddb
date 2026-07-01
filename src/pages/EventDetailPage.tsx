@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -793,6 +793,11 @@ const EventDetailPage: React.FC = () => {
   const [posterState, setPosterState] = useState<{isOpen: boolean; name: string}>({ isOpen: false, name: '' });
   const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const recoveryDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchEventData = async () => {
     if (!id) { setLoading(false); return; }
@@ -843,6 +848,31 @@ const EventDetailPage: React.FC = () => {
     window.scrollTo(0, 0);
     fetchEventData();
   }, [id]);
+
+  // Vérification automatique dès que l'email est valide (debounce 700ms)
+  // Placé avant les early returns pour respecter les Rules of Hooks
+  useEffect(() => {
+    if (!recoveryOpen || !event) return;
+    const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recoveryEmail.trim());
+    if (!isValidEmail) { setRecoveryError(null); return; }
+    if (recoveryDebounce.current) clearTimeout(recoveryDebounce.current);
+    recoveryDebounce.current = setTimeout(async () => {
+      setRecoveryLoading(true);
+      setRecoveryError(null);
+      const { data: name, error } = await supabase.rpc('get_registration_name', {
+        p_event_id: event.id,
+        p_email: recoveryEmail.trim(),
+      });
+      setRecoveryLoading(false);
+      if (!error && name) {
+        setRecoveryOpen(false);
+        setPosterState({ isOpen: true, name: String(name) });
+      } else {
+        setRecoveryError('Aucune inscription trouvée pour cet email.');
+      }
+    }, 700);
+    return () => { if (recoveryDebounce.current) clearTimeout(recoveryDebounce.current); };
+  }, [recoveryEmail, recoveryOpen, event]);
 
   if (loading) {
     return (
@@ -1126,6 +1156,55 @@ const EventDetailPage: React.FC = () => {
                     </button>
                   </div>
                 </div>
+
+                {/* Récupération affiche J'y serai */}
+                {!isPast && (
+                  <div className="mt-4">
+                    {!recoveryOpen ? (
+                      <button
+                        onClick={() => { setRecoveryOpen(true); setRecoveryError(null); setRecoveryEmail(''); }}
+                        className="text-sm text-green-600 hover:text-green-700 transition-colors underline underline-offset-2"
+                      >
+                        Déjà inscrit ? Récupérez votre affiche J'y serai
+                      </button>
+                    ) : (
+                      <div className="bg-green-50 border border-green-100 rounded-2xl p-5">
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-sm font-bold text-green-800">Récupérer mon affiche</p>
+                          <button onClick={() => setRecoveryOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                            <X size={16} />
+                          </button>
+                        </div>
+                        <p className="text-xs text-green-700 mb-3">Entrez l'adresse email utilisée lors de votre inscription.</p>
+                        <div className="relative">
+                          <input
+                            type="email"
+                            value={recoveryEmail}
+                            onChange={e => setRecoveryEmail(e.target.value)}
+                            placeholder="votre@email.com"
+                            autoFocus
+                            className={`w-full px-4 py-2.5 pr-10 rounded-xl border bg-white text-sm focus:outline-none focus:ring-2 transition-all ${
+                              recoveryError
+                                ? 'border-red-300 focus:ring-red-300'
+                                : 'border-green-200 focus:ring-green-500'
+                            }`}
+                          />
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                            {recoveryLoading && (
+                              <span className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin block" />
+                            )}
+                            {!recoveryLoading && recoveryError && (
+                              <X size={16} className="text-red-400" />
+                            )}
+                          </div>
+                        </div>
+                        {recoveryError && (
+                          <p className="mt-2 text-xs text-red-500 font-medium">{recoveryError}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Feedback section — driven by config */}
                 {isPast && <FeedbackSection event={event} />}
