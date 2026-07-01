@@ -102,16 +102,27 @@ const generateTicketPDF = async (
   eventTitle: string,
   eventDate: string,
   eventLocation?: string,
-  organizerLogos?: string[]
+  organizerLogos?: string[],
+  eventDates?: { date: string; label?: string }[]
 ): Promise<jsPDF> => {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [210, 100] });
 
-  const formattedDate = eventDate
-    ? new Date(eventDate).toLocaleDateString('fr-FR', {
-        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-        hour: '2-digit', minute: '2-digit',
-      })
-    : '';
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleDateString('fr-FR', {
+      day: 'numeric', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+
+  // Build date line — "Du X au X" si plusieurs dates, sinon date unique
+  const validExtraDates = (eventDates || []).filter(d => d.date);
+  const hasExtraDates = validExtraDates.length > 0;
+  const lastExtraDate = hasExtraDates ? validExtraDates[validExtraDates.length - 1].date : null;
+  const dateLine = hasExtraDates
+    ? `Du ${fmtDate(eventDate)} au ${fmtDate(lastExtraDate!)}`
+    : `Date : ${fmtDate(eventDate)}`;
+
+  // QR code uses first date for backward compat
+  const formattedDate = fmtDate(eventDate);
 
   // Background
   doc.setFillColor(240, 253, 244);
@@ -144,7 +155,7 @@ const generateTicketPDF = async (
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(55, 65, 81);
   doc.text(`Participant : ${fullname}`, 10, 52);
-  if (formattedDate) doc.text(`Date : ${formattedDate}`, 10, 62);
+  doc.text(dateLine, 10, 62);
   if (eventLocation) doc.text(`Lieu : ${eventLocation}`, 10, 72);
 
   // Fine print
@@ -390,7 +401,7 @@ const EventRegistrationModal: React.FC<{
     const cleanTitle = event.title.replace(/[^a-z0-9]/gi, '_');
     let pdfBase64 = '';
     try {
-      const doc = await generateTicketPDF(finalName, event.title, event.event_date, event.location, event.organizer_logos);
+      const doc = await generateTicketPDF(finalName, event.title, event.event_date, event.location, event.organizer_logos, event.event_dates);
       doc.save(`Billet_${cleanTitle}.pdf`);
       pdfBase64 = doc.output('datauristring').split('base64,')[1];
     } catch (pdfErr) {
@@ -961,24 +972,29 @@ const EventDetailPage: React.FC = () => {
               </div>
               <div>
                 <p className="text-xs text-green-200 uppercase tracking-widest font-semibold mb-1">Date(s)</p>
-                <div className="space-y-1.5">
-                  <p className="font-medium text-sm md:text-base">
-                    {event.event_dates && event.event_dates.length > 0 && (
-                      <span className="bg-white/10 text-green-200 text-[10px] font-bold px-1.5 py-0.5 rounded mr-2 uppercase">Début</span>
-                    )}
-                    {new Date(event.event_date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}{' '}
-                    <span className="whitespace-nowrap">à {new Date(event.event_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
-                  </p>
-                  {(event.event_dates || []).map((dateEntry, idx) => {
-                    if (!dateEntry.date) return null;
+                <div>
+                  {(() => {
+                    const extras = (event.event_dates || []).filter(d => d.date);
+                    const fmtD = (d: string) =>
+                      new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+                    const fmtT = (d: string) =>
+                      new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                    if (extras.length > 0) {
+                      const last = extras[extras.length - 1].date;
+                      return (
+                        <p className="font-medium text-sm md:text-base">
+                          <span className="whitespace-nowrap">Du {fmtD(event.event_date)} à {fmtT(event.event_date)}</span>{' '}
+                          <span className="whitespace-nowrap">au {fmtD(last)} à {fmtT(last)}</span>
+                        </p>
+                      );
+                    }
                     return (
-                      <p key={idx} className="font-medium text-sm md:text-base">
-                        <span className="bg-white/10 text-green-200 text-[10px] font-bold px-1.5 py-0.5 rounded mr-2 uppercase">{dateEntry.label || `Jour ${idx + 2}`}</span>
-                        {new Date(dateEntry.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}{' '}
-                        <span className="whitespace-nowrap">à {new Date(dateEntry.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+                      <p className="font-medium text-sm md:text-base">
+                        {new Date(event.event_date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}{' '}
+                        <span className="whitespace-nowrap">à {fmtT(event.event_date)}</span>
                       </p>
                     );
-                  })}
+                  })()}
                 </div>
               </div>
             </div>
