@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, MapPin, Users, X, CheckCircle, ChevronLeft, Star, MessageSquare, ChevronRight } from 'lucide-react';
+import { Calendar, MapPin, Users, X, CheckCircle, ChevronLeft, Star, MessageSquare, ChevronRight, Share2, Copy, Check } from 'lucide-react';
 import PosterGeneratorModal from '../components/events/PosterGeneratorModal';
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
@@ -37,6 +37,7 @@ interface Event {
   logo_url?: string;
   organizer_logos?: string[];
   partner_logos?: string[];
+  slug?: string;
 }
 
 // ─── Registration Modal (Step-by-step) ───────────────────────────────────────
@@ -786,20 +787,39 @@ const EventDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [posterState, setPosterState] = useState<{isOpen: boolean; name: string}>({ isOpen: false, name: '' });
+  const [shareOpen, setShareOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const fetchEventData = async () => {
     if (!id) { setLoading(false); return; }
     setLoading(true);
     try {
-      const { data, error } = await supabase.from('events').select('*').eq('id', id).single();
-      if (!error && data) setEvent(data);
+      // Essai par slug d'abord, puis par ID numérique (rétrocompatibilité)
+      let eventData: Event | null = null;
+      const isNumericId = /^\d+$/.test(id);
 
-      const { data: othersData } = await supabase
-        .from('events').select('*').eq('status', 'published').neq('id', id)
-        .order('event_date', { ascending: false }).limit(8);
-      if (othersData) setOtherEvents(othersData);
+      if (!isNumericId) {
+        const { data } = await supabase.from('events').select('*').eq('slug', id).single();
+        if (data) eventData = data;
+      }
+      if (!eventData) {
+        const query = isNumericId
+          ? supabase.from('events').select('*').eq('id', id).single()
+          : supabase.from('events').select('*').eq('slug', id).single();
+        const { data } = await query;
+        if (data) eventData = data;
+      }
+
+      setEvent(eventData);
+
+      if (eventData) {
+        const { data: othersData } = await supabase
+          .from('events').select('*').eq('status', 'published').neq('id', eventData.id)
+          .order('event_date', { ascending: false }).limit(8);
+        if (othersData) setOtherEvents(othersData);
+      }
     } catch (err) {
-      console.error("Error fetching event:", err);
+      console.error('Error fetching event:', err);
     } finally {
       setLoading(false);
     }
@@ -856,10 +876,86 @@ const EventDetailPage: React.FC = () => {
         </div>
 
         <div className="container mx-auto px-4 relative z-20">
-          <Link to="/" className="inline-flex items-center gap-2 text-green-300 hover:text-white mb-6 transition-colors text-sm font-medium">
-            <ChevronLeft size={16} />
-            Retour à l'accueil
-          </Link>
+          <div className="flex items-center justify-between mb-6">
+            <Link to="/" className="inline-flex items-center gap-2 text-green-300 hover:text-white transition-colors text-sm font-medium">
+              <ChevronLeft size={16} />
+              Retour à l'accueil
+            </Link>
+
+            {/* Bouton partage */}
+            <div className="relative">
+              <button
+                onClick={() => {
+                  const shareUrl = `${window.location.origin}/events/${event.slug || event.id}`;
+                  if (navigator.share) {
+                    navigator.share({ title: event.title, url: shareUrl }).catch(() => {});
+                  } else {
+                    setShareOpen(v => !v);
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-sm font-semibold backdrop-blur-sm border border-white/20 transition-all"
+              >
+                <Share2 size={15} />
+                Partager
+              </button>
+
+              {/* Popover desktop */}
+              {shareOpen && (
+                <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 z-50">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Partager cet événement</p>
+
+                  {/* Copy link */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <input
+                      readOnly
+                      value={`${window.location.origin}/events/${event.slug || event.id}`}
+                      className="flex-1 text-xs bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-600 outline-none truncate"
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/events/${event.slug || event.id}`);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }}
+                      className={`flex-shrink-0 p-2 rounded-lg transition-all ${copied ? 'bg-green-100 text-green-600' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
+                    >
+                      {copied ? <Check size={14} /> : <Copy size={14} />}
+                    </button>
+                  </div>
+
+                  {/* WhatsApp */}
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(`${event.title} — ${window.location.origin}/events/${event.slug || event.id}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20b858] text-white text-sm font-semibold transition-colors mb-2"
+                  >
+                    <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current flex-shrink-0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.554 4.122 1.526 5.853L.05 23.95l6.254-1.638A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.894a9.88 9.88 0 01-5.034-1.374l-.36-.214-3.732.978.995-3.63-.235-.374A9.859 9.859 0 012.107 12c0-5.457 4.436-9.893 9.893-9.893 5.457 0 9.893 4.436 9.893 9.893 0 5.457-4.436 9.894-9.893 9.894z"/></svg>
+                    WhatsApp
+                  </a>
+
+                  {/* Facebook */}
+                  <a
+                    href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${window.location.origin}/events/${event.slug || event.id}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl bg-[#1877F2] hover:bg-[#1565d8] text-white text-sm font-semibold transition-colors"
+                  >
+                    <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current flex-shrink-0"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                    Facebook
+                  </a>
+
+                  <button onClick={() => setShareOpen(false)} className="absolute top-3 right-3 text-gray-300 hover:text-gray-500 transition-colors">
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
+              {/* Overlay pour fermer */}
+              {shareOpen && <div className="fixed inset-0 z-40" onClick={() => setShareOpen(false)} />}
+            </div>
+          </div>
+
           <h1 className="text-3xl md:text-5xl font-black text-white mb-6 leading-tight max-w-4xl drop-shadow-md">
             {event.title}
           </h1>
@@ -948,16 +1044,79 @@ const EventDetailPage: React.FC = () => {
                       </p>
                     )}
                   </div>
-                  <button
-                    onClick={() => setShowModal(true)}
-                    disabled={isPast}
-                    className={`w-full sm:w-auto font-bold py-3.5 px-10 rounded-xl transition-all text-lg flex justify-center items-center gap-2 ${
-                      isPast ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 text-white shadow-md active:scale-95'
-                    }`}
-                  >
-                    {isPast ? 'Événement terminé' : "S'inscrire"}
-                    {!isPast && <Calendar size={18} />}
-                  </button>
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    {/* Share button */}
+                    <div className="relative">
+                      <button
+                        onClick={() => {
+                          const shareUrl = `${window.location.origin}/events/${event.slug || event.id}`;
+                          if (navigator.share) {
+                            navigator.share({ title: event.title, url: shareUrl }).catch(() => {});
+                          } else {
+                            setShareOpen(v => !v);
+                          }
+                        }}
+                        className="flex items-center gap-2 px-4 py-3.5 rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-600 text-sm font-semibold transition-all"
+                        title="Partager"
+                      >
+                        <Share2 size={18} />
+                      </button>
+                      {shareOpen && (
+                        <div className="absolute right-0 bottom-full mb-2 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 z-50">
+                          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Partager cet événement</p>
+                          <div className="flex items-center gap-2 mb-3">
+                            <input
+                              readOnly
+                              value={`${window.location.origin}/events/${event.slug || event.id}`}
+                              className="flex-1 text-xs bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-600 outline-none truncate"
+                            />
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${window.location.origin}/events/${event.slug || event.id}`);
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 2000);
+                              }}
+                              className={`flex-shrink-0 p-2 rounded-lg transition-all ${copied ? 'bg-green-100 text-green-600' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
+                            >
+                              {copied ? <Check size={14} /> : <Copy size={14} />}
+                            </button>
+                          </div>
+                          <a
+                            href={`https://wa.me/?text=${encodeURIComponent(`${event.title} — ${window.location.origin}/events/${event.slug || event.id}`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20b858] text-white text-sm font-semibold transition-colors mb-2"
+                          >
+                            <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current flex-shrink-0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.554 4.122 1.526 5.853L.05 23.95l6.254-1.638A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.894a9.88 9.88 0 01-5.034-1.374l-.36-.214-3.732.978.995-3.63-.235-.374A9.859 9.859 0 012.107 12c0-5.457 4.436-9.893 9.893-9.893 5.457 0 9.893 4.436 9.893 9.893 0 5.457-4.436 9.894-9.893 9.894z"/></svg>
+                            WhatsApp
+                          </a>
+                          <a
+                            href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${window.location.origin}/events/${event.slug || event.id}`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl bg-[#1877F2] hover:bg-[#1565d8] text-white text-sm font-semibold transition-colors"
+                          >
+                            <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current flex-shrink-0"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                            Facebook
+                          </a>
+                          <button onClick={() => setShareOpen(false)} className="absolute top-3 right-3 text-gray-300 hover:text-gray-500 transition-colors">
+                            <X size={14} />
+                          </button>
+                        </div>
+                      )}
+                      {shareOpen && <div className="fixed inset-0 z-40" onClick={() => setShareOpen(false)} />}
+                    </div>
+                    <button
+                      onClick={() => setShowModal(true)}
+                      disabled={isPast}
+                      className={`flex-1 sm:flex-initial font-bold py-3.5 px-10 rounded-xl transition-all text-lg flex justify-center items-center gap-2 ${
+                        isPast ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 text-white shadow-md active:scale-95'
+                      }`}
+                    >
+                      {isPast ? 'Événement terminé' : "S'inscrire"}
+                      {!isPast && <Calendar size={18} />}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Feedback section — driven by config */}
@@ -981,7 +1140,7 @@ const EventDetailPage: React.FC = () => {
                   {otherEvents.map(other => (
                     <Link
                       key={other.id}
-                      to={`/events/${other.id}`}
+                      to={`/events/${other.slug || other.id}`}
                       className="flex gap-3 rounded-xl border border-gray-100 p-3 hover:border-green-300 hover:bg-green-50 transition-all group"
                     >
                       {other.image_url ? (

@@ -45,7 +45,19 @@ interface Event {
   logo_url?: string;
   organizer_logos?: string[];
   partner_logos?: string[];
+  slug?: string;
 }
+
+const generateSlug = (title: string): string =>
+  title
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 80);
 
 interface Registration {
   id: number;
@@ -294,6 +306,7 @@ const CreateEventPage: React.FC = () => {
   const [feedbacksLoading, setFeedbacksLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [participantSearch, setParticipantSearch] = useState('');
+  const slugTouched = React.useRef(false);
   const itemsPerPage = 10;
 
   const [confirmModal, setConfirmModal] = useState<{
@@ -366,6 +379,7 @@ const CreateEventPage: React.FC = () => {
         logo_url: formData.logo_url || null,
         organizer_logos: formData.organizer_logos || [],
         partner_logos: formData.partner_logos || [],
+        slug: formData.slug?.trim() || generateSlug(formData.title || '') || undefined,
       };
       if (isEditing && id) { await update(parseInt(id), dataToSubmit); }
       else { await create(dataToSubmit); }
@@ -582,12 +596,32 @@ const CreateEventPage: React.FC = () => {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="sm:col-span-2">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Titre de l'événement *</label>
-                      <input type="text" value={formData.title || ''}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all"
-                        placeholder="Ex: Conférence annuelle DDB 2025" />
+                    <div className="sm:col-span-2 space-y-3">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Titre de l'événement *</label>
+                        <input type="text" value={formData.title || ''}
+                          onChange={(e) => {
+                            const title = e.target.value;
+                            const updates: Partial<Event> = { title };
+                            if (!slugTouched.current) updates.slug = generateSlug(title);
+                            setFormData({ ...formData, ...updates });
+                          }}
+                          className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                          placeholder="Ex: Conférence annuelle DDB 2025" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1.5">Lien personnalisé (slug)</label>
+                        <div className="flex items-center gap-0 rounded-xl border border-gray-200 bg-gray-50 overflow-hidden focus-within:ring-2 focus-within:ring-green-500">
+                          <span className="px-3 py-2.5 text-xs text-gray-400 bg-gray-100 border-r border-gray-200 whitespace-nowrap select-none">/events/</span>
+                          <input type="text" value={formData.slug || ''}
+                            onChange={(e) => {
+                              slugTouched.current = true;
+                              setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-') });
+                            }}
+                            className="flex-1 px-3 py-2.5 bg-transparent outline-none text-sm text-gray-700"
+                            placeholder="conference-annuelle-ddb-2025" />
+                        </div>
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Date et heure (Début) *</label>
@@ -845,12 +879,24 @@ const CreateEventPage: React.FC = () => {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="sm:col-span-2">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Titre de l'événement *</label>
-                      <input type="text" required value={formData.title || ''}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all"
-                        placeholder="Ex: Conférence annuelle DDB 2025" />
+                    <div className="sm:col-span-2 space-y-3">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Titre de l'événement *</label>
+                        <input type="text" required value={formData.title || ''}
+                          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                          className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                          placeholder="Ex: Conférence annuelle DDB 2025" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1.5">Lien personnalisé (slug)</label>
+                        <div className="flex items-center rounded-xl border border-gray-200 bg-gray-50 overflow-hidden focus-within:ring-2 focus-within:ring-green-500">
+                          <span className="px-3 py-2.5 text-xs text-gray-400 bg-gray-100 border-r border-gray-200 whitespace-nowrap select-none">/events/</span>
+                          <input type="text" value={formData.slug || ''}
+                            onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-') })}
+                            className="flex-1 px-3 py-2.5 bg-transparent outline-none text-sm text-gray-700"
+                            placeholder="conference-annuelle-ddb-2025" />
+                        </div>
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Date et heure (Début) *</label>

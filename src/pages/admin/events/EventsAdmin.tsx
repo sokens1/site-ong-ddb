@@ -147,7 +147,7 @@ const EventCard: React.FC<{
                   <Users size={15} className="text-green-500" /> Voir les participants
                 </button>
                 <a
-                  href={`/events/${event.id}`}
+                  href={`/events/${event.slug || event.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => setMenuOpen(false)}

@@ -188,7 +188,7 @@ const EventsPage: React.FC = () => {
                   <div className="p-6 flex-1 flex flex-col relative">
                     <div className="flex-1">
                       <h3 className="font-bold text-gray-900 text-xl mb-3 line-clamp-2 group-hover:text-green-700 transition-colors">
-                        <Link to={`/events/${event.id}`} className="focus:outline-none before:absolute before:inset-0">
+                        <Link to={`/events/${event.slug || event.id}`} className="focus:outline-none before:absolute before:inset-0">
                           {event.title}
                         </Link>
                       </h3>

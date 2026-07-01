@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../supabaseClient';
-import { Calendar, MapPin, Users, ArrowRight, Tag } from 'lucide-react';
+import { Calendar, MapPin, Users, ArrowRight, Tag, Share2, Copy, Check } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 interface Event {
@@ -15,12 +15,14 @@ interface Event {
   max_slots: number | null;
   price?: number | null;
   status: string;
+  slug?: string;
 }
 
 const EventsSection: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const eventsScrollRef = React.useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -54,7 +56,7 @@ const EventsSection: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('events')
-        .select('id, title, event_date, location, image_url, description, max_slots, status')
+        .select('id, title, event_date, location, image_url, description, max_slots, status, slug')
         .eq('status', 'published')
         .order('event_date', { ascending: false })
         .limit(5);
@@ -150,7 +152,7 @@ const EventsSection: React.FC = () => {
                 <div className="p-6 flex-1 flex flex-col relative">
                   <div className="flex-1">
                     <h3 className="font-bold text-gray-900 text-lg mb-3 line-clamp-2 group-hover:text-green-700 transition-colors">
-                      <Link to={`/events/${event.id}`} className="focus:outline-none before:absolute before:inset-0">
+                      <Link to={`/events/${event.slug || event.id}`} className="focus:outline-none before:absolute before:inset-0">
                         {event.title}
                       </Link>
                     </h3>
@@ -184,9 +186,29 @@ const EventsSection: React.FC = () => {
                     </div>
                   </div>
                   
-                  <div className="pt-4 border-t border-gray-100 flex items-center justify-between text-sm font-bold text-green-700 z-10 pointer-events-none">
-                    <span className="group-hover:translate-x-1 transition-transform">En savoir plus</span>
-                    <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                  <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
+                    <span className="text-sm font-bold text-green-700 group-hover:translate-x-1 transition-transform z-10 pointer-events-none flex items-center gap-1">
+                      En savoir plus <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                    </span>
+                    <button
+                      className="relative z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-green-700 text-xs font-semibold transition-all"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const url = `${window.location.origin}/events/${event.slug || event.id}`;
+                        if (navigator.share) {
+                          navigator.share({ title: event.title, url }).catch(() => {});
+                        } else {
+                          navigator.clipboard.writeText(url);
+                          setCopiedId(event.id);
+                          setTimeout(() => setCopiedId(null), 2000);
+                        }
+                      }}
+                      title="Partager"
+                    >
+                      {copiedId === event.id ? <Check size={13} className="text-green-600" /> : <Share2 size={13} />}
+                      {copiedId === event.id ? 'Copié !' : 'Partager'}
+                    </button>
                   </div>
                 </div>
               </motion.div>
