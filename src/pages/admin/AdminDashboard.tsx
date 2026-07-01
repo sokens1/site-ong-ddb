@@ -46,13 +46,18 @@ const AdminDashboard: React.FC = () => {
 
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [dailyVisits, setDailyVisits] = useState<any[]>([]);
+  const [visitsPeriod, setVisitsPeriod] = useState<'day' | 'week' | 'month' | 'year'>('month');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchStats();
     fetchMonthlyData();
-    fetchDailyVisits();
   }, []);
+
+  useEffect(() => {
+    fetchDailyVisits(visitsPeriod);
+  }, [visitsPeriod]);
+
 
   const fetchStats = async () => {
     try {
@@ -219,20 +224,67 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const fetchDailyVisits = async () => {
+  const fetchDailyVisits = async (period: 'day' | 'week' | 'month' | 'year') => {
     try {
+      const now = new Date();
+      const fromDate = new Date(now);
+
+      if (period === 'day') {
+        fromDate.setDate(now.getDate() - 13); // 14 derniers jours pour voir l'évolution
+      } else if (period === 'week') {
+        fromDate.setDate(now.getDate() - 6);
+      } else if (period === 'month') {
+        fromDate.setDate(now.getDate() - 29);
+      } else {
+        fromDate.setFullYear(now.getFullYear() - 1);
+        fromDate.setDate(fromDate.getDate() + 1);
+      }
+
+      const fromStr = fromDate.toISOString().split('T')[0];
+      const todayStr = now.toISOString().split('T')[0];
+
       const { data } = await supabase
         .from('site_visits')
         .select('visit_date, count')
-        .order('visit_date', { ascending: true })
-        .limit(30);
+        .gte('visit_date', fromStr)
+        .order('visit_date', { ascending: true });
 
       if (data) {
-        const formatted = data.map(v => ({
-          date: new Date(v.visit_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }),
-          visites: v.count
-        }));
-        setDailyVisits(formatted);
+        if (period === 'year') {
+          const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+          const monthMap: Record<string, number> = {};
+          data.forEach(v => {
+            const [year, month] = v.visit_date.split('-');
+            const key = `${monthNames[parseInt(month) - 1]} ${year}`;
+            monthMap[key] = (monthMap[key] || 0) + v.count;
+          });
+          const filled = [];
+          for (let i = 11; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const key = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+            filled.push({ date: key, visites: monthMap[key] || 0 });
+          }
+          setDailyVisits(filled);
+        } else {
+          const visitMap: Record<string, number> = {};
+          data.forEach(v => { visitMap[v.visit_date] = v.count; });
+
+          const days = period === 'day' ? 14 : period === 'week' ? 7 : 30;
+          const filled = [];
+          for (let i = days - 1; i >= 0; i--) {
+            const d = new Date(now);
+            d.setDate(now.getDate() - i);
+            const key = d.toISOString().split('T')[0];
+            filled.push({
+              date: period === 'day' && key === todayStr
+                ? "Auj."
+                : d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }),
+              visites: visitMap[key] || 0,
+              isToday: key === todayStr,
+            });
+          }
+          setDailyVisits(filled);
+        }
       }
     } catch (error) {
       console.error('Error fetching daily visits:', error);
@@ -306,11 +358,33 @@ const AdminDashboard: React.FC = () => {
 
           {/* Graphique des visites journalières */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-800">Visites Journalières</h2>
-              <div className="flex items-center gap-2 text-sm text-green-600 font-semibold">
-                <TrendingUp size={16} />
-                <span>En direct</span>
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-gray-800">Visites</h2>
+                <div className="flex items-center gap-1 text-xs text-green-600 font-semibold">
+                  <TrendingUp size={14} />
+                  <span>En direct</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+                {([
+                  { key: 'day',   label: 'Jour'    },
+                  { key: 'week',  label: 'Semaine' },
+                  { key: 'month', label: 'Mois'    },
+                  { key: 'year',  label: 'Année'   },
+                ] as const).map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setVisitsPeriod(key)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      visitsPeriod === key
+                        ? 'bg-white text-indigo-600 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
             {dailyVisits.length > 0 ? (
