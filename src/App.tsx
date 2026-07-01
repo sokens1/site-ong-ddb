@@ -48,6 +48,7 @@ import DocumentsAdmin from './pages/admin/partner/DocumentsAdmin';
 import DonationsAdmin from './pages/admin/donations/DonationsAdmin';
 import EventsAdmin from './pages/admin/events/EventsAdmin';
 import CreateEventPage from './pages/admin/events/CreateEventPage';
+import ScanPage from './pages/admin/events/ScanPage';
 
 // Others
 import ContributionsAdmin from './pages/admin/ContributionsAdmin';
@@ -195,6 +196,7 @@ function App() {
           <Route path="events" element={<EventsAdmin />} />
           <Route path="events/create" element={<CreateEventPage />} />
           <Route path="events/edit/:id" element={<CreateEventPage />} />
+          <Route path="scan" element={<ScanPage />} />
           <Route path="newsletter" element={<NewsletterAdmin />} />
           <Route path="documents" element={<DocumentsAdmin />} />
           <Route path="users" element={<UsersAdmin />} />

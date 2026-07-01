@@ -1,11 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { motion } from 'framer-motion';
-import { Calendar, MapPin, Users, X, CheckCircle, ChevronLeft, Loader2 } from 'lucide-react';
-import EventTicket from '../components/EventTicket';
-import { toPng } from 'html-to-image';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Calendar, MapPin, Users, X, CheckCircle, ChevronLeft, Star, MessageSquare, ChevronRight } from 'lucide-react';
+import PosterGeneratorModal from '../components/events/PosterGeneratorModal';
 import { jsPDF } from 'jspdf';
+import QRCode from 'qrcode';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface FormField {
+  id: string;
+  label: string;
+  type: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox';
+  options?: string[];
+  required: boolean;
+}
+
+interface FeedbackConfig {
+  show_stars: boolean;
+  fields: FormField[];
+}
 
 interface Event {
   id: number;
@@ -16,194 +31,605 @@ interface Event {
   image_url: string | null;
   max_slots: number | null;
   status: string;
+  form_fields?: FormField[];
+  feedback_config?: FeedbackConfig;
+  event_dates?: { date: string; label?: string }[];
+  logo_url?: string;
+  organizer_logos?: string[];
+  partner_logos?: string[];
 }
 
-const EventRegistrationModal: React.FC<{ event: Event; onClose: () => void }> = ({ event, onClose }) => {
-  const [formData, setFormData] = useState({ fullname: '', email: '', phone: '' });
+// ─── Registration Modal (Step-by-step) ───────────────────────────────────────
+
+/** Fetch any image URL as a base64 data URI */
+const fetchImageAsBase64 = async (url: string): Promise<string> => {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return '';
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return '';
+  }
+};
+
+/** Génère un QR code localement (sans dépendance externe) */
+const getQRCodeDataUri = async (text: string): Promise<string> => {
+  try {
+    return await QRCode.toDataURL(text, {
+      width: 150,
+      margin: 1,
+      color: { dark: '#14532d', light: '#ffffff' },
+    });
+  } catch {
+    // Fallback API si qrcode échoue (rare)
+    try {
+      const url = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(text)}&color=14532d&bgcolor=ffffff`;
+      return await fetchImageAsBase64(url);
+    } catch {
+      return '';
+    }
+  }
+};
+
+/** Supprime les scripts et handlers d'événements du HTML avant rendu */
+const sanitizeHTML = (html: string): string => {
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('script, iframe, object, embed').forEach(el => el.remove());
+    doc.querySelectorAll('*').forEach(el => {
+      Array.from(el.attributes).forEach(attr => {
+        if (attr.name.startsWith('on') || attr.value.toLowerCase().startsWith('javascript:')) {
+          el.removeAttribute(attr.name);
+        }
+      });
+    });
+    return doc.body.innerHTML;
+  } catch {
+    return '';
+  }
+};
+
+/** Generate PDF ticket in the browser using jsPDF */
+const generateTicketPDF = async (
+  fullname: string,
+  eventTitle: string,
+  eventDate: string,
+  eventLocation?: string,
+  organizerLogos?: string[]
+): Promise<jsPDF> => {
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [210, 100] });
+
+  const formattedDate = eventDate
+    ? new Date(eventDate).toLocaleDateString('fr-FR', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      })
+    : '';
+
+  // Background
+  doc.setFillColor(240, 253, 244);
+  doc.rect(0, 0, 210, 100, 'F');
+
+  // Header bar
+  doc.setFillColor(20, 83, 45);
+  doc.rect(0, 0, 210, 22, 'F');
+
+  // Header text
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text("BILLET D'ENTRÉE OFFICIEL", 105, 14, { align: 'center' });
+
+  // Divider
+  doc.setDrawColor(74, 222, 128);
+  doc.setLineWidth(0.5);
+  doc.line(10, 28, 155, 28);
+
+  // Event title
+  doc.setTextColor(17, 24, 39);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  const titleLines = doc.splitTextToSize(eventTitle, 138);
+  doc.text(titleLines, 10, 36);
+
+  // Details
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(55, 65, 81);
+  doc.text(`Participant : ${fullname}`, 10, 52);
+  if (formattedDate) doc.text(`Date : ${formattedDate}`, 10, 62);
+  if (eventLocation) doc.text(`Lieu : ${eventLocation}`, 10, 72);
+
+  // Fine print
+  doc.setFontSize(7.5);
+  doc.setTextColor(156, 163, 175);
+  doc.text('Ce billet est personnel et non cessible.', 10, 86);
+  doc.setFontSize(6.5);
+  doc.setTextColor(107, 114, 128);
+  doc.setFont('helvetica', 'italic');
+  doc.text('ONG Développement Durable et Bien-Être', 10, 92);
+  doc.setFont('helvetica', 'normal');
+
+  // Organizer logos — bas à droite, ratio naturel préservé
+  if (organizerLogos && organizerLogos.length > 0) {
+    const targetH = 9; // mm — hauteur cible
+    const gap = 2;
+    const maxW = 148; // mm — zone gauche disponible avant le QR
+    type LogoEntry = { base64: string; nw: number; nh: number };
+    const loaded: LogoEntry[] = [];
+    for (let i = 0; i < Math.min(organizerLogos.length, 6); i++) {
+      try {
+        const base64 = await fetchImageAsBase64(organizerLogos[i]);
+        if (!base64) continue;
+        const dims = await new Promise<{ nw: number; nh: number }>((res) => {
+          const img = new Image();
+          img.onload = () => res({ nw: img.naturalWidth, nh: img.naturalHeight });
+          img.onerror = () => res({ nw: 1, nh: 1 });
+          img.src = base64;
+        });
+        loaded.push({ base64, ...dims });
+      } catch { /* silent */ }
+    }
+    if (loaded.length > 0) {
+      const naturalWidths = loaded.map(l => (l.nw / l.nh) * targetH);
+      const totalNatW = naturalWidths.reduce((a, b) => a + b, 0) + gap * (loaded.length - 1);
+      let finalH = targetH;
+      let finalWidths = naturalWidths;
+      if (totalNatW > maxW) {
+        finalH = targetH * (maxW / totalNatW);
+        finalWidths = loaded.map(l => (l.nw / l.nh) * finalH);
+      }
+      const totalFinalW = finalWidths.reduce((a, b) => a + b, 0) + gap * (loaded.length - 1);
+      // Aligné en bas à droite du billet (sous la QR box)
+      let lx = 204 - totalFinalW;
+      const ly = 97 - finalH;
+      for (let i = 0; i < loaded.length; i++) {
+        doc.addImage(loaded[i].base64, 'PNG', lx, ly, finalWidths[i], finalH);
+        lx += finalWidths[i] + gap;
+      }
+    }
+  }
+
+  // QR box background
+  doc.setDrawColor(20, 83, 45);
+  doc.setFillColor(255, 255, 255);
+  doc.roundedRect(162, 26, 38, 52, 3, 3, 'FD');
+
+  // Fetch QR Code data URI and embed it
+  const qrData = `ONG DDB\nParticipant: ${fullname}\nEvenement: ${eventTitle}\nDate: ${formattedDate}`;
+  try {
+    const qrDataUri = await getQRCodeDataUri(qrData);
+    if (qrDataUri) {
+      doc.addImage(qrDataUri, 'PNG', 165, 29, 32, 32);
+    } else {
+      // Fallback text if QR code couldn't be loaded
+      doc.setTextColor(127, 29, 29);
+      doc.setFontSize(8);
+      doc.text('QR Code', 181, 44, { align: 'center' });
+      doc.text('Non disponible', 181, 49, { align: 'center' });
+    }
+  } catch (qrErr) {
+    console.error('Error adding QR code to PDF:', qrErr);
+  }
+
+  // Label text under QR box
+  doc.setTextColor(20, 83, 45);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ACCÈS OFFICIEL', 181, 68, { align: 'center' });
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(107, 114, 128);
+  doc.text("Présenter à l'entrée", 181, 73, { align: 'center' });
+
+  return doc;
+};
+
+
+const EventRegistrationModal: React.FC<{
+  event: Event;
+  onClose: () => void;
+  onGeneratePoster: (name: string) => void;
+}> = ({ event, onClose, onGeneratePoster }) => {
+  const customFields = (event.form_fields || []).filter((f: any) => f && f.label && f.label.trim() !== '');
+  const hasCustomFields = customFields.length > 0;
+  
+  // If there are custom fields, only display them. Otherwise show default name and email.
+  const allFields = hasCustomFields
+    ? customFields
+    : [
+        { id: 'fullname', label: 'Votre nom & prénom', type: 'text', required: true, hint: 'Comment doit-on vous appeler ?' },
+        { id: 'email', label: 'Votre adresse email', type: 'email', required: true, hint: 'Pour recevoir votre billet de confirmation.' }
+      ];
+
+  const fieldsPerPage = 4;
+  const totalSteps = Math.ceil(allFields.length / fieldsPerPage);
+  const [step, setStep] = useState(0);
+
+  const [formData, setFormData] = useState({ fullname: '', email: '' });
+  const [customData, setCustomData] = useState<Record<string, any>>({});
+  const [registeredName, setRegisteredName] = useState('');
+  const [registeredEmail, setRegisteredEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [ticketRef, setTicketRef] = useState<string | null>(null);
-  const [pdfGenerating, setPdfGenerating] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, [e.target.id]: e.target.value }));
+  const handleFieldChange = (id: string, value: any) => {
+    if (id === 'fullname' || id === 'email') {
+      setFormData(prev => ({ ...prev, [id]: value }));
+    } else {
+      setCustomData(prev => ({ ...prev, [id]: value }));
+    }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const isLastStep = step === totalSteps - 1;
+  const progress = totalSteps > 0 ? ((step + 1) / totalSteps) * 100 : 100;
+
+  // Get fields for the current page
+  const pageFields = allFields.slice(step * fieldsPerPage, (step + 1) * fieldsPerPage);
+
+  const canAdvance = () => {
+    for (const field of pageFields) {
+      if (field.id === 'fullname') {
+        if (!formData.fullname.trim()) return false;
+      } else if (field.id === 'email') {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) return false;
+      } else {
+        if (field.required) {
+          const val = customData[field.id];
+          if (val === undefined || val === null) return false;
+          if (Array.isArray(val) && val.length === 0) return false;
+          if (typeof val === 'string' && val.trim() === '') return false;
+        }
+        // Custom email field format validation
+        if (field.label.toLowerCase().includes('email') || field.label.toLowerCase().includes('courriel')) {
+          const val = customData[field.id];
+          if (val && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return false;
+        }
+      }
+    }
+    return true;
+  };
+
+  const handleNext = () => {
+    if (!canAdvance()) return;
+    if (isLastStep) {
+      handleSubmit();
+    } else {
+      setStep(s => s + 1);
+    }
+  };
+
+  const handleSubmit = async () => {
     setIsSubmitting(true);
     setError(null);
 
+    // Extraire nom et email depuis les champs custom ou les champs par défaut
+    let ticketName = '';
+    let ticketEmail = '';
+
+    if (hasCustomFields) {
+      const emailField = customFields.find(f =>
+        f.label.toLowerCase().includes('email') ||
+        f.label.toLowerCase().includes('courriel') ||
+        f.label.toLowerCase().includes('mail')
+      );
+      if (emailField) ticketEmail = customData[emailField.id] || '';
+
+      const nameFields = customFields.filter(f =>
+        f.label.toLowerCase().includes('nom') ||
+        f.label.toLowerCase().includes('prénom') ||
+        f.label.toLowerCase().includes('prenom') ||
+        f.label.toLowerCase().includes('name') ||
+        f.label.toLowerCase().includes('fullname')
+      );
+      if (nameFields.length > 0) {
+        ticketName = nameFields.map(f => customData[f.id] || '').filter(Boolean).join(' ');
+      }
+
+      if (!ticketEmail) {
+        const found = Object.values(customData).find(val => typeof val === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val));
+        ticketEmail = (found as string) || '';
+      }
+      if (!ticketName) {
+        const firstText = customFields.find(f => f.type === 'text');
+        if (firstText) ticketName = customData[firstText.id] || '';
+      }
+    } else {
+      ticketName = formData.fullname;
+      ticketEmail = formData.email;
+    }
+
+    const finalName = ticketName.trim() || 'Participant';
+    const finalEmail = ticketEmail.trim();
+
+    // ── Vérifier doublon inscription ────────────────────────────────────────
+    if (finalEmail) {
+      const { data: existing } = await supabase
+        .from('event_registrations')
+        .select('id')
+        .eq('event_id', event.id)
+        .eq('email', finalEmail)
+        .limit(1);
+      if (existing && existing.length > 0) {
+        setError('Vous êtes déjà inscrit à cet événement avec cette adresse email.');
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     const { error: insertError } = await supabase.from('event_registrations').insert([{
       event_id: event.id,
-      fullname: formData.fullname,
-      email: formData.email,
-      phone: formData.phone || null,
+      fullname: finalName,
+      email: finalEmail || 'visiteur@ong-ddb.org',
+      phone: customData.phone || null,
+      custom_data: customData,
     }]);
 
     if (insertError) {
-      setError("Une erreur est survenue lors de l'inscription. Veuillez réessayer.");
+      console.error('Insert error:', insertError);
+      setError(`Erreur lors de l'inscription : ${insertError.message}`);
       setIsSubmitting(false);
-    } else {
-      // Fetch the generated ticket_ref
-      const { data: regData } = await supabase
-        .from('event_registrations')
-        .select('ticket_ref')
-        .eq('event_id', event.id)
-        .eq('email', formData.email)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-        
-      const generatedRef = regData?.ticket_ref || `DDB-TEMP-${Date.now()}`;
-      setTicketRef(generatedRef);
-      setSuccess(true);
-      setIsSubmitting(false);
-      
-      // Start PDF generation and Email sending automatically
-      generateAndSendEmail(generatedRef);
+      return;
+    }
+
+    setRegisteredName(finalName);
+    setRegisteredEmail(finalEmail);
+    setSuccess(true);
+    setIsSubmitting(false);
+
+    // ── Génération PDF + envoi email en arrière-plan ────────────────────────
+    const cleanTitle = event.title.replace(/[^a-z0-9]/gi, '_');
+    let pdfBase64 = '';
+    try {
+      const doc = await generateTicketPDF(finalName, event.title, event.event_date, event.location, event.organizer_logos);
+      doc.save(`Billet_${cleanTitle}.pdf`);
+      pdfBase64 = doc.output('datauristring').split('base64,')[1];
+    } catch (pdfErr) {
+      console.error('Erreur génération PDF:', pdfErr);
+    }
+
+    try {
+      await Promise.race([
+        supabase.functions.invoke('send-event-confirmation', {
+          body: {
+            email: finalEmail || 'visiteur@ong-ddb.org',
+            fullname: finalName,
+            eventTitle: event.title,
+            eventDate: event.event_date,
+            eventLocation: event.location,
+            pdfBase64,
+            pdfName: `Billet_${cleanTitle}.pdf`,
+          },
+        }),
+        new Promise<null>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 30000)),
+      ]);
+      setEmailSent(true);
+    } catch (err) {
+      console.error("Erreur envoi email (non bloquant):", err);
+      setEmailSent(true); // on marque quand même pour débloquer l'UI
     }
   };
 
-  const generateAndSendEmail = async (ref: string) => {
-    setPdfGenerating(true);
-    try {
-      // Wait a bit for the ticket to render in the modal
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const element = document.getElementById('ddb-premium-ticket');
-      if (!element) throw new Error("Ticket element not found");
+  const renderField = (field: any) => {
+    const value = field.id === 'fullname' ? formData.fullname : field.id === 'email' ? formData.email : customData[field.id];
+    const onChange = (val: any) => handleFieldChange(field.id, val);
 
-      // Generate PNG
-      const dataUrl = await toPng(element, { 
-        pixelRatio: 2,
-        backgroundColor: '#064e3b',
-        cacheBust: true,
-        style: {
-          borderRadius: '0' // Avoid rounded corners in capture if needed
-        }
-      });
+    return (
+      <div key={field.id} className="space-y-1.5">
+        <label className="block text-sm font-bold text-gray-800">
+          {field.label} {field.required && <span className="text-red-500">*</span>}
+        </label>
+        {field.hint && <p className="text-xs text-gray-400">{field.hint}</p>}
+        
+        {field.id === 'fullname' && (
+          <input
+            autoFocus={step === 0}
+            type="text"
+            value={formData.fullname}
+            onChange={e => onChange(e.target.value)}
+            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white text-sm transition-all"
+            placeholder="Ex: Jean Kofi"
+          />
+        )}
 
-      // Create PDF
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'px',
-        format: [800, 320]
-      });
-      
-      pdf.addImage(dataUrl, 'PNG', 0, 0, 800, 320);
-      const pdfBase64 = pdf.output('datauristring').split(',')[1];
+        {field.id === 'email' && (
+          <input
+            type="email"
+            value={formData.email}
+            onChange={e => onChange(e.target.value)}
+            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white text-sm transition-all"
+            placeholder="exemple@email.com"
+          />
+        )}
 
-      // Call Edge Function with PDF attachment
-      await supabase.functions.invoke('send-event-confirmation', {
-        body: {
-          email: formData.email,
-          fullname: formData.fullname,
-          eventTitle: event.title,
-          eventDate: event.event_date,
-          eventLocation: event.location,
-          ticketRef: ref,
-          price: (event as any).price,
-          pdfAttachment: pdfBase64
-        }
-      });
-      setEmailSent(true);
-    } catch (err) {
-      console.error("Erreur PDF/Email:", err);
-    } finally {
-      setPdfGenerating(false);
-    }
+        {field.id !== 'fullname' && field.id !== 'email' && (
+          <>
+            {field.type === 'text' && (() => {
+              const isEmail = field.label.toLowerCase().includes('email') || field.label.toLowerCase().includes('courriel');
+              return (
+                <input
+                  type={isEmail ? 'email' : 'text'}
+                  value={value || ''}
+                  onChange={e => onChange(e.target.value)}
+                  placeholder={isEmail ? 'exemple@email.com' : ''}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white text-sm transition-all"
+                />
+              );
+            })()}
+            {field.type === 'textarea' && (
+              <textarea
+                rows={2}
+                value={value || ''}
+                onChange={e => onChange(e.target.value)}
+                className="w-full px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white text-sm transition-all resize-none"
+              />
+            )}
+            {field.type === 'select' && (
+              <select
+                value={value || ''}
+                onChange={e => onChange(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+              >
+                <option value="">Sélectionner...</option>
+                {field.options?.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
+            )}
+            {field.type === 'radio' && (
+              <div className="space-y-1.5">
+                {field.options?.map((opt: string) => (
+                  <label key={opt} className={`flex items-center gap-3 p-2.5 rounded-xl border-2 cursor-pointer transition-all ${value === opt ? 'border-green-500 bg-green-50/30' : 'border-gray-200 hover:border-gray-300'}`}>
+                    <span className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${value === opt ? 'border-green-500' : 'border-gray-300'}`}>
+                      {value === opt && <span className="w-2 h-2 bg-green-500 rounded-full" />}
+                    </span>
+                    <input type="radio" className="hidden" checked={value === opt} onChange={() => onChange(opt)} />
+                    <span className="text-gray-800 text-xs font-medium">{opt}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+            {field.type === 'checkbox' && (
+              <div className="space-y-1.5">
+                {field.options?.map((opt: string) => {
+                  const checked = (value || []).includes(opt);
+                  return (
+                    <label key={opt} className={`flex items-center gap-3 p-2.5 rounded-xl border-2 cursor-pointer transition-all ${checked ? 'border-green-500 bg-green-50/30' : 'border-gray-200 hover:border-gray-300'}`}>
+                      <span className={`w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center ${checked ? 'border-green-500 bg-green-500' : 'border-gray-300'}`}>
+                        {checked && <CheckCircle size={10} className="text-white" />}
+                      </span>
+                      <input type="checkbox" className="hidden" checked={checked} onChange={e => {
+                        const current = value || [];
+                        if (e.target.checked) onChange([...current, opt]);
+                        else onChange(current.filter((v: string) => v !== opt));
+                      }} />
+                      <span className="text-gray-800 text-xs font-medium">{opt}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden max-h-[90vh] overflow-y-auto"
+        initial={{ y: '100%', opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: '100%', opacity: 0 }}
+        transition={{ type: 'spring', damping: 28, stiffness: 350 }}
+        className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md overflow-hidden"
         onClick={(e) => e.stopPropagation()}
+        style={{ maxHeight: '95vh' }}
       >
-        <div className="bg-green-800 text-white p-6 relative">
-          <button 
-            onClick={onClose} 
-            className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full transition-colors z-20"
-            aria-label="Fermer"
-          >
-            <X size={24} />
+        {/* Header */}
+        <div className="bg-green-800 text-white px-6 pt-6 pb-5 relative">
+          <button onClick={onClose} className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors p-1">
+            <X size={20} />
           </button>
-          <h3 className="text-xl font-bold mb-1">
-            {success ? "Inscription Réussie !" : "S'inscrire à l'événement"}
-          </h3>
-          <p className="text-green-200 text-sm line-clamp-1">
-            {success ? "Vérifiez vos e-mails pour votre billet" : event.title}
-          </p>
+          {!success && (
+            <>
+              <p className="text-xs text-green-300 uppercase tracking-widest font-semibold mb-1">Inscription</p>
+              <h3 className="text-lg font-bold leading-tight pr-8 line-clamp-2">{event.title}</h3>
+              {/* Progress bar */}
+              <div className="mt-4 bg-white/20 rounded-full h-1.5 overflow-hidden">
+                <motion.div
+                  className="h-full bg-green-300 rounded-full"
+                  animate={{ width: `${progress}%` }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+              <p className="text-xs text-green-300 mt-1.5">Étape {step + 1} sur {totalSteps}</p>
+            </>
+          )}
+          {success && (
+            <h3 className="text-lg font-bold">Inscription confirmée !</h3>
+          )}
         </div>
 
-        <div className="p-6">
+        {/* Body */}
+        <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(95vh - 140px)' }}>
           {success ? (
             <div className="text-center py-4">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="text-green-600" size={24} />
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="text-green-600" size={32} />
               </div>
-              <h4 className="text-xl font-bold text-gray-900 mb-1">Inscription confirmée !</h4>
-              <p className="text-gray-500 mb-4 text-sm">
-                Merci <strong>{formData.fullname}</strong>. 
-                {emailSent ? " Votre billet PDF a été envoyé par email." : " Nous préparons votre billet..."}
+              <p className="text-gray-700 font-semibold mb-1">Inscription confirmée !</p>
+              <p className="text-gray-500 text-sm mb-4">
+                Votre billet PDF a été téléchargé automatiquement.
               </p>
-              
-              {pdfGenerating && (
-                <div className="flex items-center justify-center gap-2 text-green-700 text-xs font-bold mb-4 animate-pulse">
-                  <Loader2 className="animate-spin" size={14} />
-                  GÉNÉRATION DU BILLET PDF...
+
+              {/* État envoi email */}
+              {!emailSent ? (
+                <div className="flex items-center justify-center gap-2 text-sm text-gray-400 mb-5 bg-gray-50 rounded-xl py-2.5 px-4 border border-gray-100">
+                  <span className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                  Envoi de votre billet par email en cours…
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-2 text-sm text-green-700 mb-5 bg-green-50 rounded-xl py-2.5 px-4 border border-green-100">
+                  <CheckCircle size={15} className="flex-shrink-0" />
+                  {registeredEmail ? `Billet envoyé à ${registeredEmail}` : 'Billet envoyé par email'}
                 </div>
               )}
-              
-              <div className="mb-8 w-full overflow-x-auto pb-4 scrollbar-hide">
-                <div className="min-w-[700px] md:min-w-0 scale-[0.6] sm:scale-[0.8] md:scale-100 origin-top-left md:origin-top flex justify-center">
-                  <EventTicket 
-                    event={{
-                      title: event.title,
-                      event_date: event.event_date,
-                      location: event.location,
-                      price: (event as any).price
-                    }}
-                    registration={{
-                      fullname: formData.fullname,
-                      ticket_ref: ticketRef || 'DDB-PENDING'
-                    }}
-                  />
-                </div>
-              </div>
 
-              <button onClick={onClose} className="bg-gray-100 text-gray-600 font-bold py-2 px-8 rounded-xl hover:bg-gray-200 transition-colors w-full sm:w-auto">
+              <div className="bg-green-50 rounded-xl p-5 mb-4 border border-green-100 text-left">
+                <p className="font-bold text-green-800 mb-1 text-sm">Faites le savoir !</p>
+                <p className="text-xs text-green-700 mb-3">Générez votre affiche et partagez sur les réseaux sociaux.</p>
+                <button
+                  onClick={() => { onClose(); onGeneratePoster(registeredName || formData.fullname); }}
+                  className="w-full bg-green-600 text-white font-bold py-2.5 px-4 rounded-xl hover:bg-green-700 transition-colors text-sm"
+                >
+                  Générer mon visuel "J'y serai"
+                </button>
+              </div>
+              <button onClick={onClose} className="text-gray-400 text-sm hover:text-gray-600 transition-colors">
                 Fermer
               </button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
               {error && <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-4">{error}</div>}
-              <div>
-                <label htmlFor="fullname" className="block text-sm font-medium text-gray-700 mb-1">Nom & Prénom *</label>
-                <input type="text" id="fullname" value={formData.fullname} onChange={handleChange} required
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm" />
+
+              <div className="space-y-5">
+                {pageFields.map(field => renderField(field))}
               </div>
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-                <input type="email" id="email" value={formData.email} onChange={handleChange} required
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm" />
+
+              <div className="flex gap-3 mt-6">
+                {step > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setStep(s => s - 1)}
+                    className="px-5 py-3 font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+                  >
+                    Retour
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={!canAdvance() || isSubmitting}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : isLastStep ? (
+                    'Confirmer mon inscription'
+                  ) : (
+                    <>Suivant <ChevronRight size={18} /></>
+                  )}
+                </button>
               </div>
-              <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
-                <input type="tel" id="phone" value={formData.phone} onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm" />
-              </div>
-              <button type="submit" disabled={isSubmitting}
-                className="w-full bg-green-700 hover:bg-green-800 text-white font-bold py-3.5 rounded-xl transition-colors disabled:opacity-50 mt-4">
-                {isSubmitting ? 'Inscription...' : 'Confirmer mon inscription'}
-              </button>
-            </form>
+            </div>
           )}
         </div>
       </motion.div>
@@ -211,43 +637,167 @@ const EventRegistrationModal: React.FC<{ event: Event; onClose: () => void }> = 
   );
 };
 
+// ─── Feedback Form ────────────────────────────────────────────────────────────
+
+const FeedbackSection: React.FC<{ event: Event }> = ({ event }) => {
+  const config: FeedbackConfig = event.feedback_config ?? { show_stars: true, fields: [] };
+  const hasContent = config.show_stars || config.fields.length > 0;
+
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [customAnswers, setCustomAnswers] = useState<Record<string, any>>({});
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+
+  const handleCustomChange = (id: string, value: any) => setCustomAnswers(p => ({ ...p, [id]: value }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (config.show_stars && rating === 0) return;
+    setStatus('submitting');
+    const { error } = await supabase.from('event_feedbacks').insert([{
+      event_id: event.id,
+      rating: config.show_stars ? rating : null,
+      custom_answers: customAnswers,
+    }]);
+    setStatus(error ? 'error' : 'success');
+  };
+
+  if (!hasContent) return null;
+
+  return (
+    <div className="mt-12 pt-8 border-t border-gray-100">
+      <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 md:p-8 border border-green-100">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 bg-green-200 text-green-700 rounded-full flex items-center justify-center flex-shrink-0">
+            <MessageSquare size={20} />
+          </div>
+          <h3 className="text-xl font-bold text-gray-800">Donnez votre avis</h3>
+        </div>
+        <p className="text-gray-500 text-sm mb-6 ml-13">Avez-vous participé à cet événement ? Votre retour nous aide à nous améliorer.</p>
+
+        {status === 'success' ? (
+          <div className="bg-white p-6 rounded-xl text-center border border-green-100 shadow-sm">
+            <CheckCircle className="text-green-500 mx-auto mb-2" size={32} />
+            <p className="font-bold text-gray-800">Merci pour votre retour !</p>
+            <p className="text-gray-500 text-sm mt-1">Votre avis a bien été enregistré.</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="bg-white p-5 rounded-xl border border-gray-100 space-y-5 shadow-sm">
+            {status === 'error' && <p className="text-red-500 text-sm">Une erreur s'est produite. Veuillez réessayer.</p>}
+
+            {/* Stars */}
+            {config.show_stars && (
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-3">Note globale *</label>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <button
+                      key={star} type="button"
+                      onClick={() => setRating(star)}
+                      onMouseEnter={() => setHoverRating(star)}
+                      onMouseLeave={() => setHoverRating(0)}
+                      className="transition-transform hover:scale-110"
+                    >
+                      <Star
+                        size={36}
+                        className={(hoverRating || rating) >= star ? 'text-yellow-400' : 'text-gray-200'}
+                        fill={(hoverRating || rating) >= star ? 'currentColor' : 'none'}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Custom fields */}
+            {config.fields.map(field => (
+              <div key={field.id}>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  {field.label}{field.required ? ' *' : ''}
+                </label>
+                {field.type === 'text' && (
+                  <input required={field.required} type="text" value={customAnswers[field.id] || ''}
+                    onChange={e => handleCustomChange(field.id, e.target.value)}
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none" />
+                )}
+                {field.type === 'textarea' && (
+                  <textarea required={field.required} rows={3} value={customAnswers[field.id] || ''}
+                    onChange={e => handleCustomChange(field.id, e.target.value)}
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none resize-none" />
+                )}
+                {field.type === 'select' && (
+                  <select required={field.required} value={customAnswers[field.id] || ''}
+                    onChange={e => handleCustomChange(field.id, e.target.value)}
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none">
+                    <option value="">Sélectionner...</option>
+                    {field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                )}
+                {field.type === 'radio' && (
+                  <div className="space-y-2">
+                    {field.options?.map(opt => (
+                      <label key={opt} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${customAnswers[field.id] === opt ? 'border-green-400 bg-green-50' : 'border-gray-200'}`}>
+                        <input type="radio" className="w-4 h-4 text-green-600" checked={customAnswers[field.id] === opt} onChange={() => handleCustomChange(field.id, opt)} />
+                        <span className="text-sm">{opt}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {field.type === 'checkbox' && (
+                  <div className="space-y-2">
+                    {field.options?.map(opt => {
+                      const checked = (customAnswers[field.id] || []).includes(opt);
+                      return (
+                        <label key={opt} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${checked ? 'border-green-400 bg-green-50' : 'border-gray-200'}`}>
+                          <input type="checkbox" className="w-4 h-4 rounded text-green-600 border-gray-300" checked={checked} onChange={e => {
+                            const current = customAnswers[field.id] || [];
+                            if (e.target.checked) handleCustomChange(field.id, [...current, opt]);
+                            else handleCustomChange(field.id, current.filter((v: string) => v !== opt));
+                          }} />
+                          <span className="text-sm">{opt}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            <button
+              type="submit"
+              disabled={(config.show_stars && rating === 0) || status === 'submitting'}
+              className="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
+            >
+              {status === 'submitting' ? 'Envoi en cours...' : 'Soumettre mon avis'}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
 const EventDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [event, setEvent] = useState<Event | null>(null);
   const [otherEvents, setOtherEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [posterState, setPosterState] = useState<{isOpen: boolean; name: string}>({ isOpen: false, name: '' });
 
   const fetchEventData = async () => {
+    if (!id) { setLoading(false); return; }
     setLoading(true);
-    if (!id) return;
-    
     try {
-      // Fetch current event
-      const { data, error } = await supabase
-        .from('events')
-        .select('*')
-        .eq('id', id)
-        .single();
-        
-      if (!error && data) {
-        setEvent(data);
-      }
+      const { data, error } = await supabase.from('events').select('*').eq('id', id).single();
+      if (!error && data) setEvent(data);
 
-      // Fetch all other published events
-      const { data: othersData, error: othersError } = await supabase
-        .from('events')
-        .select('*')
-        .eq('status', 'published')
-        .neq('id', id)
-        .order('event_date', { ascending: false })
-        .limit(8);
-
-      if (othersError) console.error("Error fetching other events:", othersError);
-
-      if (othersData) {
-        setOtherEvents(othersData);
-      }
+      const { data: othersData } = await supabase
+        .from('events').select('*').eq('status', 'published').neq('id', id)
+        .order('event_date', { ascending: false }).limit(8);
+      if (othersData) setOtherEvents(othersData);
     } catch (err) {
       console.error("Error fetching event:", err);
     } finally {
@@ -260,7 +810,6 @@ const EventDetailPage: React.FC = () => {
     const now = new Date();
     const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate()).getTime();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-
     if (eventDay === today) return { label: 'En cours', color: 'bg-emerald-600' };
     if (eventDate.getTime() > now.getTime()) return { label: 'Bientôt', color: 'bg-green-600' };
     return { label: 'Terminé', color: 'bg-gray-500' };
@@ -274,7 +823,7 @@ const EventDetailPage: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex justify-center items-center py-20">
-        <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -294,14 +843,16 @@ const EventDetailPage: React.FC = () => {
     );
   }
 
+  const status = getEventStatus(event.event_date);
+  const isPast = status.label === 'Terminé';
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {/* Hero Header */}
       <div className="bg-green-900 border-b border-green-800 relative z-10 pt-24 pb-16 overflow-hidden">
-        {/* Subtle background abstract shapes */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-10 pointer-events-none">
-           <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[150%] rounded-full bg-white blur-3xl transform rotate-12"></div>
-           <div className="absolute -bottom-[20%] -left-[10%] w-[40%] h-[100%] rounded-full bg-white blur-3xl"></div>
+          <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[150%] rounded-full bg-white blur-3xl transform rotate-12" />
+          <div className="absolute -bottom-[20%] -left-[10%] w-[40%] h-[100%] rounded-full bg-white blur-3xl" />
         </div>
 
         <div className="container mx-auto px-4 relative z-20">
@@ -312,145 +863,173 @@ const EventDetailPage: React.FC = () => {
           <h1 className="text-3xl md:text-5xl font-black text-white mb-6 leading-tight max-w-4xl drop-shadow-md">
             {event.title}
           </h1>
-          
+
           <div className="flex flex-wrap gap-4 md:gap-8 bg-white/10 backdrop-blur-md border border-white/20 p-4 md:p-6 rounded-2xl w-fit">
-             <div className="flex items-center gap-3 text-white">
-                <div className="w-10 h-10 rounded-full bg-green-500/30 flex items-center justify-center">
-                  <Calendar size={20} className="text-green-300" />
+            <div className="flex items-start gap-3 text-white">
+              <div className="w-10 h-10 rounded-full bg-green-500/30 flex items-center justify-center mt-0.5">
+                <Calendar size={20} className="text-green-300" />
+              </div>
+              <div>
+                <p className="text-xs text-green-200 uppercase tracking-widest font-semibold mb-1">Date(s)</p>
+                <div className="space-y-1.5">
+                  <p className="font-medium text-sm md:text-base">
+                    {event.event_dates && event.event_dates.length > 0 && (
+                      <span className="bg-white/10 text-green-200 text-[10px] font-bold px-1.5 py-0.5 rounded mr-2 uppercase">Début</span>
+                    )}
+                    {new Date(event.event_date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                  {(event.event_dates || []).map((dateEntry, idx) => {
+                    if (!dateEntry.date) return null;
+                    return (
+                      <p key={idx} className="font-medium text-sm md:text-base">
+                        <span className="bg-white/10 text-green-200 text-[10px] font-bold px-1.5 py-0.5 rounded mr-2 uppercase">{dateEntry.label || `Jour ${idx + 2}`}</span>
+                        {new Date(dateEntry.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    );
+                  })}
                 </div>
-                <div>
-                  <p className="text-xs text-green-200 uppercase tracking-widest font-semibold mb-0.5">Date</p>
-                  <p className="font-medium text-sm md:text-base">{new Date(event.event_date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                </div>
-             </div>
-             
-              {event.location && (
-                <>
-                  <div className="w-px bg-white/20 hidden md:block"></div>
-                  <div className="flex items-center gap-3 text-white">
-                     <div className="w-10 h-10 rounded-full bg-green-500/30 flex items-center justify-center">
-                       <MapPin size={20} className="text-green-300" />
-                     </div>
-                     <div>
-                       <p className="text-xs text-green-200 uppercase tracking-widest font-semibold mb-0.5">Lieu</p>
-                       <p className="font-medium text-sm md:text-base">{event.location}</p>
-                     </div>
+              </div>
+            </div>
+
+            {event.location && (
+              <>
+                <div className="w-px bg-white/20 hidden md:block" />
+                <div className="flex items-center gap-3 text-white">
+                  <div className="w-10 h-10 rounded-full bg-green-500/30 flex items-center justify-center">
+                    <MapPin size={20} className="text-green-300" />
                   </div>
-                </>
-              )}
+                  <div>
+                    <p className="text-xs text-green-200 uppercase tracking-widest font-semibold mb-0.5">Lieu</p>
+                    <p className="font-medium text-sm md:text-base">{event.location}</p>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 -mt-8 relative z-30">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          
-          {/* Main Content Area */}
+
+          {/* Main Content */}
           <div className="lg:col-span-2 space-y-8">
-             <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
-                {event.image_url && (
-                  <div className="relative w-full bg-gray-50 flex items-center justify-center overflow-hidden h-[300px] sm:h-[500px] border-b border-gray-100">
-                    <img 
-                      src={event.image_url} 
-                      alt={event.title} 
-                      className="relative z-10 max-w-full max-h-full object-contain" 
-                    />
-                  </div>
-                )}
-                
-                  <div className="p-8 md:p-10">
-                    <div className="flex items-center gap-3 mb-6">
-                      <span className={`px-3 py-1 rounded-full text-white text-xs font-bold uppercase tracking-widest ${getEventStatus(event.event_date).color}`}>
-                        {getEventStatus(event.event_date).label}
-                      </span>
-                      <h3 className="text-2xl font-bold text-gray-800">À propos de l'événement</h3>
-                    </div>
-                  {/* Render Rich Text Content */}
-                  <div 
-                    className="prose prose-green max-w-none text-gray-600 leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: event.description || '' }}
-                  />
-                  
-                  <div className="mt-12 pt-8 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-6">
-                     <div>
-                       {event.max_slots ? (
-                         <p className="flex items-center gap-2 text-gray-500 font-medium bg-gray-100 px-4 py-2 rounded-xl">
-                            <Users size={18} className="text-green-600" />
-                            {event.max_slots} places disponibles
-                         </p>
-                       ) : (
-                         <p className="flex items-center gap-2 text-green-600 font-medium bg-green-50 px-4 py-2 rounded-xl">
-                            <CheckCircle size={18} />
-                            Entrée libre
-                         </p>
-                       )}
-                     </div>
-                     {(() => {
-                       const status = getEventStatus(event.event_date);
-                       const isPast = status.label === 'Terminé';
-                       return (
-                         <button 
-                            onClick={() => setShowModal(true)}
-                            disabled={isPast}
-                            className={`w-full sm:w-auto font-bold py-3.5 px-10 rounded-xl transition-all text-lg flex justify-center items-center gap-2 ${
-                              isPast 
-                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                                : 'bg-green-600 hover:bg-green-700 text-white shadow-md active:scale-95'
-                            }`}
-                         >
-                           {isPast ? 'Événement terminé' : 'S\'inscrire'} <Calendar size={18} />
-                         </button>
-                       );
-                     })()}
-                  </div>
+            <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
+              {event.image_url && (
+                <div className="relative w-full bg-gray-50 flex items-center justify-center overflow-hidden h-[250px] sm:h-[420px] border-b border-gray-100">
+                  <img src={event.image_url} alt={event.title} className="max-w-full max-h-full object-contain" />
                 </div>
-             </div>
+              )}
+
+              <div className="p-6 md:p-10">
+                <div className="flex items-center gap-3 mb-6">
+                  <span className={`px-3 py-1 rounded-full text-white text-xs font-bold uppercase tracking-widest ${status.color}`}>
+                    {status.label}
+                  </span>
+                  <h2 className="text-2xl font-bold text-gray-800">À propos de l'événement</h2>
+                </div>
+
+                <div
+                  className="prose prose-green max-w-none text-gray-600 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: sanitizeHTML(event.description || '') }}
+                />
+
+                <div className="mt-10 pt-8 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-6">
+                  <div>
+                    {event.max_slots ? (
+                      <p className="flex items-center gap-2 text-gray-500 font-medium bg-gray-100 px-4 py-2 rounded-xl">
+                        <Users size={18} className="text-green-600" />
+                        {event.max_slots} places disponibles
+                      </p>
+                    ) : (
+                      <p className="flex items-center gap-2 text-green-600 font-medium bg-green-50 px-4 py-2 rounded-xl">
+                        <CheckCircle size={18} />
+                        Entrée libre
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setShowModal(true)}
+                    disabled={isPast}
+                    className={`w-full sm:w-auto font-bold py-3.5 px-10 rounded-xl transition-all text-lg flex justify-center items-center gap-2 ${
+                      isPast ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 text-white shadow-md active:scale-95'
+                    }`}
+                  >
+                    {isPast ? 'Événement terminé' : "S'inscrire"}
+                    {!isPast && <Calendar size={18} />}
+                  </button>
+                </div>
+
+                {/* Feedback section — driven by config */}
+                {isPast && <FeedbackSection event={event} />}
+              </div>
+            </div>
           </div>
 
-          {/* Sidebar - Other Events */}
+          {/* Sidebar */}
           <div className="lg:col-span-1">
-             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sticky top-28">
-                <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                  <Calendar className="text-green-600" size={24} /> 
-                  Autres événements
-                </h3>
-                
-                {otherEvents.length === 0 ? (
-                  <p className="text-gray-500 text-sm">Aucun autre événement programmé pour le moment.</p>
-                ) : (
-                  <div className="space-y-4">
-                    {otherEvents.map(other => (
-                      <Link 
-                        key={other.id} 
-                        to={`/events/${other.id}`}
-                        className="block rounded-xl border border-gray-100 p-3 hover:border-green-300 hover:bg-green-50 transition-all group flex gap-4"
-                      >
-                         {other.image_url ? (
-                           <img src={other.image_url} alt={other.title} className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
-                         ) : (
-                           <div className="w-16 h-16 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-                             <Calendar size={20} className="text-green-600/50" />
-                           </div>
-                         )}
-                         <div className="flex-1 min-w-0 flex flex-col justify-center">
-                            <h4 className="font-bold text-gray-800 text-sm mb-1 truncate group-hover:text-green-700 transition-colors">
-                              {other.title}
-                            </h4>
-                             <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">{new Date(other.event_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
-                             <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded text-white ${getEventStatus(other.event_date).color}`}>
-                               {getEventStatus(other.event_date).label}
-                             </span>
-                         </div>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-             </div>
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sticky top-28">
+              <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <Calendar className="text-green-600" size={24} />
+                Autres événements
+              </h3>
+
+              {otherEvents.length === 0 ? (
+                <p className="text-gray-500 text-sm">Aucun autre événement programmé pour le moment.</p>
+              ) : (
+                <div className="space-y-3">
+                  {otherEvents.map(other => (
+                    <Link
+                      key={other.id}
+                      to={`/events/${other.id}`}
+                      className="flex gap-3 rounded-xl border border-gray-100 p-3 hover:border-green-300 hover:bg-green-50 transition-all group"
+                    >
+                      {other.image_url ? (
+                        <img src={other.image_url} alt={other.title} className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-14 h-14 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                          <Calendar size={20} className="text-green-600/50" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
+                        <h4 className="font-bold text-gray-800 text-sm truncate group-hover:text-green-700 transition-colors">
+                          {other.title}
+                        </h4>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
+                            {new Date(other.event_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                          </span>
+                          <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded text-white ${getEventStatus(other.event_date).color}`}>
+                            {getEventStatus(other.event_date).label}
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {showModal && <EventRegistrationModal event={event} onClose={() => setShowModal(false)} />}
+      <AnimatePresence>
+        {showModal && (
+          <EventRegistrationModal
+            event={event}
+            onClose={() => setShowModal(false)}
+            onGeneratePoster={(name) => setPosterState({ isOpen: true, name })}
+          />
+        )}
+      </AnimatePresence>
+
+      {posterState.isOpen && (
+        <PosterGeneratorModal
+          event={event}
+          defaultName={posterState.name}
+          onClose={() => setPosterState({ isOpen: false, name: '' })}
+        />
+      )}
     </div>
   );
 };

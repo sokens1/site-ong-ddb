@@ -22,119 +22,120 @@ serve(async (req: Request) => {
         const SENDER_EMAIL = Deno.env.get('SENDER_EMAIL') || 'sokensdigital@gmail.com'
         const SENDER_NAME = Deno.env.get('SENDER_NAME') || 'ONG DDB'
 
-        if (!BREVO_API_KEY) throw new Error('BREVO_API_KEY missing')
+        if (!BREVO_API_KEY) {
+            throw new Error('BREVO_API_KEY is not configured. Please set it in Supabase secrets.')
+        }
 
         const bodyText = await req.text()
         if (!bodyText) throw new Error('Empty request body')
 
-        const { email, fullname, eventTitle, eventDate, eventLocation, ticketRef, price, pdfAttachment } = JSON.parse(bodyText)
+        const { email, fullname, eventTitle, eventDate, eventLocation, pdfBase64, pdfName } = JSON.parse(bodyText)
 
         if (!email || !fullname || !eventTitle || !eventDate) {
             throw new Error('Missing required fields for event ticket')
         }
 
-        console.log(`Sending event ticket to ${email} for event ${eventTitle}...`)
+        console.log(`Sending event ticket email to ${email} for event "${eventTitle}"...`)
 
         // Format Date
         const dateObj = new Date(eventDate);
-        const formattedDate = dateObj.toLocaleDateString('fr-FR', { 
-            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', 
-            hour: '2-digit', minute: '2-digit' 
+        const formattedDate = dateObj.toLocaleDateString('fr-FR', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
         });
 
-        // Generate dynamic QR Code Data
-        const qrData = ticketRef || `DDB-${fullname}-${eventTitle}`;
-        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}&color=064e3b&bgcolor=ffffff`;
+        // QR Code URL
+        const qrData = encodeURIComponent(`ONG DDB\nParticipant: ${fullname}\nEvenement: ${eventTitle}\nDate: ${formattedDate}`);
+        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${qrData}&color=0f5132&bgcolor=ffffff`;
 
+        // ── Beautiful Email HTML ─────────────────────────────────────────────
         const finalHtmlContent = `
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <meta charset="utf-8">
-              <style>
-                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; margin: 0; padding: 40px 10px; color: #1e293b; }
-                .container { max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-                .header { text-align: center; margin-bottom: 30px; }
-                .logo { color: #064e3b; font-size: 24px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; }
-                .content { line-height: 1.6; font-size: 16px; }
-                .event-box { background: #f0fdf4; border: 1px solid #dcfce7; padding: 20px; border-radius: 12px; margin: 25px 0; }
-                .event-title { font-weight: 800; color: #064e3b; font-size: 18px; margin-bottom: 10px; }
-                .footer { text-align: center; margin-top: 40px; font-size: 12px; color: #64748b; }
-                .btn { display: inline-block; background: #064e3b; color: white !important; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: 700; margin-top: 20px; }
-              </style>
-            </head>
-            <body>
-              <div class="container">
-                <div class="header">
-                  <div class="logo">ONG DDB</div>
-                </div>
-                <div class="content">
-                  <p>Bonjour <strong>${fullname}</strong>,</p>
-                  <p>Nous avons le plaisir de vous confirmer votre inscription pour l'événement suivant :</p>
-                  
-                  <div class="event-box">
-                    <div class="event-title">${eventTitle}</div>
-                    <div style="font-size: 14px; color: #166534;">
-                      📅 ${formattedDate}<br>
-                      📍 ${eventLocation || 'Lieu à confirmer'}
-                    </div>
-                  </div>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Votre billet d'entrée — ONG DDB</title>
+</head>
+<body style="margin:0;padding:20px;background-color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;padding:24px;border-radius:12px;background-color:#f9fafb;border:1px solid #e5e7eb;">
+    <p style="font-size:16px;color:#1f2937;line-height:1.6;margin:0;">
+      Bonjour ${fullname} 👋,<br><br>
+      Votre inscription à l'événement <strong>${eventTitle}</strong> a été enregistrée avec succès. Votre billet d'entrée officiel est joint à cet e-mail en pièce jointe (PDF).
+    </p>
+    <hr style="margin:20px 0;border:none;border-top:1px solid #e5e7eb;">
+    <p style="font-size:12px;color:#6b7280;margin:0;text-align:center;">
+      ONG Développement Durable et Bien-Être — Gabon 🌱
+    </p>
+  </div>
+</body>
+</html>`;
 
-                  <p><strong>Votre billet officiel est joint à cet e-mail en format PDF.</strong></p>
-                  <p>Veuillez le conserver sur votre téléphone ou l'imprimer pour le présenter à l'entrée.</p>
-                  
-                  <div style="text-align: center;">
-                    <a href="https://ong-ddb.org/events" class="btn">Voir d'autres événements</a>
-                  </div>
-                </div>
-                
-                <div class="footer">
-                  © ${new Date().getFullYear()} ONG DDB - Agissons pour un avenir durable.<br>
-                  Contact : ${SENDER_EMAIL}
-                </div>
-              </div>
-            </body>
-          </html>
-        `;
-
+        // ── Brevo Payload ────────────────────────────────────────────────────
         const payload: any = {
             sender: { name: SENDER_NAME, email: SENDER_EMAIL },
             to: [{ email: email, name: fullname }],
-            subject: `Votre Billet PDF : ${eventTitle} - ONG DDB`,
-            htmlContent: finalHtmlContent
+            subject: `🎟️ Votre billet — ${eventTitle}`,
+            htmlContent: finalHtmlContent,
         };
 
-        if (pdfAttachment) {
-            payload.attachment = [
-                {
-                    content: pdfAttachment,
-                    name: `Billet_${eventTitle.replace(/[^a-z0-9]/gi, '_')}.pdf`
-                }
-            ];
+        // Attach the PDF if provided (generated client-side)
+        if (pdfBase64 && pdfBase64.length > 100) {
+            payload.attachment = [{
+                content: pdfBase64,
+                name: pdfName || `Billet_${eventTitle.replace(/[^a-z0-9]/gi, '_')}.pdf`,
+            }];
+            console.log(`PDF attachment included (${pdfBase64.length} chars base64).`);
+        } else {
+            console.log('No PDF attachment (pdfBase64 not provided or too short).');
         }
 
-        const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-            method: 'POST',
-            headers: {
-                'api-key': BREVO_API_KEY,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(payload),
+        let emailSent = false;
+        let messageId = null;
+        let emailError = null;
+        const MAX_RETRIES = 3;
+
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                console.log(`Brevo attempt ${attempt}/${MAX_RETRIES}...`);
+                const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+                    method: 'POST',
+                    headers: {
+                        'api-key': BREVO_API_KEY,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    emailError = `Brevo error (attempt ${attempt}): ${errorText}`;
+                    console.error(emailError);
+                    if (attempt < MAX_RETRIES) await new Promise(r => setTimeout(r, 1000 * attempt));
+                } else {
+                    const data = await res.json();
+                    messageId = data.messageId;
+                    emailSent = true;
+                    console.log(`✅ Email sent on attempt ${attempt}. messageId: ${messageId}`);
+                    break;
+                }
+            } catch (err: any) {
+                emailError = `Network error (attempt ${attempt}): ${err.message}`;
+                console.error(emailError);
+                if (attempt < MAX_RETRIES) await new Promise(r => setTimeout(r, 1000 * attempt));
+            }
+        }
+
+        return new Response(JSON.stringify({
+            success: true,
+            emailSent,
+            emailError,
+            messageId,
+        }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
 
-        if (!res.ok) {
-            const errorText = await res.text();
-            console.error('Brevo API error:', errorText);
-            throw new Error(`Brevo API error: ${errorText}`);
-        }
-
-        const data = await res.json();
-        console.log("Ticket email sent successfully.");
-
-        return new Response(JSON.stringify({ success: true, messageId: data.messageId }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
     } catch (error: any) {
         console.error(`Edge function error: ${error.message}`)
         return new Response(JSON.stringify({ error: error.message }), {
