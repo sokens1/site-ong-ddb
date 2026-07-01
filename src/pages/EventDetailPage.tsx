@@ -397,26 +397,20 @@ const EventRegistrationModal: React.FC<{
       console.error('Erreur génération PDF:', pdfErr);
     }
 
-    try {
-      await Promise.race([
-        supabase.functions.invoke('send-event-confirmation', {
-          body: {
-            email: finalEmail || 'visiteur@ong-ddb.org',
-            fullname: finalName,
-            eventTitle: event.title,
-            eventDate: event.event_date,
-            eventLocation: event.location,
-            pdfBase64,
-            pdfName: `Billet_${cleanTitle}.pdf`,
-          },
-        }),
-        new Promise<null>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 30000)),
-      ]);
-      setEmailSent(true);
-    } catch (err) {
-      console.error("Erreur envoi email (non bloquant):", err);
-      setEmailSent(true); // on marque quand même pour débloquer l'UI
-    }
+    // Déclenche l'envoi sans attendre la réponse de Brevo (fire-and-forget)
+    supabase.functions.invoke('send-event-confirmation', {
+      body: {
+        email: finalEmail || 'visiteur@ong-ddb.org',
+        fullname: finalName,
+        eventTitle: event.title,
+        eventDate: event.event_date,
+        eventLocation: event.location,
+        pdfBase64,
+        pdfName: `Billet_${cleanTitle}.pdf`,
+      },
+    }).catch(err => console.error('Erreur envoi email (non bloquant):', err));
+
+    setEmailSent(true);
   };
 
   const renderField = (field: any) => {
@@ -972,14 +966,16 @@ const EventDetailPage: React.FC = () => {
                     {event.event_dates && event.event_dates.length > 0 && (
                       <span className="bg-white/10 text-green-200 text-[10px] font-bold px-1.5 py-0.5 rounded mr-2 uppercase">Début</span>
                     )}
-                    {new Date(event.event_date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {new Date(event.event_date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}{' '}
+                    <span className="whitespace-nowrap">à {new Date(event.event_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
                   </p>
                   {(event.event_dates || []).map((dateEntry, idx) => {
                     if (!dateEntry.date) return null;
                     return (
                       <p key={idx} className="font-medium text-sm md:text-base">
                         <span className="bg-white/10 text-green-200 text-[10px] font-bold px-1.5 py-0.5 rounded mr-2 uppercase">{dateEntry.label || `Jour ${idx + 2}`}</span>
-                        {new Date(dateEntry.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {new Date(dateEntry.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}{' '}
+                        <span className="whitespace-nowrap">à {new Date(dateEntry.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
                       </p>
                     );
                   })}
