@@ -595,6 +595,42 @@ const EventRegistrationModal: React.FC<{
     );
   };
 
+  // ── Vérification doublon email en temps réel (debounce 700ms) ───────────
+  useEffect(() => {
+    let typedEmail = '';
+    if (hasCustomFields) {
+      const emailField = customFields.find((f: any) =>
+        f.label.toLowerCase().includes('email') ||
+        f.label.toLowerCase().includes('courriel') ||
+        f.label.toLowerCase().includes('mail')
+      );
+      typedEmail = emailField ? String(customData[emailField.id] || '') : '';
+    } else {
+      typedEmail = formData.email;
+    }
+    typedEmail = typedEmail.trim();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typedEmail)) {
+      setEmailDupStatus('idle');
+      if (emailDupDebounce.current) clearTimeout(emailDupDebounce.current);
+      return;
+    }
+
+    setEmailDupStatus('checking');
+    if (emailDupDebounce.current) clearTimeout(emailDupDebounce.current);
+    emailDupDebounce.current = setTimeout(async () => {
+      const { data } = await supabase
+        .from('event_registrations')
+        .select('id')
+        .eq('event_id', event.id)
+        .ilike('email', typedEmail)
+        .limit(1);
+      setEmailDupStatus(data && data.length > 0 ? 'duplicate' : 'ok');
+    }, 700);
+
+    return () => { if (emailDupDebounce.current) clearTimeout(emailDupDebounce.current); };
+  }, [formData.email, customData, hasCustomFields]);
+
   return (
     <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
       <motion.div
@@ -917,42 +953,6 @@ const EventDetailPage: React.FC = () => {
     window.scrollTo(0, 0);
     fetchEventData();
   }, [id]);
-
-  // ── Vérification doublon email en temps réel (debounce 700ms) ───────────
-  useEffect(() => {
-    let typedEmail = '';
-    if (hasCustomFields) {
-      const emailField = customFields.find((f: any) =>
-        f.label.toLowerCase().includes('email') ||
-        f.label.toLowerCase().includes('courriel') ||
-        f.label.toLowerCase().includes('mail')
-      );
-      typedEmail = emailField ? String(customData[emailField.id] || '') : '';
-    } else {
-      typedEmail = formData.email;
-    }
-    typedEmail = typedEmail.trim();
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typedEmail)) {
-      setEmailDupStatus('idle');
-      if (emailDupDebounce.current) clearTimeout(emailDupDebounce.current);
-      return;
-    }
-
-    setEmailDupStatus('checking');
-    if (emailDupDebounce.current) clearTimeout(emailDupDebounce.current);
-    emailDupDebounce.current = setTimeout(async () => {
-      const { data } = await supabase
-        .from('event_registrations')
-        .select('id')
-        .eq('event_id', event.id)
-        .ilike('email', typedEmail)
-        .limit(1);
-      setEmailDupStatus(data && data.length > 0 ? 'duplicate' : 'ok');
-    }, 700);
-
-    return () => { if (emailDupDebounce.current) clearTimeout(emailDupDebounce.current); };
-  }, [formData.email, customData, hasCustomFields]);
 
   // Vérification automatique dès que l'email est valide (debounce 700ms)
   // Placé avant les early returns pour respecter les Rules of Hooks
