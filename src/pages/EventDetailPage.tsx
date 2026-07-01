@@ -1179,6 +1179,9 @@ const EventDetailPage: React.FC = () => {
                         <div className="relative">
                           <input
                             type="email"
+                            id="recovery-email"
+                            name="recovery-email"
+                            autoComplete="email"
                             value={recoveryEmail}
                             onChange={e => setRecoveryEmail(e.target.value)}
                             placeholder="votre@email.com"

@@ -97,8 +97,8 @@ const Header: React.FC = () => {
               </li>
             </ul>
           </nav>
-          <button className="md:hidden text-green-800" onClick={toggleMobileMenu}>
-            <i className="fas fa-bars text-2xl"></i>
+          <button className="md:hidden text-green-800" onClick={toggleMobileMenu} aria-label="Menu mobile">
+            <i className="fas fa-bars text-2xl" aria-hidden="true"></i>
           </button>
         </div>
       </header>

@@ -60,17 +60,17 @@ const Footer: React.FC = () => {
               ONG Développement Durable et Bien-Être, engagé à former les leaders jeunesse pour la protection de l'environnement et l'avenir de la planète.
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="text-white hover:text-green-300">
-                <i className="fab fa-facebook-f"></i>
+              <a href="#" className="text-white hover:text-green-300" aria-label="Facebook">
+                <i className="fab fa-facebook-f" aria-hidden="true"></i>
               </a>
-              <a href="#" className="text-white hover:text-green-300">
-                <i className="fab fa-twitter"></i>
+              <a href="#" className="text-white hover:text-green-300" aria-label="Twitter / X">
+                <i className="fab fa-twitter" aria-hidden="true"></i>
               </a>
-              <a href="#" className="text-white hover:text-green-300">
-                <i className="fab fa-instagram"></i>
+              <a href="#" className="text-white hover:text-green-300" aria-label="Instagram">
+                <i className="fab fa-instagram" aria-hidden="true"></i>
               </a>
-              <a href="#" className="text-white hover:text-green-300">
-                <i className="fab fa-linkedin-in"></i>
+              <a href="#" className="text-white hover:text-green-300" aria-label="LinkedIn">
+                <i className="fab fa-linkedin-in" aria-hidden="true"></i>
               </a>
             </div>
           </div>
@@ -146,6 +146,9 @@ const Footer: React.FC = () => {
             <form onSubmit={handleNewsletterSubmit} className="flex flex-col gap-4">
               <input
                 type="email"
+                id="newsletter-email"
+                name="email"
+                autoComplete="email"
                 placeholder="Votre email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}

@@ -4,6 +4,46 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import BackToTop from './components/BackToTop';
 
+// ── Suspense fallback (outside App to keep a stable reference) ───────────────
+const LoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+  </div>
+);
+
+// ── Error boundary so a crashed lazy page shows an error, not infinite spinner
+class AppErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(err: Error) {
+    console.error('AppErrorBoundary caught:', err);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 gap-4">
+          <p className="text-gray-600 font-semibold">Une erreur est survenue.</p>
+          <button
+            onClick={() => { this.setState({ hasError: false }); window.location.reload(); }}
+            className="px-6 py-2 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700"
+          >
+            Recharger
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // Lazy load public pages
 const HomePage = lazy(() => import('./pages/HomePage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
@@ -14,44 +54,40 @@ const JoinPage = lazy(() => import('./pages/JoinPage'));
 const EventDetailPage = lazy(() => import('./pages/EventDetailPage'));
 const EventsPage = lazy(() => import('./pages/EventsPage'));
 
-import AdminLogin from './pages/AdminLogin';
-import AdminLayout from './components/admin/AdminLayout';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AuthCallback from './pages/admin/AuthCallback';
+// Admin — lazy-loaded so they are excluded from the main bundle
+const AdminLogin     = lazy(() => import('./pages/AdminLogin'));
+const AdminLayout    = lazy(() => import('./components/admin/AdminLayout'));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const AuthCallback   = lazy(() => import('./pages/admin/AuthCallback'));
 
-// Admin
-import UsersAdmin from './pages/admin/admin/UsersAdmin';
-import TeamAdmin from './pages/admin/admin/TeamAdmin';
-import SubmissionsAdmin from './pages/admin/admin/SubmissionsAdmin';
+const UsersAdmin       = lazy(() => import('./pages/admin/admin/UsersAdmin'));
+const TeamAdmin        = lazy(() => import('./pages/admin/admin/TeamAdmin'));
+const SubmissionsAdmin = lazy(() => import('./pages/admin/admin/SubmissionsAdmin'));
 
-// Communication
-import NewsAdmin from './pages/admin/communication/NewsAdmin';
-import CreateNewsPage from './pages/admin/communication/CreateNewsPage';
-import AdminArticleView from './pages/admin/communication/AdminArticleView';
-import VideosAdmin from './pages/admin/communication/VideosAdmin';
-import EditVideoPage from './pages/admin/communication/EditVideoPage';
-import NewsletterAdmin from './pages/admin/communication/NewsletterAdmin';
-import FaqAdmin from './pages/admin/communication/FaqAdmin';
+const NewsAdmin        = lazy(() => import('./pages/admin/communication/NewsAdmin'));
+const CreateNewsPage   = lazy(() => import('./pages/admin/communication/CreateNewsPage'));
+const AdminArticleView = lazy(() => import('./pages/admin/communication/AdminArticleView'));
+const VideosAdmin      = lazy(() => import('./pages/admin/communication/VideosAdmin'));
+const EditVideoPage    = lazy(() => import('./pages/admin/communication/EditVideoPage'));
+const NewsletterAdmin  = lazy(() => import('./pages/admin/communication/NewsletterAdmin'));
+const FaqAdmin         = lazy(() => import('./pages/admin/communication/FaqAdmin'));
 
-// Chef Projet
-import ProjectsAdmin from './pages/admin/chefproject/ProjectsAdmin';
-import ProjectDetailsPage from './pages/admin/chefproject/ProjectDetailsPage';
-import EditProjectPage from './pages/admin/chefproject/EditProjectPage';
-import ReportsAdmin from './pages/admin/chefproject/ReportsAdmin';
-import ActionsAdmin from './pages/admin/chefproject/ActionsAdmin';
-import EditActionPage from './pages/admin/chefproject/EditActionPage';
+const ProjectsAdmin    = lazy(() => import('./pages/admin/chefproject/ProjectsAdmin'));
+const ProjectDetailsPage = lazy(() => import('./pages/admin/chefproject/ProjectDetailsPage'));
+const EditProjectPage  = lazy(() => import('./pages/admin/chefproject/EditProjectPage'));
+const ReportsAdmin     = lazy(() => import('./pages/admin/chefproject/ReportsAdmin'));
+const ActionsAdmin     = lazy(() => import('./pages/admin/chefproject/ActionsAdmin'));
+const EditActionPage   = lazy(() => import('./pages/admin/chefproject/EditActionPage'));
 
-// Partner
-import DocumentsAdmin from './pages/admin/partner/DocumentsAdmin';
+const DocumentsAdmin   = lazy(() => import('./pages/admin/partner/DocumentsAdmin'));
 
-// New modules
-import DonationsAdmin from './pages/admin/donations/DonationsAdmin';
-import EventsAdmin from './pages/admin/events/EventsAdmin';
-import CreateEventPage from './pages/admin/events/CreateEventPage';
-import ScanPage from './pages/admin/events/ScanPage';
+const DonationsAdmin   = lazy(() => import('./pages/admin/donations/DonationsAdmin'));
+const EventsAdmin      = lazy(() => import('./pages/admin/events/EventsAdmin'));
+const CreateEventPage  = lazy(() => import('./pages/admin/events/CreateEventPage'));
+const ScanPage         = lazy(() => import('./pages/admin/events/ScanPage'));
 
-// Others
-import ContributionsAdmin from './pages/admin/ContributionsAdmin';
+const ContributionsAdmin = lazy(() => import('./pages/admin/ContributionsAdmin'));
+
 import { supabase } from './supabaseClient';
 
 function App() {
@@ -90,14 +126,9 @@ function App() {
     }
   };
 
-  const LoadingFallback = () => (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
-    </div>
-  );
-
   return (
     <Router>
+      <AppErrorBoundary>
       <Suspense fallback={<LoadingFallback />}>
       <Routes>
         {/* Public routes */}
@@ -216,6 +247,7 @@ function App() {
         } />
       </Routes>
       </Suspense>
+      </AppErrorBoundary>
     </Router>
   );
 }

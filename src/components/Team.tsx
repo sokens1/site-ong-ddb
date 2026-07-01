@@ -85,14 +85,13 @@ const Team: React.FC = () => {
     const handleScroll = () => {
       const scrollLeft = container.scrollLeft;
       const cardWidth = container.children[0]?.clientWidth || 0;
-      const gap = 24; // flex-gap-6
-      const newIndex = Math.round(scrollLeft / (cardWidth + gap));
-      if (newIndex !== activeIndex) setActiveIndex(newIndex);
+      const gap = 24;
+      setActiveIndex(Math.round(scrollLeft / (cardWidth + gap)));
     };
 
     container.addEventListener('scroll', handleScroll);
     return () => container.removeEventListener('scroll', handleScroll);
-  }, [activeIndex]);
+  }, []);
 
   const scrollTo = (index: number) => {
     if (scrollRef.current) {
@@ -123,15 +122,17 @@ const Team: React.FC = () => {
         {/* Navigation Arrows */}
         <button
           onClick={() => scrollSide('left')}
+          aria-label="Précédent"
           className="absolute -left-2 md:-left-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-green-700 hover:bg-green-600 hover:text-white transition-all z-20 opacity-0 group-hover/carousel:opacity-100 active:scale-95"
         >
-          <ChevronLeft size={20} />
+          <ChevronLeft size={20} aria-hidden="true" />
         </button>
         <button
           onClick={() => scrollSide('right')}
+          aria-label="Suivant"
           className="absolute -right-2 md:-right-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-green-700 hover:bg-green-600 hover:text-white transition-all z-20 opacity-0 group-hover/carousel:opacity-100 active:scale-95"
         >
-          <ChevronRight size={20} />
+          <ChevronRight size={20} aria-hidden="true" />
         </button>
 
         {/* Carousel Container */}

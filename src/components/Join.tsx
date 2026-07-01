@@ -145,21 +145,21 @@ const MemberForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1">Nom complet *</label>
-                  <input type="text" id="fullname" value={formData.fullname} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+                  <input type="text" id="fullname" autoComplete="name" value={formData.fullname} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Email *</label>
-                <input type="email" id="email" value={formData.email} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+                <input type="email" id="email" autoComplete="email" value={formData.email} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1">Téléphone</label>
-                  <input type="tel" id="phone" value={formData.phone} onChange={handleInputChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+                  <input type="tel" id="phone" autoComplete="tel" value={formData.phone} onChange={handleInputChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1">Ville</label>
-                  <input type="text" id="city" value={formData.city} onChange={handleInputChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+                  <input type="text" id="city" autoComplete="address-level2" value={formData.city} onChange={handleInputChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
                 </div>
               </div>
             </motion.div>
@@ -300,21 +300,21 @@ const PartnerForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">Nom & Prénom *</label>
-            <input type="text" id="fullname" value={formData.fullname} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+            <input type="text" id="fullname" autoComplete="name" value={formData.fullname} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">Organisation *</label>
-            <input type="text" id="organization" value={formData.organization} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+            <input type="text" id="organization" autoComplete="organization" value={formData.organization} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">Email *</label>
-            <input type="email" id="email" value={formData.email} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+            <input type="email" id="email" autoComplete="email" value={formData.email} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">Téléphone *</label>
-            <input type="tel" id="phone" value={formData.phone} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+            <input type="tel" id="phone" autoComplete="tel" value={formData.phone} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -417,16 +417,16 @@ const DonationForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">Nom & Prénom *</label>
-            <input type="text" id="fullname" value={formData.fullname} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+            <input type="text" id="fullname" autoComplete="name" value={formData.fullname} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">Email *</label>
-            <input type="email" id="email" value={formData.email} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+            <input type="email" id="email" autoComplete="email" value={formData.email} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
           </div>
         </div>
         <div>
           <label className="block text-xs font-semibold text-gray-600 mb-1">Téléphone</label>
-          <input type="tel" id="phone" value={formData.phone} onChange={handleInputChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+          <input type="tel" id="phone" autoComplete="tel" value={formData.phone} onChange={handleInputChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
         </div>
         <div>
           <label className="block text-xs font-semibold text-gray-600 mb-2">Type de don *</label>

@@ -199,21 +199,20 @@ const News: React.FC = () => {
 
   useEffect(() => {
     const container = newsScrollRef.current;
+    if (!container) return;
     let scrollTimeout: NodeJS.Timeout;
     const handleScroll = () => {
-      if (!container) return;
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
         const scrollLeft = container.scrollLeft;
         const cardWidth = container.children[0]?.clientWidth || 0;
-        const gap = 32; // Assuming gap-8
-        const newIndex = Math.round(scrollLeft / (cardWidth + gap));
-        if (newIndex !== activeIndex) setActiveIndex(newIndex);
+        const gap = 32;
+        setActiveIndex(Math.round(scrollLeft / (cardWidth + gap)));
       }, 150);
     };
-    container?.addEventListener('scroll', handleScroll);
-    return () => container?.removeEventListener('scroll', handleScroll);
-  }, [activeIndex]);
+    container.addEventListener('scroll', handleScroll);
+    return () => { container.removeEventListener('scroll', handleScroll); clearTimeout(scrollTimeout); };
+  }, []);
 
   // Render
   return (

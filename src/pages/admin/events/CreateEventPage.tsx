@@ -3,11 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useCrud } from '../../../hooks/useCrud';
 import ImageUpload from '../../../components/admin/ImageUpload';
 import RichTextEditor from '../../../components/admin/RichTextEditor';
+import * as XLSX from 'xlsx';
 import {
   ArrowLeft, Users, Trash2, Plus, Star, X as XIcon, GripVertical,
-  FileText, ClipboardList, MessageSquare, Download, Eye, Search,
-  Building2, Handshake, Sparkles,
+  FileText, ClipboardList, MessageSquare, Eye, Search,
+  Building2, Handshake, Sparkles, BarChart2, FileSpreadsheet,
 } from 'lucide-react';
+import EventStatsTab from './EventStatsTab';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../../supabaseClient';
 import ConfirmationModal from '../../../components/admin/ConfirmationModal';
@@ -282,7 +284,7 @@ const CreateEventPage: React.FC = () => {
   const { create, update, data: eventsData } = useCrud<Event>({ tableName: 'events' });
   const isEditing = !!id;
 
-  const [activeTab, setActiveTab] = useState<'info' | 'form' | 'feedback_config' | 'participants' | 'feedbacks'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'form' | 'feedback_config' | 'participants' | 'feedbacks' | 'stats'>('info');
   const [creationStep, setCreationStep] = useState<1 | 2>(1);
 
   const getCurrentDateTime = () => {
@@ -412,27 +414,23 @@ const CreateEventPage: React.FC = () => {
     });
   };
 
-  const exportCSV = () => {
+  const exportXLSX = () => {
     const customFields = formData.form_fields || [];
-    const headers = ['#', 'Nom', 'Email', 'Téléphone', 'Réf. billet', 'Date inscription', ...customFields.map(f => f.label)];
-    const rows = registrations.map((reg, idx) => [
-      idx + 1, reg.fullname, reg.email, reg.phone || '', reg.ticket_ref || '',
+    const headers = ['#', 'Nom', 'Email', 'Téléphone', 'Réf. billet', 'Date inscription', ...customFields.map((f: any) => f.label)];
+    const rows = registrations.map((reg: any, idx: number) => [
+      idx + 1, reg.fullname || '', reg.email || '', reg.phone || '', reg.ticket_ref || '',
       reg.created_at ? new Date(reg.created_at).toLocaleString('fr-FR') : '',
-      ...customFields.map(f => {
+      ...customFields.map((f: any) => {
         const val = reg.custom_data?.[f.id];
         return Array.isArray(val) ? val.join(', ') : String(val ?? '');
       }),
     ]);
-    const csv = [headers, ...rows].map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `participants_${(formData.title || 'evenement').replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    // Largeurs colonnes
+    ws['!cols'] = headers.map((_: any, i: number) => ({ wch: i === 0 ? 5 : i <= 2 ? 28 : 20 }));
+    XLSX.utils.book_append_sheet(wb, ws, 'Participants');
+    XLSX.writeFile(wb, `participants_${(formData.title || 'evenement').replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   const tabs = [
@@ -440,6 +438,7 @@ const CreateEventPage: React.FC = () => {
     { key: 'form', label: 'Formulaire', icon: ClipboardList, sub: "Champs d'inscription" },
     { key: 'feedback_config', label: 'Config. Avis', icon: Star, sub: 'Questions post-événement' },
     { key: 'participants', label: 'Participants', icon: Users, sub: 'Inscrits', badge: registrations.length || null },
+    { key: 'stats', label: 'Statistiques', icon: BarChart2, sub: 'KPIs & graphes' },
     { key: 'feedbacks', label: 'Avis reçus', icon: MessageSquare, sub: 'Retours', badge: feedbacks.length || null },
   ] as const;
 
@@ -1068,9 +1067,9 @@ const CreateEventPage: React.FC = () => {
                   />
                 </div>
                 {registrations.length > 0 && (
-                  <button onClick={exportCSV}
+                  <button onClick={exportXLSX}
                     className="flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-700 text-sm font-semibold rounded-lg hover:bg-green-100 transition-colors border border-green-200">
-                    <Download size={15} /> Exporter CSV
+                    <FileSpreadsheet size={15} /> Exporter XLSX
                   </button>
                 )}
                 <button onClick={() => fetchRegistrations(parseInt(id!))}
@@ -1167,6 +1166,18 @@ const CreateEventPage: React.FC = () => {
                 )}
               </>
             )}
+          </motion.div>
+        )}
+
+        {/* ── Stats Tab ── */}
+        {activeTab === 'stats' && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <EventStatsTab
+              registrations={registrations}
+              formFields={formData.form_fields || []}
+              maxSlots={formData.max_slots}
+              eventDate={formData.event_date}
+            />
           </motion.div>
         )}
 

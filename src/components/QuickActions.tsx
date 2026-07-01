@@ -86,21 +86,20 @@ const QuickActions: React.FC = () => {
   // Gestion du scroll
   useEffect(() => {
     const container = scrollRef.current;
+    if (!container) return;
     let scrollTimeout: NodeJS.Timeout;
     const handleScroll = () => {
-      if (!container) return;
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
         const scrollLeft = container.scrollLeft;
         const cardWidth = container.children[0]?.clientWidth || 0;
-        const gap = 16; // gap-4
-        const newIndex = Math.round(scrollLeft / (cardWidth + gap));
-        if (newIndex !== activeIndex) setActiveIndex(newIndex);
+        const gap = 16;
+        setActiveIndex(Math.round(scrollLeft / (cardWidth + gap)));
       }, 150);
     };
-    container?.addEventListener('scroll', handleScroll);
-    return () => container?.removeEventListener('scroll', handleScroll);
-  }, [activeIndex]);
+    container.addEventListener('scroll', handleScroll);
+    return () => { container.removeEventListener('scroll', handleScroll); clearTimeout(scrollTimeout); };
+  }, []);
 
   return (
     <section className="py-16 bg-white">

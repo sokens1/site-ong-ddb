@@ -246,9 +246,10 @@ const AdminLayout: React.FC = () => {
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
+            aria-label="Fermer le menu"
             className="lg:hidden text-white hover:text-gray-300"
           >
-            <X size={20} />
+            <X size={20} aria-hidden="true" />
           </button>
         </div>
 
@@ -337,9 +338,10 @@ const AdminLayout: React.FC = () => {
           <div className="flex items-center gap-4">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
+              aria-label="Ouvrir / fermer le menu"
               className="text-gray-500 hover:text-green-600 transition-colors"
             >
-              <Menu size={24} />
+              <Menu size={24} aria-hidden="true" />
             </button>
             <h2 className="text-lg font-semibold text-gray-700 hidden md:block">
               {location.pathname === '/admin/scan' ? 'Scan des billets' :
@@ -353,6 +355,7 @@ const AdminLayout: React.FC = () => {
             <div className="relative">
               <button
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
+                aria-label="Notifications"
                 className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-full transition-all relative"
               >
                 {unreadCount > 0 && (
@@ -483,9 +486,10 @@ const AdminLayout: React.FC = () => {
           <div className="p-6 bg-green-800 text-white relative">
             <button
               onClick={() => setIsProfileOpen(false)}
+              aria-label="Fermer le profil"
               className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors"
             >
-              <X size={24} />
+              <X size={24} aria-hidden="true" />
             </button>
             <div className="mt-4 flex flex-col items-center">
               <div className="w-24 h-24 bg-white/20 backdrop-blur-md rounded-full border-4 border-white/30 flex items-center justify-center text-4xl font-bold mb-4 shadow-xl">

@@ -49,21 +49,20 @@ const CoreReports: React.FC = () => {
 
   useEffect(() => {
     const container = scrollContainerRef.current;
+    if (!container) return;
     let scrollTimeout: NodeJS.Timeout;
     const handleScroll = () => {
-      if (!container) return;
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
         const scrollLeft = container.scrollLeft;
         const cardWidth = container.children[0]?.clientWidth || 0;
-        const gap = 24; // gap-6
-        const newIndex = Math.round(scrollLeft / (cardWidth + gap));
-        if (newIndex !== activeIndex) setActiveIndex(newIndex);
+        const gap = 24;
+        setActiveIndex(Math.round(scrollLeft / (cardWidth + gap)));
       }, 100);
     };
-    container?.addEventListener('scroll', handleScroll);
-    return () => container?.removeEventListener('scroll', handleScroll);
-  }, [activeIndex]);
+    container.addEventListener('scroll', handleScroll);
+    return () => { container.removeEventListener('scroll', handleScroll); clearTimeout(scrollTimeout); };
+  }, []);
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {

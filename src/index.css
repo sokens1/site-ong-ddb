@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Safari: -webkit-backdrop-filter prefix (autoprefixer ne préfixe pas les CSS vars Tailwind) */
+[class*="backdrop-blur"],
+[class*="backdrop-filter"],
+.nav-arrow {
+  -webkit-backdrop-filter: var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);
+}
+
+/* ── Tailwind manque text-size-adjust (standard) pour Chrome/Firefox */
+html, :host {
+  text-size-adjust: 100%;
+}
+
 html, body {
     font-family: 'Lato', sans-serif;
     overflow-x: hidden;

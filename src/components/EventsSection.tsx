@@ -21,6 +21,7 @@ interface Event {
 const EventsSection: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -35,40 +36,47 @@ const EventsSection: React.FC = () => {
 
   useEffect(() => {
     const container = eventsScrollRef.current;
+    if (!container) return;
     let scrollTimeout: NodeJS.Timeout;
     const handleScroll = () => {
-      if (!container) return;
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
         const scrollLeft = container.scrollLeft;
         const cardWidth = container.children[0]?.clientWidth || 0;
-        const gap = 24; // gap-6
-        const newIndex = Math.round(scrollLeft / (cardWidth + gap));
-        if (newIndex !== activeIndex) setActiveIndex(newIndex);
+        const gap = 24;
+        setActiveIndex(Math.round(scrollLeft / (cardWidth + gap)));
       }, 100);
     };
-    container?.addEventListener('scroll', handleScroll);
-    return () => container?.removeEventListener('scroll', handleScroll);
-  }, [activeIndex]);
+    container.addEventListener('scroll', handleScroll);
+    return () => { container.removeEventListener('scroll', handleScroll); clearTimeout(scrollTimeout); };
+  }, []);
 
   const fetchEvents = async () => {
     setLoading(true);
+    setFetchError(false);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
     try {
       const { data, error } = await supabase
         .from('events')
         .select('id, title, event_date, location, image_url, description, max_slots, status, slug')
         .eq('status', 'published')
         .order('event_date', { ascending: false })
-        .limit(5);
-      
+        .limit(5)
+        .abortSignal(controller.signal);
+
       if (error) {
         console.error('Error fetching events:', error);
+        setFetchError(true);
       }
       if (!error && data) setEvents(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Unexpected error fetching events:', err);
+      setFetchError(true);
+    } finally {
+      clearTimeout(timeout);
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const getEventStatus = (dateStr: string) => {
@@ -104,6 +112,15 @@ const EventsSection: React.FC = () => {
         {loading ? (
           <div className="flex justify-center items-center py-16">
             <div className="w-10 h-10 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : fetchError ? (
+          <div className="text-center py-16">
+            <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calendar size={36} className="text-red-300" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-500 mb-2">Impossible de charger les événements</h3>
+            <p className="text-sm text-gray-400 mb-4">Vérifiez votre connexion et réessayez.</p>
+            <button onClick={fetchEvents} className="px-5 py-2 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 transition">Réessayer</button>
           </div>
         ) : events.length === 0 ? (
           <div className="text-center py-16">
