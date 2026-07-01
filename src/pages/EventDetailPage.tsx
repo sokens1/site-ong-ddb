@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, MapPin, Users, X, CheckCircle, ChevronLeft, Star, MessageSquare, ChevronRight, Share2, Copy, Check } from 'lucide-react';
+import { Calendar, MapPin, Users, X, CheckCircle, ChevronLeft, Star, MessageSquare, ChevronRight, Share2, Copy, Check, Loader2, AlertCircle } from 'lucide-react';
 import PosterGeneratorModal from '../components/events/PosterGeneratorModal';
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
@@ -272,6 +272,11 @@ const EventRegistrationModal: React.FC<{
   const [error, setError] = useState<string | null>(null);
   const [emailSent, setEmailSent] = useState(false);
 
+  // ── Vérification doublon email en temps réel ──────────────────────────────
+  type EmailDupStatus = 'idle' | 'checking' | 'duplicate' | 'ok';
+  const [emailDupStatus, setEmailDupStatus] = useState<EmailDupStatus>('idle');
+  const emailDupDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleFieldChange = (id: string, value: any) => {
     if (id === 'fullname' || id === 'email') {
       setFormData(prev => ({ ...prev, [id]: value }));
@@ -287,6 +292,7 @@ const EventRegistrationModal: React.FC<{
   const pageFields = allFields.slice(step * fieldsPerPage, (step + 1) * fieldsPerPage);
 
   const canAdvance = () => {
+    if (emailDupStatus === 'duplicate') return false;
     for (const field of pageFields) {
       if (field.id === 'fullname') {
         if (!formData.fullname.trim()) return false;
@@ -451,25 +457,83 @@ const EventRegistrationModal: React.FC<{
         )}
 
         {field.id === 'email' && (
-          <input
-            type="email"
-            value={formData.email}
-            onChange={e => onChange(e.target.value)}
-            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white text-sm transition-all"
-            placeholder="exemple@email.com"
-          />
+          <div className="space-y-1">
+            <div className="relative">
+              <input
+                type="email"
+                value={formData.email}
+                onChange={e => onChange(e.target.value)}
+                className={`w-full px-4 py-2.5 pr-10 rounded-xl border bg-gray-50 focus:outline-none focus:ring-2 focus:bg-white text-sm transition-all
+                  ${emailDupStatus === 'duplicate'
+                    ? 'border-red-400 focus:ring-red-300'
+                    : emailDupStatus === 'ok'
+                    ? 'border-green-400 focus:ring-green-500'
+                    : 'border-gray-200 focus:ring-green-500'}`}
+                placeholder="exemple@email.com"
+              />
+              {emailDupStatus === 'checking' && (
+                <Loader2 size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />
+              )}
+              {emailDupStatus === 'ok' && (
+                <CheckCircle size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" />
+              )}
+              {emailDupStatus === 'duplicate' && (
+                <AlertCircle size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500" />
+              )}
+            </div>
+            {emailDupStatus === 'duplicate' && (
+              <p className="flex items-center gap-1.5 text-xs text-red-600 font-semibold">
+                <AlertCircle size={12} />
+                Vous êtes déjà inscrit à cet événement avec cette adresse email.
+              </p>
+            )}
+          </div>
         )}
 
         {field.id !== 'fullname' && field.id !== 'email' && (
           <>
             {field.type === 'text' && (() => {
               const isEmail = field.label.toLowerCase().includes('email') || field.label.toLowerCase().includes('courriel');
+              if (isEmail) {
+                return (
+                  <div className="space-y-1">
+                    <div className="relative">
+                      <input
+                        type="email"
+                        value={value || ''}
+                        onChange={e => onChange(e.target.value)}
+                        placeholder="exemple@email.com"
+                        className={`w-full px-4 py-2.5 pr-10 rounded-xl border bg-gray-50 focus:outline-none focus:ring-2 focus:bg-white text-sm transition-all
+                          ${emailDupStatus === 'duplicate'
+                            ? 'border-red-400 focus:ring-red-300'
+                            : emailDupStatus === 'ok'
+                            ? 'border-green-400 focus:ring-green-500'
+                            : 'border-gray-200 focus:ring-green-500'}`}
+                      />
+                      {emailDupStatus === 'checking' && (
+                        <Loader2 size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />
+                      )}
+                      {emailDupStatus === 'ok' && (
+                        <CheckCircle size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" />
+                      )}
+                      {emailDupStatus === 'duplicate' && (
+                        <AlertCircle size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500" />
+                      )}
+                    </div>
+                    {emailDupStatus === 'duplicate' && (
+                      <p className="flex items-center gap-1.5 text-xs text-red-600 font-semibold">
+                        <AlertCircle size={12} />
+                        Vous êtes déjà inscrit à cet événement avec cette adresse email.
+                      </p>
+                    )}
+                  </div>
+                );
+              }
               return (
                 <input
-                  type={isEmail ? 'email' : 'text'}
+                  type="text"
                   value={value || ''}
                   onChange={e => onChange(e.target.value)}
-                  placeholder={isEmail ? 'exemple@email.com' : ''}
                   className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white text-sm transition-all"
                 />
               );
@@ -853,6 +917,42 @@ const EventDetailPage: React.FC = () => {
     window.scrollTo(0, 0);
     fetchEventData();
   }, [id]);
+
+  // ── Vérification doublon email en temps réel (debounce 700ms) ───────────
+  useEffect(() => {
+    let typedEmail = '';
+    if (hasCustomFields) {
+      const emailField = customFields.find((f: any) =>
+        f.label.toLowerCase().includes('email') ||
+        f.label.toLowerCase().includes('courriel') ||
+        f.label.toLowerCase().includes('mail')
+      );
+      typedEmail = emailField ? String(customData[emailField.id] || '') : '';
+    } else {
+      typedEmail = formData.email;
+    }
+    typedEmail = typedEmail.trim();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typedEmail)) {
+      setEmailDupStatus('idle');
+      if (emailDupDebounce.current) clearTimeout(emailDupDebounce.current);
+      return;
+    }
+
+    setEmailDupStatus('checking');
+    if (emailDupDebounce.current) clearTimeout(emailDupDebounce.current);
+    emailDupDebounce.current = setTimeout(async () => {
+      const { data } = await supabase
+        .from('event_registrations')
+        .select('id')
+        .eq('event_id', event.id)
+        .ilike('email', typedEmail)
+        .limit(1);
+      setEmailDupStatus(data && data.length > 0 ? 'duplicate' : 'ok');
+    }, 700);
+
+    return () => { if (emailDupDebounce.current) clearTimeout(emailDupDebounce.current); };
+  }, [formData.email, customData, hasCustomFields]);
 
   // Vérification automatique dès que l'email est valide (debounce 700ms)
   // Placé avant les early returns pour respecter les Rules of Hooks
