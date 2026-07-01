@@ -361,13 +361,13 @@ const EventRegistrationModal: React.FC<{
     const finalName = ticketName.trim() || 'Participant';
     const finalEmail = ticketEmail.trim();
 
-    // ── Vérifier doublon inscription ────────────────────────────────────────
+    // ── Vérifier doublon inscription (vérification préalable côté client) ───
     if (finalEmail) {
       const { data: existing } = await supabase
         .from('event_registrations')
         .select('id')
         .eq('event_id', event.id)
-        .eq('email', finalEmail)
+        .ilike('email', finalEmail.trim())
         .limit(1);
       if (existing && existing.length > 0) {
         setError('Vous êtes déjà inscrit à cet événement avec cette adresse email.');
@@ -385,8 +385,13 @@ const EventRegistrationModal: React.FC<{
     }]);
 
     if (insertError) {
-      console.error('Insert error:', insertError);
-      setError(`Erreur lors de l'inscription : ${insertError.message}`);
+      // 23505 = unique_violation: the database constraint blocked a duplicate
+      if (insertError.code === '23505') {
+        setError('Vous êtes déjà inscrit à cet événement avec cette adresse email.');
+      } else {
+        console.error('Insert error:', insertError);
+        setError(`Erreur lors de l'inscription : ${insertError.message}`);
+      }
       setIsSubmitting(false);
       return;
     }
