@@ -212,8 +212,7 @@ const EventStatsTab: React.FC<EventStatsTabProps> = ({
         counts[h] = (counts[h] || 0) + 1;
       }
     });
-    return Array.from({ length: 18 }, (_, i) => {
-      const h = i + 6;
+    return Array.from({ length: 24 }, (_, h) => {
       return { hour: `${h}h`, count: counts[h] || 0 };
     });
   }, [registrations]);
@@ -466,7 +465,10 @@ const EventStatsTab: React.FC<EventStatsTabProps> = ({
       {/* ── Distribution horaire ── */}
       {registrations.some(r => r.created_at) && (
         <div>
-          <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Distribution horaire</p>
+          <div className="mb-4">
+            <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Distribution horaire</p>
+            <p className="text-xs text-gray-400 mt-0.5">Cumul de toutes les inscriptions depuis le début de la campagne, par heure de la journée</p>
+          </div>
           <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={hourlyData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>

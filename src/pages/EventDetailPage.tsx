@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, MapPin, Users, X, CheckCircle, ChevronLeft, Star, MessageSquare, ChevronRight, Share2, Copy, Check, Loader2, AlertCircle } from 'lucide-react';
 import PosterGeneratorModal from '../components/events/PosterGeneratorModal';
 import InAppBrowserBanner from '../components/InAppBrowserBanner';
+import { InAppBrowserProvider, useInAppBrowserBanner } from '../context/InAppBrowserContext';
 import { isInAppBrowser } from '../utils/inAppBrowser';
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
@@ -251,6 +252,7 @@ const EventRegistrationModal: React.FC<{
   onClose: () => void;
   onGeneratePoster: (name: string) => void;
 }> = ({ event, onClose, onGeneratePoster }) => {
+  const { reactivate: reactivateInAppBanner } = useInAppBrowserBanner();
   const customFields = (event.form_fields || []).filter((f: any) => f && f.label && f.label.trim() !== '');
   const hasCustomFields = customFields.length > 0;
   
@@ -417,6 +419,7 @@ const EventRegistrationModal: React.FC<{
       const doc = await generateTicketPDF(finalName, event.title, event.event_date, event.location, event.organizer_logos, event.event_dates);
       doc.save(`Billet_${cleanTitle}.pdf`);
       pdfBase64 = doc.output('datauristring').split('base64,')[1];
+      if (isInAppBrowser()) reactivateInAppBanner();
     } catch (pdfErr) {
       console.error('Erreur génération PDF:', pdfErr);
     }
@@ -682,10 +685,11 @@ const EventRegistrationModal: React.FC<{
                 Votre billet PDF a été téléchargé automatiquement.
               </p>
 
-              <InAppBrowserBanner
-                message="Le téléchargement automatique du billet ne fonctionne pas dans le navigateur intégré de Facebook / Instagram."
-                note="Pas d'inquiétude : votre inscription est déjà enregistrée et votre billet vous a été envoyé par email — vous pouvez fermer cette fenêtre sans problème et le récupérer depuis votre boîte mail."
-              />
+              {isInAppBrowser() && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl py-2.5 px-4 mb-4">
+                  Pas d'inquiétude si le téléchargement n'a pas démarré : votre inscription est déjà enregistrée et votre billet vous a été envoyé par email.
+                </p>
+              )}
 
               {/* État envoi email */}
               {!emailSent ? (
@@ -1016,12 +1020,9 @@ const EventDetailPage: React.FC = () => {
   const isPast = status.label === 'Terminé';
 
   return (
+    <InAppBrowserProvider>
     <div className="min-h-screen bg-gray-50 pb-20">
-      {isInAppBrowser() && (
-        <div className="container mx-auto px-4 pt-24">
-          <InAppBrowserBanner />
-        </div>
-      )}
+      <InAppBrowserBanner />
       {/* Hero Header */}
       <div className="bg-green-900 border-b border-green-800 relative z-10 pt-24 pb-16 overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-10 pointer-events-none">
@@ -1400,6 +1401,7 @@ const EventDetailPage: React.FC = () => {
         />
       )}
     </div>
+    </InAppBrowserProvider>
   );
 };
 
