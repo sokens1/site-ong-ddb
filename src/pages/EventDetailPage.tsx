@@ -4,6 +4,8 @@ import { supabase } from '../supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, MapPin, Users, X, CheckCircle, ChevronLeft, Star, MessageSquare, ChevronRight, Share2, Copy, Check, Loader2, AlertCircle } from 'lucide-react';
 import PosterGeneratorModal from '../components/events/PosterGeneratorModal';
+import InAppBrowserBanner from '../components/InAppBrowserBanner';
+import { isInAppBrowser } from '../utils/inAppBrowser';
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
 
@@ -38,6 +40,7 @@ interface Event {
   organizer_logos?: string[];
   partner_logos?: string[];
   slug?: string;
+  poster_enabled?: boolean;
 }
 
 // ─── Registration Modal (Step-by-step) ───────────────────────────────────────
@@ -679,6 +682,11 @@ const EventRegistrationModal: React.FC<{
                 Votre billet PDF a été téléchargé automatiquement.
               </p>
 
+              <InAppBrowserBanner
+                message="Le téléchargement automatique du billet ne fonctionne pas dans le navigateur intégré de Facebook / Instagram."
+                note="Pas d'inquiétude : votre inscription est déjà enregistrée et votre billet vous a été envoyé par email — vous pouvez fermer cette fenêtre sans problème et le récupérer depuis votre boîte mail."
+              />
+
               {/* État envoi email */}
               {!emailSent ? (
                 <div className="flex items-center justify-center gap-2 text-sm text-gray-400 mb-5 bg-gray-50 rounded-xl py-2.5 px-4 border border-gray-100">
@@ -692,16 +700,18 @@ const EventRegistrationModal: React.FC<{
                 </div>
               )}
 
-              <div className="bg-green-50 rounded-xl p-5 mb-4 border border-green-100 text-left">
-                <p className="font-bold text-green-800 mb-1 text-sm">Faites le savoir !</p>
-                <p className="text-xs text-green-700 mb-3">Générez votre affiche et partagez sur les réseaux sociaux.</p>
-                <button
-                  onClick={() => { onClose(); onGeneratePoster(registeredName || formData.fullname); }}
-                  className="w-full bg-green-600 text-white font-bold py-2.5 px-4 rounded-xl hover:bg-green-700 transition-colors text-sm"
-                >
-                  Générer mon visuel "J'y serai"
-                </button>
-              </div>
+              {event.poster_enabled !== false && (
+                <div className="bg-green-50 rounded-xl p-5 mb-4 border border-green-100 text-left">
+                  <p className="font-bold text-green-800 mb-1 text-sm">Faites le savoir !</p>
+                  <p className="text-xs text-green-700 mb-3">Générez votre affiche et partagez sur les réseaux sociaux.</p>
+                  <button
+                    onClick={() => { onClose(); onGeneratePoster(registeredName || formData.fullname); }}
+                    className="w-full bg-green-600 text-white font-bold py-2.5 px-4 rounded-xl hover:bg-green-700 transition-colors text-sm"
+                  >
+                    Générer mon visuel "J'y serai"
+                  </button>
+                </div>
+              )}
               <button onClick={onClose} className="text-gray-400 text-sm hover:text-gray-600 transition-colors">
                 Fermer
               </button>
@@ -1007,6 +1017,11 @@ const EventDetailPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
+      {isInAppBrowser() && (
+        <div className="container mx-auto px-4 pt-24">
+          <InAppBrowserBanner />
+        </div>
+      )}
       {/* Hero Header */}
       <div className="bg-green-900 border-b border-green-800 relative z-10 pt-24 pb-16 overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-10 pointer-events-none">
@@ -1263,7 +1278,7 @@ const EventDetailPage: React.FC = () => {
                 </div>
 
                 {/* Récupération affiche J'y serai */}
-                {!isPast && (
+                {!isPast && event.poster_enabled !== false && (
                   <div className="mt-4">
                     {!recoveryOpen ? (
                       <button

@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Upload, Download, RefreshCw, Camera } from 'lucide-react';
+import InAppBrowserBanner from '../InAppBrowserBanner';
+import { isInAppBrowser } from '../../utils/inAppBrowser';
 
 interface Event {
   title: string;
@@ -440,6 +442,10 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
   const downloadPoster = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    if (isInAppBrowser()) {
+      alert("Le téléchargement ne fonctionne pas dans le navigateur intégré de Facebook / Instagram. Appuyez sur ⋯ en haut à droite puis « Ouvrir dans le navigateur » pour télécharger votre affiche.");
+      return;
+    }
     try {
       const link = document.createElement('a');
       link.download = `jy-serai-${name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}.png`;
@@ -528,6 +534,7 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
 
           {/* Download */}
           <div className="px-5 py-4 md:px-8 md:pb-8 md:mt-auto">
+            <InAppBrowserBanner message="Le téléchargement de l'affiche ne fonctionne pas dans le navigateur intégré de Facebook / Instagram." />
             <button
               onClick={downloadPoster}
               disabled={isGenerating || !photo}

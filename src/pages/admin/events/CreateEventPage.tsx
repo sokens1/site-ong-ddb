@@ -48,6 +48,7 @@ interface Event {
   organizer_logos?: string[];
   partner_logos?: string[];
   slug?: string;
+  poster_enabled?: boolean;
 }
 
 const generateSlug = (title: string): string =>
@@ -299,6 +300,7 @@ const CreateEventPage: React.FC = () => {
     feedback_config: { show_stars: true, fields: [] },
     event_dates: [], logo_url: '',
     organizer_logos: [], partner_logos: [],
+    poster_enabled: true,
   });
 
   const [loading, setLoading] = useState(false);
@@ -338,6 +340,7 @@ const CreateEventPage: React.FC = () => {
           logo_url: eventItem.logo_url || '',
           organizer_logos: Array.isArray(eventItem.organizer_logos) ? eventItem.organizer_logos : [],
           partner_logos: Array.isArray(eventItem.partner_logos) ? eventItem.partner_logos : [],
+          poster_enabled: eventItem.poster_enabled !== false,
         });
         fetchRegistrations(parseInt(id));
         fetchFeedbacks(parseInt(id));
@@ -382,6 +385,7 @@ const CreateEventPage: React.FC = () => {
         organizer_logos: formData.organizer_logos || [],
         partner_logos: formData.partner_logos || [],
         slug: formData.slug?.trim() || generateSlug(formData.title || '') || undefined,
+        poster_enabled: formData.poster_enabled !== false,
       };
       if (isEditing && id) { await update(parseInt(id), dataToSubmit); }
       else { await create(dataToSubmit); }
@@ -866,6 +870,30 @@ const CreateEventPage: React.FC = () => {
                   </div>
                   <MultiLogoUpload value={formData.partner_logos || []} onChange={(urls) => setFormData({ ...formData, partner_logos: urls })}
                     label="Logos des partenaires" description="Partenaires & sponsors de l'événement." icon={Handshake} />
+
+                  {/* Toggle J'y serai */}
+                  <div className="mt-6 pt-6 border-t border-gray-100 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
+                        <Sparkles size={16} className="text-green-700" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">Visuel "J'y serai"</p>
+                        <p className="text-xs text-gray-400">Permettre aux inscrits de générer leur affiche personnalisée.</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, poster_enabled: !formData.poster_enabled })}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                        formData.poster_enabled !== false ? 'bg-green-600' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                        formData.poster_enabled !== false ? 'translate-x-6' : 'translate-x-1'
+                      }`} />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Informations générales */}
