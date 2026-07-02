@@ -413,13 +413,13 @@ const EventRegistrationModal: React.FC<{
     setIsSubmitting(false);
 
     // ── Génération PDF + envoi email en arrière-plan ────────────────────────
+    if (isInAppBrowser()) reactivateInAppBanner(); // le téléchargement du billet démarre : on rappelle la carte tout de suite
     const cleanTitle = event.title.replace(/[^a-z0-9]/gi, '_');
     let pdfBase64 = '';
     try {
       const doc = await generateTicketPDF(finalName, event.title, event.event_date, event.location, event.organizer_logos, event.event_dates);
       doc.save(`Billet_${cleanTitle}.pdf`);
       pdfBase64 = doc.output('datauristring').split('base64,')[1];
-      if (isInAppBrowser()) reactivateInAppBanner();
     } catch (pdfErr) {
       console.error('Erreur génération PDF:', pdfErr);
     }
