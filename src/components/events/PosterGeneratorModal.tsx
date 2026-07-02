@@ -325,40 +325,71 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
     const hasAnyLogos     = hasOrgLogos || hasPartnerLogos;
     const hasBothRows     = hasOrgLogos && hasPartnerLogos;
 
-    const ROW_PAD = 22, ORG_H = 72, PART_H = 58, SEP_GAP = 20;
+    // Partenaires (haut) plus grands, organisateurs (bas) plus petits
+    const ROW_PAD = 26, PART_H = 84, ORG_H = 50, SEP_GAP = 20;
     let zoneHeight = 0;
-    if (hasBothRows)    zoneHeight = ROW_PAD + ORG_H + SEP_GAP + PART_H + ROW_PAD;
-    else if (hasAnyLogos) zoneHeight = ROW_PAD + ORG_H + ROW_PAD;
+    if (hasBothRows)       zoneHeight = ROW_PAD + PART_H + SEP_GAP + ORG_H + ROW_PAD;
+    else if (hasAnyLogos)  zoneHeight = ROW_PAD + (hasPartnerLogos ? PART_H : ORG_H) + ROW_PAD;
 
     const whiteZoneY = hasAnyLogos ? canvas.height - zoneHeight : canvas.height + 10;
 
-    // Dessine une rangée de logos (synchrone — images déjà chargées)
-    const drawLogoRow = (imgs: (HTMLImageElement | null)[], targetGM: number, rowCenterY: number) => {
-      const gap   = 32;
-      const maxW  = canvas.width - 160;
-      const MAX_H = targetGM * 1.35;
-      const MIN_H = targetGM * 0.52;
+    // Rangée centrée (organisateurs) — s'adapte mais ne dépasse pas maxW
+    const drawLogoRow = (imgs: (HTMLImageElement | null)[], targetH: number, rowCenterY: number) => {
+      const gap  = 40;
+      const maxW = canvas.width - 200;
       const valid = imgs.filter((img): img is HTMLImageElement => img !== null);
-      if (valid.length === 0) return;
+      if (!valid.length) return;
 
       let dims = valid.map(img => {
-        const gm = Math.sqrt(img.width * img.height);
-        const s  = targetGM / gm;
-        let w = img.width * s, h = img.height * s;
-        if (h > MAX_H) { const r = MAX_H / h; h = MAX_H; w *= r; }
-        if (h < MIN_H) { const r = MIN_H / h; h = MIN_H; w *= r; }
+        const h = targetH;
+        const w = (img.width / img.height) * h;
         return { w, h };
       });
       const totalW = dims.reduce((a, d) => a + d.w, 0) + gap * (valid.length - 1);
       if (totalW > maxW) {
-        const gs = maxW / totalW;
-        dims = dims.map(d => ({ w: d.w * gs, h: d.h * gs }));
+        const s = maxW / totalW;
+        dims = dims.map(d => ({ w: d.w * s, h: d.h * s }));
       }
-      const totalFinalW = dims.reduce((a, d) => a + d.w, 0) + gap * (valid.length - 1);
-      let lx = (canvas.width - totalFinalW) / 2;
+      const finalW = dims.reduce((a, d) => a + d.w, 0) + gap * (valid.length - 1);
+      let lx = (canvas.width - finalW) / 2;
       for (let i = 0; i < valid.length; i++) {
         const { w, h } = dims[i];
         ctx.drawImage(valid[i], lx, rowCenterY - h / 2, w, h);
+        lx += w + gap;
+      }
+    };
+
+    // Rangée pleine largeur (partenaires) — occupe toute la largeur disponible
+    const drawLogoRowStretch = (imgs: (HTMLImageElement | null)[], refH: number, rowCenterY: number) => {
+      const valid = imgs.filter((img): img is HTMLImageElement => img !== null);
+      if (!valid.length) return;
+
+      const sidePad = 48, gap = 44;
+      const avail = canvas.width - sidePad * 2;
+
+      // Largeurs naturelles à refH
+      let dims = valid.map(img => ({
+        w: (img.width / img.height) * refH,
+        h: refH,
+        img,
+      }));
+
+      // Étirer pour remplir la largeur disponible
+      const rawTotal = dims.reduce((s, d) => s + d.w, 0) + gap * (valid.length - 1);
+      const scale = avail / rawTotal;
+      dims = dims.map(d => ({ ...d, w: d.w * scale, h: d.h * scale }));
+
+      // Plafonner la hauteur à 1.8× refH pour éviter un logo trop grand
+      const maxH = dims.reduce((m, d) => Math.max(m, d.h), 0);
+      if (maxH > refH * 1.8) {
+        const hs = (refH * 1.8) / maxH;
+        dims = dims.map(d => ({ ...d, w: d.w * hs, h: d.h * hs }));
+      }
+
+      const finalW = dims.reduce((s, d) => s + d.w, 0) + gap * (valid.length - 1);
+      let lx = (canvas.width - finalW) / 2;
+      for (const { img, w, h } of dims) {
+        ctx.drawImage(img, lx, rowCenterY - h / 2, w, h);
         lx += w + gap;
       }
     };
@@ -375,19 +406,22 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
       ctx.stroke();
 
       if (hasBothRows) {
-        drawLogoRow(orgImgs,  ORG_H,  whiteZoneY + ROW_PAD + ORG_H / 2);
-        const sepY = whiteZoneY + ROW_PAD + ORG_H + SEP_GAP / 2;
+        // Partenaires en haut (pleine largeur)
+        drawLogoRowStretch(partImgs, PART_H, whiteZoneY + ROW_PAD + PART_H / 2);
+        // Séparateur
+        const sepY = whiteZoneY + ROW_PAD + PART_H + SEP_GAP / 2;
         ctx.strokeStyle = '#e5e7eb';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.moveTo(80, sepY);
-        ctx.lineTo(canvas.width - 80, sepY);
+        ctx.moveTo(120, sepY);
+        ctx.lineTo(canvas.width - 120, sepY);
         ctx.stroke();
-        drawLogoRow(partImgs, PART_H, whiteZoneY + ROW_PAD + ORG_H + SEP_GAP + PART_H / 2);
+        // Organisateurs en bas (centrés, plus petits)
+        drawLogoRow(orgImgs, ORG_H, whiteZoneY + ROW_PAD + PART_H + SEP_GAP + ORG_H / 2);
+      } else if (hasPartnerLogos) {
+        drawLogoRowStretch(partImgs, PART_H, whiteZoneY + zoneHeight / 2);
       } else {
-        const imgs = hasOrgLogos ? orgImgs : partImgs;
-        const rowH = hasOrgLogos ? ORG_H   : PART_H;
-        drawLogoRow(imgs, rowH, whiteZoneY + zoneHeight / 2);
+        drawLogoRow(orgImgs, ORG_H, whiteZoneY + zoneHeight / 2);
       }
     }
 
