@@ -138,7 +138,6 @@ const EventStatsTab: React.FC<EventStatsTabProps> = ({
   registrations,
   formFields,
   maxSlots,
-  eventDate,
 }) => {
   // ── KPI calculations ───────────────────────────────────────────────────────
 
