@@ -6,7 +6,7 @@ import RichTextEditor from '../../../components/admin/RichTextEditor';
 import * as XLSX from 'xlsx';
 import {
   ArrowLeft, Users, Trash2, Plus, Star, X as XIcon, GripVertical,
-  FileText, ClipboardList, MessageSquare, Eye, Search,
+  FileText, ClipboardList, MessageSquare, Eye, Search, Pencil, Send, CheckCircle2, Download, Loader2,
   Building2, Handshake, Sparkles, BarChart2, FileSpreadsheet,
 } from 'lucide-react';
 import EventStatsTab from './EventStatsTab';
@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../../supabaseClient';
 import ConfirmationModal from '../../../components/admin/ConfirmationModal';
 import Modal from '../../../components/admin/Modal';
+import { generateTicketPDF } from '../../../utils/ticketPdf';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -318,6 +319,117 @@ const CreateEventPage: React.FC = () => {
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   const [viewingParticipant, setViewingParticipant] = useState<Registration | null>(null);
+
+  // ── Téléchargement direct du billet (sans renvoi email) ───────────────────
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
+
+  const handleDownloadTicket = async (reg: Registration) => {
+    setDownloadingId(reg.id);
+    try {
+      const doc = await generateTicketPDF(
+        reg.fullname,
+        formData.title || '',
+        formData.event_date || '',
+        formData.location,
+        formData.organizer_logos,
+        formData.event_dates,
+      );
+      const cleanTitle = (formData.title || 'evenement').replace(/[^a-z0-9]/gi, '_');
+      const cleanName = (reg.fullname || 'participant').replace(/[^a-zA-Z0-9]/g, '_');
+      doc.save(`Billet_${cleanTitle}_${cleanName}.pdf`);
+    } catch (err) {
+      console.error('Erreur téléchargement billet:', err);
+      alert('Erreur lors de la génération du billet.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  // ── Édition d'inscription + renvoi du billet ──────────────────────────────
+  const [editingParticipant, setEditingParticipant] = useState<Registration | null>(null);
+  const [editForm, setEditForm] = useState<{ fullname: string; email: string; phone: string; custom: Record<string, string> }>({
+    fullname: '', email: '', phone: '', custom: {},
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSuccess, setEditSuccess] = useState(false);
+
+  const openEditParticipant = (reg: Registration) => {
+    const custom: Record<string, string> = {};
+    Object.entries(reg.custom_data || {}).forEach(([key, val]) => {
+      custom[key] = Array.isArray(val) ? val.join(', ') : String(val ?? '');
+    });
+    setEditForm({ fullname: reg.fullname || '', email: reg.email || '', phone: reg.phone || '', custom });
+    setEditError(null);
+    setEditSuccess(false);
+    setEditingParticipant(reg);
+  };
+
+  const handleSaveAndResend = async () => {
+    if (!editingParticipant) return;
+    if (!editForm.fullname.trim() || !editForm.email.trim()) {
+      setEditError('Le nom et l\'email sont obligatoires.');
+      return;
+    }
+    setSavingEdit(true);
+    setEditError(null);
+    try {
+      // Reconstruit custom_data en respectant le format d'origine (array vs string)
+      const originalCustom = editingParticipant.custom_data || {};
+      const newCustom: Record<string, any> = { ...originalCustom };
+      Object.entries(editForm.custom).forEach(([key, val]) => {
+        newCustom[key] = Array.isArray(originalCustom[key])
+          ? val.split(',').map(v => v.trim()).filter(Boolean)
+          : val;
+      });
+
+      const { error: updateError } = await supabase
+        .from('event_registrations')
+        .update({
+          fullname: editForm.fullname.trim(),
+          email: editForm.email.trim(),
+          phone: editForm.phone.trim() || null,
+          custom_data: newCustom,
+        })
+        .eq('id', editingParticipant.id);
+      if (updateError) throw updateError;
+
+      // Régénère le billet PDF avec les infos corrigées
+      const doc = await generateTicketPDF(
+        editForm.fullname.trim(),
+        formData.title || '',
+        formData.event_date || '',
+        formData.location,
+        formData.organizer_logos,
+        formData.event_dates,
+      );
+      const pdfBase64 = doc.output('datauristring').split('base64,')[1];
+      const cleanTitle = (formData.title || 'evenement').replace(/[^a-z0-9]/gi, '_');
+
+      const { error: fnError } = await supabase.functions.invoke('send-event-confirmation', {
+        body: {
+          email: editForm.email.trim(),
+          fullname: editForm.fullname.trim(),
+          eventTitle: formData.title,
+          eventDate: formData.event_date,
+          eventLocation: formData.location,
+          pdfBase64,
+          pdfName: `Billet_${cleanTitle}.pdf`,
+        },
+      });
+      if (fnError) throw fnError;
+
+      setRegistrations(prev => prev.map(r => r.id === editingParticipant.id
+        ? { ...r, fullname: editForm.fullname.trim(), email: editForm.email.trim(), phone: editForm.phone.trim() || undefined, custom_data: newCustom }
+        : r));
+      setEditSuccess(true);
+    } catch (err: any) {
+      console.error('Erreur mise à jour inscription:', err);
+      setEditError(err.message || "Erreur lors de l'enregistrement.");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   useEffect(() => {
     if (isEditing && id && eventsData) {
@@ -1163,6 +1275,21 @@ const CreateEventPage: React.FC = () => {
                                   <Eye size={16} />
                                 </button>
                                 <button
+                                  onClick={() => openEditParticipant(reg)}
+                                  title="Modifier et renvoyer le billet"
+                                  className="p-2 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors"
+                                >
+                                  <Pencil size={16} />
+                                </button>
+                                <button
+                                  onClick={() => handleDownloadTicket(reg)}
+                                  disabled={downloadingId === reg.id}
+                                  title="Télécharger le billet"
+                                  className="p-2 text-green-500 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                                >
+                                  {downloadingId === reg.id ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                                </button>
+                                <button
                                   onClick={() => handleDeleteRegistration(reg.id)}
                                   title="Supprimer"
                                   className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -1335,6 +1462,125 @@ const CreateEventPage: React.FC = () => {
                   ))}
                 </div>
               </div>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* Edit participant + resend ticket modal */}
+      {editingParticipant && (
+        <Modal
+          isOpen={!!editingParticipant}
+          onClose={() => setEditingParticipant(null)}
+          title={`Modifier — ${editingParticipant.fullname}`}
+          size="lg"
+        >
+          <div className="p-1 space-y-5">
+            {editSuccess ? (
+              <div className="text-center py-6">
+                <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <CheckCircle2 className="text-green-600" size={28} />
+                </div>
+                <p className="font-bold text-gray-800 mb-1">Billet corrigé renvoyé !</p>
+                <p className="text-sm text-gray-500 mb-5">
+                  Les informations ont été mises à jour et le nouveau billet a été envoyé à {editForm.email}.
+                </p>
+                <button
+                  onClick={() => setEditingParticipant(null)}
+                  className="px-5 py-2.5 font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors text-sm"
+                >
+                  Fermer
+                </button>
+              </div>
+            ) : (
+              <>
+                {editError && (
+                  <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg">{editError}</div>
+                )}
+
+                <div>
+                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Informations de base</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1">Nom complet</label>
+                      <input
+                        type="text"
+                        value={editForm.fullname}
+                        onChange={e => setEditForm(f => ({ ...f, fullname: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1">Email</label>
+                      <input
+                        type="email"
+                        value={editForm.email}
+                        onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1">Téléphone</label>
+                      <input
+                        type="text"
+                        value={editForm.phone}
+                        onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {Object.keys(editForm.custom).length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Réponses au formulaire</h4>
+                    <div className="space-y-3">
+                      {Object.entries(editForm.custom).map(([key, val]) => {
+                        const field = (formData.form_fields || []).find(f => f.id === key);
+                        return (
+                          <div key={key}>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1">{field?.label || key}</label>
+                            <input
+                              type="text"
+                              value={val}
+                              onChange={e => setEditForm(f => ({ ...f, custom: { ...f.custom, [key]: e.target.value } }))}
+                              className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <p className="text-xs text-gray-400 leading-relaxed bg-gray-50 rounded-lg p-3 border border-gray-100">
+                  L'enregistrement régénère le billet PDF avec les infos corrigées et le renvoie automatiquement par email au participant.
+                </p>
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingParticipant(null)}
+                    disabled={savingEdit}
+                    className="px-5 py-2.5 font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors text-sm disabled:opacity-50"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveAndResend}
+                    disabled={savingEdit}
+                    className="px-5 py-2.5 font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-md disabled:opacity-50 flex items-center gap-2 text-sm"
+                  >
+                    {savingEdit ? (
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Send size={15} />
+                    )}
+                    Enregistrer et renvoyer le billet
+                  </button>
+                </div>
+              </>
             )}
           </div>
         </Modal>

@@ -239,8 +239,8 @@ const AdminLayout: React.FC = () => {
         }`}>
         <div className="flex items-center justify-between h-16 px-4 border-b border-green-700 flex-shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-green-800 font-bold text-xl">D</span>
+            <div className="w-11 h-11 bg-white rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0 p-1">
+              <img src="/images/logo-ong-DDB.png" alt="ONG DDB" className="w-full h-full object-contain" />
             </div>
             <h1 className="text-lg font-bold tracking-tight">DDB Admin</h1>
           </div>
