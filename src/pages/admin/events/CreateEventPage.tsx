@@ -7,13 +7,14 @@ import * as XLSX from 'xlsx';
 import {
   ArrowLeft, Users, Trash2, Plus, Star, X as XIcon, GripVertical,
   FileText, ClipboardList, MessageSquare, Eye, Search, Pencil, Send, CheckCircle2, Download, Loader2,
-  Building2, Handshake, Sparkles, BarChart2, FileSpreadsheet,
+  Building2, Handshake, Sparkles, BarChart2, FileSpreadsheet, HardHat, Upload, Mail,
 } from 'lucide-react';
 import EventStatsTab from './EventStatsTab';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../../supabaseClient';
 import ConfirmationModal from '../../../components/admin/ConfirmationModal';
 import Modal from '../../../components/admin/Modal';
+import EventEmailComposerModal from '../../../components/admin/EventEmailComposerModal';
 import { generateTicketPDF } from '../../../utils/ticketPdf';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
@@ -52,6 +53,8 @@ interface Event {
   poster_enabled?: boolean;
 }
 
+const VISITOR_EMAIL = 'visiteur@ong-ddb.org';
+
 const generateSlug = (title: string): string =>
   title
     .toLowerCase()
@@ -72,6 +75,15 @@ interface Registration {
   ticket_ref?: string;
   created_at?: string;
   custom_data?: Record<string, any>;
+}
+
+interface Volunteer {
+  id: number;
+  event_id: number;
+  fullname: string;
+  email?: string;
+  phone?: string;
+  created_at?: string;
 }
 
 interface EventFeedback {
@@ -286,7 +298,7 @@ const CreateEventPage: React.FC = () => {
   const { create, update, data: eventsData } = useCrud<Event>({ tableName: 'events' });
   const isEditing = !!id;
 
-  const [activeTab, setActiveTab] = useState<'info' | 'form' | 'feedback_config' | 'participants' | 'feedbacks' | 'stats'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'form' | 'feedback_config' | 'participants' | 'volunteers' | 'feedbacks' | 'stats'>('info');
   const [creationStep, setCreationStep] = useState<1 | 2>(1);
 
   const getCurrentDateTime = () => {
@@ -431,6 +443,160 @@ const CreateEventPage: React.FC = () => {
     }
   };
 
+  // ── Volontaires ────────────────────────────────────────────────────────────
+  const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
+  const [volunteersLoading, setVolunteersLoading] = useState(false);
+  const [volunteerSearch, setVolunteerSearch] = useState('');
+  const [volunteerPage, setVolunteerPage] = useState(1);
+  const volunteersPerPage = 10;
+
+  const [addingVolunteer, setAddingVolunteer] = useState(false);
+  const [newVolunteer, setNewVolunteer] = useState({ fullname: '', email: '', phone: '' });
+  const [savingVolunteer, setSavingVolunteer] = useState(false);
+  const [volunteerFormError, setVolunteerFormError] = useState<string | null>(null);
+
+  const [editingVolunteer, setEditingVolunteer] = useState<Volunteer | null>(null);
+  const [editVolunteerForm, setEditVolunteerForm] = useState({ fullname: '', email: '', phone: '' });
+
+  const [importPreview, setImportPreview] = useState<{ fullname: string; email: string; phone: string }[] | null>(null);
+  const [importing, setImporting] = useState(false);
+  const volunteerFileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Sélection multi (volontaires & participants) pour l'envoi de mail groupé
+  const [selectedVolunteerIds, setSelectedVolunteerIds] = useState<Set<number>>(new Set());
+  const [selectedParticipantIds, setSelectedParticipantIds] = useState<Set<number>>(new Set());
+  const [emailComposer, setEmailComposer] = useState<{ targetGroup: 'volunteers' | 'participants'; recipients: { email?: string }[] } | null>(null);
+
+  const fetchVolunteers = async (eventId: number) => {
+    setVolunteersLoading(true);
+    const { data, error } = await supabase.from('event_volunteers').select('*').eq('event_id', eventId).order('created_at', { ascending: false });
+    if (!error && data) { setVolunteers(data); setVolunteerPage(1); }
+    setVolunteersLoading(false);
+  };
+
+  const handleAddVolunteer = async () => {
+    if (!newVolunteer.fullname.trim()) { setVolunteerFormError('Le nom complet est obligatoire.'); return; }
+    setSavingVolunteer(true);
+    setVolunteerFormError(null);
+    try {
+      const { data, error } = await supabase.from('event_volunteers').insert([{
+        event_id: parseInt(id!),
+        fullname: newVolunteer.fullname.trim(),
+        email: newVolunteer.email.trim() || null,
+        phone: newVolunteer.phone.trim() || null,
+      }]).select().single();
+      if (error) throw error;
+      setVolunteers(prev => [data, ...prev]);
+      setNewVolunteer({ fullname: '', email: '', phone: '' });
+      setAddingVolunteer(false);
+    } catch (err: any) {
+      setVolunteerFormError(err.message || "Erreur lors de l'ajout.");
+    } finally {
+      setSavingVolunteer(false);
+    }
+  };
+
+  const openEditVolunteer = (vol: Volunteer) => {
+    setEditVolunteerForm({ fullname: vol.fullname || '', email: vol.email || '', phone: vol.phone || '' });
+    setEditingVolunteer(vol);
+  };
+
+  const handleSaveVolunteer = async () => {
+    if (!editingVolunteer) return;
+    if (!editVolunteerForm.fullname.trim()) { alert('Le nom complet est obligatoire.'); return; }
+    try {
+      const { error } = await supabase.from('event_volunteers').update({
+        fullname: editVolunteerForm.fullname.trim(),
+        email: editVolunteerForm.email.trim() || null,
+        phone: editVolunteerForm.phone.trim() || null,
+      }).eq('id', editingVolunteer.id);
+      if (error) throw error;
+      setVolunteers(prev => prev.map(v => v.id === editingVolunteer.id
+        ? { ...v, fullname: editVolunteerForm.fullname.trim(), email: editVolunteerForm.email.trim(), phone: editVolunteerForm.phone.trim() }
+        : v));
+      setEditingVolunteer(null);
+    } catch (err: any) {
+      alert(`Erreur: ${err.message}`);
+    }
+  };
+
+  const handleDeleteVolunteer = (volId: number) => {
+    setConfirmModal({
+      isOpen: true, title: 'Supprimer le volontaire', type: 'danger',
+      message: 'Êtes-vous sûr de vouloir supprimer ce volontaire ?',
+      onConfirm: async () => {
+        try {
+          const { error } = await supabase.from('event_volunteers').delete().eq('id', volId);
+          if (error) throw error;
+          setVolunteers(prev => prev.filter(v => v.id !== volId));
+          setSelectedVolunteerIds(prev => { const s = new Set(prev); s.delete(volId); return s; });
+        } catch (err: any) { alert(`Erreur: ${err.message}`); }
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      },
+    });
+  };
+
+  // ── Import Excel des volontaires ──────────────────────────────────────────
+  const handleVolunteerFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = new Uint8Array(ev.target?.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: 'array' });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows: Record<string, any>[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+        const findKey = (row: Record<string, any>, patterns: RegExp) =>
+          Object.keys(row).find(k => patterns.test(k.toLowerCase()));
+
+        const parsed = rows.map(row => {
+          const nameKey = findKey(row, /nom|name/);
+          const emailKey = findKey(row, /email|mail/);
+          const phoneKey = findKey(row, /numero|numéro|tel|téléphone|phone/);
+          return {
+            fullname: nameKey ? String(row[nameKey]).trim() : '',
+            email: emailKey ? String(row[emailKey]).trim() : '',
+            phone: phoneKey ? String(row[phoneKey]).trim() : '',
+          };
+        }).filter(r => r.fullname);
+
+        if (parsed.length === 0) {
+          alert("Aucune ligne exploitable trouvée. Vérifiez que le fichier contient une colonne 'Nom complet'.");
+          return;
+        }
+        setImportPreview(parsed);
+      } catch (err) {
+        console.error('Erreur lecture fichier Excel:', err);
+        alert('Erreur lors de la lecture du fichier. Vérifiez le format (.xlsx / .xls).');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const confirmImportVolunteers = async () => {
+    if (!importPreview || !id) return;
+    setImporting(true);
+    try {
+      const rows = importPreview.map(r => ({
+        event_id: parseInt(id),
+        fullname: r.fullname,
+        email: r.email || null,
+        phone: r.phone || null,
+      }));
+      const { data, error } = await supabase.from('event_volunteers').insert(rows).select();
+      if (error) throw error;
+      setVolunteers(prev => [...(data || []), ...prev]);
+      setImportPreview(null);
+    } catch (err: any) {
+      alert(`Erreur lors de l'import: ${err.message}`);
+    } finally {
+      setImporting(false);
+    }
+  };
+
   useEffect(() => {
     if (isEditing && id && eventsData) {
       const eventItem = eventsData.find((item) => item.id === parseInt(id));
@@ -456,6 +622,7 @@ const CreateEventPage: React.FC = () => {
         });
         fetchRegistrations(parseInt(id));
         fetchFeedbacks(parseInt(id));
+        fetchVolunteers(parseInt(id));
       }
     }
   }, [id, isEditing, eventsData]);
@@ -554,6 +721,7 @@ const CreateEventPage: React.FC = () => {
     { key: 'form', label: 'Formulaire', icon: ClipboardList, sub: "Champs d'inscription" },
     { key: 'feedback_config', label: 'Config. Avis', icon: Star, sub: 'Questions post-événement' },
     { key: 'participants', label: 'Participants', icon: Users, sub: 'Inscrits', badge: registrations.length || null },
+    { key: 'volunteers', label: 'Volontaires', icon: HardHat, sub: 'Bénévoles', badge: volunteers.length || null },
     { key: 'stats', label: 'Statistiques', icon: BarChart2, sub: 'KPIs & graphes' },
     { key: 'feedbacks', label: 'Avis reçus', icon: MessageSquare, sub: 'Retours', badge: feedbacks.length || null },
   ] as const;
@@ -575,6 +743,30 @@ const CreateEventPage: React.FC = () => {
     : registrations;
   const paginatedRegs = filteredRegs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const totalPages = Math.ceil(filteredRegs.length / itemsPerPage);
+
+  const filteredVols = volunteerSearch.trim()
+    ? volunteers.filter(v => {
+        const q = volunteerSearch.toLowerCase();
+        return v.fullname?.toLowerCase().includes(q) || v.email?.toLowerCase().includes(q) || v.phone?.toLowerCase().includes(q);
+      })
+    : volunteers;
+  const paginatedVols = filteredVols.slice((volunteerPage - 1) * volunteersPerPage, volunteerPage * volunteersPerPage);
+  const totalVolPages = Math.ceil(filteredVols.length / volunteersPerPage);
+
+  const toggleParticipantSelection = (regId: number) => {
+    setSelectedParticipantIds(prev => {
+      const s = new Set(prev);
+      if (s.has(regId)) s.delete(regId); else s.add(regId);
+      return s;
+    });
+  };
+  const toggleVolunteerSelection = (volId: number) => {
+    setSelectedVolunteerIds(prev => {
+      const s = new Set(prev);
+      if (s.has(volId)) s.delete(volId); else s.add(volId);
+      return s;
+    });
+  };
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -1206,6 +1398,17 @@ const CreateEventPage: React.FC = () => {
                     className="pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-green-500 w-44"
                   />
                 </div>
+                {selectedParticipantIds.size > 0 && (
+                  <button
+                    onClick={() => setEmailComposer({
+                      targetGroup: 'participants',
+                      recipients: registrations.filter(r => selectedParticipantIds.has(r.id) && r.email && r.email !== VISITOR_EMAIL),
+                    })}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <Mail size={15} /> Envoyer un email ({selectedParticipantIds.size})
+                  </button>
+                )}
                 {registrations.length > 0 && (
                   <button onClick={exportXLSX}
                     className="flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-700 text-sm font-semibold rounded-lg hover:bg-green-100 transition-colors border border-green-200">
@@ -1236,7 +1439,20 @@ const CreateEventPage: React.FC = () => {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-100">
-                        <th className="text-left px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider w-10">#</th>
+                        <th className="px-5 py-3 w-10">
+                          <input
+                            type="checkbox"
+                            checked={paginatedRegs.length > 0 && paginatedRegs.every(r => selectedParticipantIds.has(r.id))}
+                            onChange={e => {
+                              setSelectedParticipantIds(prev => {
+                                const s = new Set(prev);
+                                paginatedRegs.forEach(r => e.target.checked ? s.add(r.id) : s.delete(r.id));
+                                return s;
+                              });
+                            }}
+                            className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                          />
+                        </th>
                         <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Participant</th>
                         <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Contact</th>
                         <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider hidden md:table-cell">Date</th>
@@ -1244,12 +1460,18 @@ const CreateEventPage: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {paginatedRegs.map((reg, idx) => {
+                      {paginatedRegs.map((reg) => {
                         const hasCustomData = reg.custom_data && Object.keys(reg.custom_data).length > 0;
-                        const rowNum = (currentPage - 1) * itemsPerPage + idx + 1;
                         return (
                           <tr key={reg.id} className="hover:bg-green-50/30 transition-colors group">
-                            <td className="px-5 py-4 text-gray-400 font-mono text-xs">{rowNum}</td>
+                            <td className="px-5 py-4">
+                              <input
+                                type="checkbox"
+                                checked={selectedParticipantIds.has(reg.id)}
+                                onChange={() => toggleParticipantSelection(reg.id)}
+                                className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                              />
+                            </td>
                             <td className="px-4 py-4">
                               <p className="font-bold text-gray-900">{reg.fullname}</p>
                               {hasCustomData && (
@@ -1314,6 +1536,164 @@ const CreateEventPage: React.FC = () => {
                     </button>
                     <span className="text-sm text-gray-500 font-medium">Page {currentPage} sur {totalPages}</span>
                     <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                      className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                      Suivant
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </motion.div>
+        )}
+
+        {/* ── Volunteers Tab ── */}
+        {activeTab === 'volunteers' && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 sm:px-10 py-5 border-b border-gray-100 flex-wrap gap-3">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800">Volontaires</h2>
+                <p className="text-gray-500 text-sm mt-0.5">
+                  <span className="font-bold text-green-600">{volunteers.length}</span> volontaire{volunteers.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Rechercher…"
+                    value={volunteerSearch}
+                    onChange={e => { setVolunteerSearch(e.target.value); setVolunteerPage(1); }}
+                    className="pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-green-500 w-44"
+                  />
+                </div>
+                {selectedVolunteerIds.size > 0 && (
+                  <button
+                    onClick={() => setEmailComposer({
+                      targetGroup: 'volunteers',
+                      recipients: volunteers.filter(v => selectedVolunteerIds.has(v.id) && v.email),
+                    })}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <Mail size={15} /> Envoyer un email ({selectedVolunteerIds.size})
+                  </button>
+                )}
+                <button
+                  onClick={() => volunteerFileInputRef.current?.click()}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-700 text-sm font-semibold rounded-lg hover:bg-green-100 transition-colors border border-green-200"
+                >
+                  <Upload size={15} /> Importer Excel
+                </button>
+                <input
+                  ref={volunteerFileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  className="hidden"
+                  onChange={handleVolunteerFileSelect}
+                />
+                <button
+                  onClick={() => setAddingVolunteer(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <Plus size={15} /> Ajouter
+                </button>
+                <button onClick={() => fetchVolunteers(parseInt(id!))}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors">
+                  Rafraîchir
+                </button>
+              </div>
+            </div>
+
+            {volunteersLoading ? (
+              <div className="text-center py-16">
+                <span className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin inline-block" />
+              </div>
+            ) : volunteers.length === 0 ? (
+              <div className="text-center py-16 mx-6 sm:mx-10 my-6 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                <HardHat size={40} className="mx-auto mb-3 text-gray-300" />
+                <p className="font-semibold text-gray-700">Aucun volontaire pour le moment.</p>
+                <p className="text-sm text-gray-400 mt-1">Ajoutez-les manuellement ou importez un fichier Excel.</p>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-100">
+                        <th className="px-5 py-3 w-10">
+                          <input
+                            type="checkbox"
+                            checked={paginatedVols.length > 0 && paginatedVols.every(v => selectedVolunteerIds.has(v.id))}
+                            onChange={e => {
+                              setSelectedVolunteerIds(prev => {
+                                const s = new Set(prev);
+                                paginatedVols.forEach(v => e.target.checked ? s.add(v.id) : s.delete(v.id));
+                                return s;
+                              });
+                            }}
+                            className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                          />
+                        </th>
+                        <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Volontaire</th>
+                        <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Contact</th>
+                        <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider hidden md:table-cell">Date ajout</th>
+                        <th className="text-center px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {paginatedVols.map(vol => (
+                        <tr key={vol.id} className="hover:bg-green-50/30 transition-colors group">
+                          <td className="px-5 py-4">
+                            <input
+                              type="checkbox"
+                              checked={selectedVolunteerIds.has(vol.id)}
+                              onChange={() => toggleVolunteerSelection(vol.id)}
+                              className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                            />
+                          </td>
+                          <td className="px-4 py-4">
+                            <p className="font-bold text-gray-900">{vol.fullname}</p>
+                          </td>
+                          <td className="px-4 py-4 hidden sm:table-cell">
+                            <p className="text-gray-700">{vol.email || '—'}</p>
+                            {vol.phone && <p className="text-gray-400 text-xs mt-0.5">{vol.phone}</p>}
+                          </td>
+                          <td className="px-4 py-4 hidden md:table-cell text-gray-400 text-xs whitespace-nowrap">
+                            {vol.created_at ? new Date(vol.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => openEditVolunteer(vol)}
+                                title="Modifier"
+                                className="p-2 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors"
+                              >
+                                <Pencil size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteVolunteer(vol.id)}
+                                title="Supprimer"
+                                className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {totalVolPages > 1 && (
+                  <div className="flex justify-between items-center px-6 sm:px-10 py-4 border-t border-gray-100">
+                    <button onClick={() => setVolunteerPage(p => Math.max(1, p - 1))} disabled={volunteerPage === 1}
+                      className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                      Précédent
+                    </button>
+                    <span className="text-sm text-gray-500 font-medium">Page {volunteerPage} sur {totalVolPages}</span>
+                    <button onClick={() => setVolunteerPage(p => Math.min(totalVolPages, p + 1))} disabled={volunteerPage === totalVolPages}
                       className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
                       Suivant
                     </button>
@@ -1584,6 +1964,172 @@ const CreateEventPage: React.FC = () => {
             )}
           </div>
         </Modal>
+      )}
+
+      {/* Add volunteer modal */}
+      {addingVolunteer && (
+        <Modal
+          isOpen={addingVolunteer}
+          onClose={() => { setAddingVolunteer(false); setVolunteerFormError(null); setNewVolunteer({ fullname: '', email: '', phone: '' }); }}
+          title="Ajouter un volontaire"
+          size="sm"
+        >
+          <div className="p-1 space-y-4">
+            {volunteerFormError && (
+              <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg">{volunteerFormError}</div>
+            )}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Nom complet *</label>
+              <input type="text" value={newVolunteer.fullname}
+                onChange={e => setNewVolunteer(v => ({ ...v, fullname: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Email</label>
+              <input type="email" value={newVolunteer.email}
+                onChange={e => setNewVolunteer(v => ({ ...v, email: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Numéro</label>
+              <input type="text" value={newVolunteer.phone}
+                onChange={e => setNewVolunteer(v => ({ ...v, phone: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm" />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => { setAddingVolunteer(false); setVolunteerFormError(null); setNewVolunteer({ fullname: '', email: '', phone: '' }); }}
+                disabled={savingVolunteer}
+                className="px-5 py-2.5 font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors text-sm disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleAddVolunteer}
+                disabled={savingVolunteer}
+                className="px-5 py-2.5 font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-md disabled:opacity-50 flex items-center gap-2 text-sm"
+              >
+                {savingVolunteer && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                Ajouter
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Edit volunteer modal */}
+      {editingVolunteer && (
+        <Modal
+          isOpen={!!editingVolunteer}
+          onClose={() => setEditingVolunteer(null)}
+          title={`Modifier — ${editingVolunteer.fullname}`}
+          size="sm"
+        >
+          <div className="p-1 space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Nom complet *</label>
+              <input type="text" value={editVolunteerForm.fullname}
+                onChange={e => setEditVolunteerForm(v => ({ ...v, fullname: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Email</label>
+              <input type="email" value={editVolunteerForm.email}
+                onChange={e => setEditVolunteerForm(v => ({ ...v, email: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Numéro</label>
+              <input type="text" value={editVolunteerForm.phone}
+                onChange={e => setEditVolunteerForm(v => ({ ...v, phone: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm" />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setEditingVolunteer(null)}
+                className="px-5 py-2.5 font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors text-sm"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleSaveVolunteer}
+                className="px-5 py-2.5 font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-md text-sm"
+              >
+                Enregistrer
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Import Excel preview modal */}
+      {importPreview && (
+        <Modal
+          isOpen={!!importPreview}
+          onClose={() => setImportPreview(null)}
+          title={`Importer ${importPreview.length} volontaire${importPreview.length > 1 ? 's' : ''}`}
+          size="lg"
+        >
+          <div className="p-1 space-y-4">
+            <p className="text-xs text-gray-500 bg-gray-50 rounded-lg p-3 border border-gray-100">
+              Vérifiez l'aperçu avant de confirmer l'import. Colonnes reconnues : Nom complet, Email, Numéro.
+            </p>
+            <div className="max-h-96 overflow-y-auto border border-gray-100 rounded-xl">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-gray-50">
+                  <tr className="border-b border-gray-100">
+                    <th className="text-left px-4 py-2 text-xs font-bold text-gray-400 uppercase">Nom</th>
+                    <th className="text-left px-4 py-2 text-xs font-bold text-gray-400 uppercase">Email</th>
+                    <th className="text-left px-4 py-2 text-xs font-bold text-gray-400 uppercase">Numéro</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {importPreview.map((row, i) => (
+                    <tr key={i}>
+                      <td className="px-4 py-2 font-medium text-gray-800">{row.fullname}</td>
+                      <td className="px-4 py-2 text-gray-600">{row.email || '—'}</td>
+                      <td className="px-4 py-2 text-gray-600">{row.phone || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setImportPreview(null)}
+                disabled={importing}
+                className="px-5 py-2.5 font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors text-sm disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={confirmImportVolunteers}
+                disabled={importing}
+                className="px-5 py-2.5 font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-md disabled:opacity-50 flex items-center gap-2 text-sm"
+              >
+                {importing && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                Confirmer l'import
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Email composer (volontaires / participants) */}
+      {emailComposer && (
+        <EventEmailComposerModal
+          isOpen={!!emailComposer}
+          onClose={() => setEmailComposer(null)}
+          eventId={parseInt(id!)}
+          eventTitle={formData.title || ''}
+          eventLogoUrl={formData.logo_url}
+          targetGroup={emailComposer.targetGroup}
+          recipients={emailComposer.recipients}
+          onSent={() => {
+            if (emailComposer.targetGroup === 'volunteers') setSelectedVolunteerIds(new Set());
+            else setSelectedParticipantIds(new Set());
+          }}
+        />
       )}
     </div>
   );
