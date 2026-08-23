@@ -4,6 +4,7 @@ import { supabase } from '../../../supabaseClient';
 import ConfirmationModal from '../../../components/admin/ConfirmationModal';
 import { Plus, Trash2, Users, MapPin, Edit3, MoreVertical, Eye, Calendar, CheckCircle, Clock, XCircle } from 'lucide-react';
 import useUserRole from '../../../hooks/useUserRole';
+import { logAdminActivity } from '../../../utils/securityLog';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -213,10 +214,13 @@ const EventsAdmin: React.FC = () => {
     }
   };
 
-  const deleteEvent = async (id: number) => {
+  const deleteEvent = async (id: number, title: string) => {
     const { error: e } = await supabase.from('events').delete().eq('id', id);
     if (e) alert(`Erreur: ${e.message}`);
-    else fetchEvents();
+    else {
+      logAdminActivity('delete_event', `events:${id}`, { title });
+      fetchEvents();
+    }
   };
 
   const handleDelete = (event: Event) => {
@@ -227,7 +231,7 @@ const EventsAdmin: React.FC = () => {
       message: `Supprimer "${event.title}" et toutes ses inscriptions ?`,
       type: 'danger',
       onConfirm: () => {
-        deleteEvent(event.id);
+        deleteEvent(event.id, event.title);
         setConfirmModal(prev => ({ ...prev, isOpen: false }));
       }
     });

@@ -16,6 +16,7 @@ import ConfirmationModal from '../../../components/admin/ConfirmationModal';
 import Modal from '../../../components/admin/Modal';
 import EventEmailComposerModal from '../../../components/admin/EventEmailComposerModal';
 import { generateTicketPDF } from '../../../utils/ticketPdf';
+import { logAdminActivity } from '../../../utils/securityLog';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -434,6 +435,9 @@ const CreateEventPage: React.FC = () => {
       setRegistrations(prev => prev.map(r => r.id === editingParticipant.id
         ? { ...r, fullname: editForm.fullname.trim(), email: editForm.email.trim(), phone: editForm.phone.trim() || undefined, custom_data: newCustom }
         : r));
+      logAdminActivity('edit_registration_resend_ticket', `event_registrations:${editingParticipant.id}`, {
+        newEmail: editForm.email.trim(),
+      });
       setEditSuccess(true);
     } catch (err: any) {
       console.error('Erreur mise à jour inscription:', err);
@@ -528,6 +532,7 @@ const CreateEventPage: React.FC = () => {
         try {
           const { error } = await supabase.from('event_volunteers').delete().eq('id', volId);
           if (error) throw error;
+          logAdminActivity('delete_volunteer', `event_volunteers:${volId}`);
           setVolunteers(prev => prev.filter(v => v.id !== volId));
           setSelectedVolunteerIds(prev => { const s = new Set(prev); s.delete(volId); return s; });
         } catch (err: any) { alert(`Erreur: ${err.message}`); }
@@ -690,6 +695,7 @@ const CreateEventPage: React.FC = () => {
           if (!data || data.length === 0) {
             throw new Error('Suppression bloquée par les permissions Supabase. Vérifiez la politique RLS DELETE sur event_registrations.');
           }
+          logAdminActivity('delete_registration', `event_registrations:${regId}`);
           setRegistrations(prev => prev.filter(r => r.id !== regId));
         } catch (err: any) { alert(`Erreur: ${err.message}`); }
         setConfirmModal(prev => ({ ...prev, isOpen: false }));

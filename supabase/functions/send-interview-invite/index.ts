@@ -1,5 +1,7 @@
 // @ts-ignore
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
+// @ts-ignore
+import { verifyAdminRequest } from "../_shared/verifyAdmin.ts"
 
 declare const Deno: any;
 
@@ -16,6 +18,10 @@ serve(async (req: Request) => {
     if (method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
+
+    // Réservé aux comptes admin/charge_communication (planification d'entretien).
+    const authError = await verifyAdminRequest(req, ['admin', 'charge_communication'], corsHeaders, 'send-interview-invite')
+    if (authError) return authError
 
     try {
         const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY')

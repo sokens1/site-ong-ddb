@@ -61,6 +61,7 @@ const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const AuthCallback   = lazy(() => import('./pages/admin/AuthCallback'));
 
 const UsersAdmin       = lazy(() => import('./pages/admin/admin/UsersAdmin'));
+const SecurityAdmin    = lazy(() => import('./pages/admin/admin/SecurityAdmin'));
 const TeamAdmin        = lazy(() => import('./pages/admin/admin/TeamAdmin'));
 const SubmissionsAdmin = lazy(() => import('./pages/admin/admin/SubmissionsAdmin'));
 
@@ -231,6 +232,7 @@ function App() {
           <Route path="newsletter" element={<NewsletterAdmin />} />
           <Route path="documents" element={<DocumentsAdmin />} />
           <Route path="users" element={<UsersAdmin />} />
+          <Route path="security" element={<SecurityAdmin />} />
         </Route>
 
         {/* Route catch-all pour les pages non trouvées */}

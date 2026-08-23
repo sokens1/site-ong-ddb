@@ -3,6 +3,7 @@ import { Send, CheckCircle2 } from 'lucide-react';
 import Modal from './Modal';
 import RichTextEditor from './RichTextEditor';
 import { supabase } from '../../supabaseClient';
+import { logAdminActivity } from '../../utils/securityLog';
 
 interface EventEmailComposerModalProps {
   isOpen: boolean;
@@ -79,6 +80,11 @@ const EventEmailComposerModal: React.FC<EventEmailComposerModalProps> = ({
         subject: subject.trim(),
         recipients_count: validEmails.length,
       }]).then(() => {}).catch(() => {});
+
+      logAdminActivity('send_bulk_email', `events:${eventId}:${targetGroup}`, {
+        subject: subject.trim(),
+        recipientsCount: validEmails.length,
+      });
 
       setSuccess({ count: validEmails.length, simulated: !!data?.simulated });
       onSent?.(validEmails.length);

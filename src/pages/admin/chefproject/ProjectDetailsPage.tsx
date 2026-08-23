@@ -17,6 +17,7 @@ import {
     Download
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { sanitizeHTML } from '../../../utils/sanitizeHtml';
 
 interface Project {
     id: number;
@@ -209,7 +210,7 @@ const ProjectDetailsPage: React.FC = () => {
                                     <h2 className="text-xl font-bold text-gray-800 mb-4">Description du projet</h2>
                                     <div
                                         className="prose prose-green max-w-none text-gray-700 leading-relaxed break-words overflow-hidden"
-                                        dangerouslySetInnerHTML={{ __html: project.description || '<p className="text-gray-400 italic">Aucune description fournie.</p>' }}
+                                        dangerouslySetInnerHTML={{ __html: project.description ? sanitizeHTML(project.description) : '<p class="text-gray-400 italic">Aucune description fournie.</p>' }}
                                     />
                                 </div>
 
@@ -287,7 +288,7 @@ const ProjectDetailsPage: React.FC = () => {
                                                             {task.description && (
                                                                 <div
                                                                     className="text-sm text-gray-600 mb-4 line-clamp-2 prose prose-sm break-words"
-                                                                    dangerouslySetInnerHTML={{ __html: task.description }}
+                                                                    dangerouslySetInnerHTML={{ __html: sanitizeHTML(task.description) }}
                                                                 />
                                                             )}
                                                             <div className="flex flex-wrap items-center gap-6 text-xs text-gray-500">

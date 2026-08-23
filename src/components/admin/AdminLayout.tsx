@@ -20,6 +20,7 @@ import {
   ScanLine,
   ChevronDown,
   ChevronRight,
+  ShieldAlert,
 } from 'lucide-react';
 import { useNotifications } from '../../hooks/useNotifications';
 import DiscussionSidebar from '../DiscussionSidebar';
@@ -27,7 +28,7 @@ import { MessageSquare } from 'lucide-react';
 
 // Define which menu items each role can see
 const ROLE_MENU_ACCESS: Record<UserRole, string[]> = {
-  admin: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'submissions', 'donations', 'events', 'faq', 'newsletter', 'users'],
+  admin: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'submissions', 'donations', 'events', 'faq', 'newsletter', 'users', 'security'],
   charge_communication: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'submissions', 'donations', 'events', 'faq', 'newsletter'],
   chef_projet: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'submissions', 'faq', 'newsletter'],
   partenaire: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news'],
@@ -47,6 +48,7 @@ const ALL_MENU_ITEMS = [
   { id: 'faq', path: '/admin/faq', label: 'FAQ', icon: HelpCircle },
   { id: 'newsletter', path: '/admin/newsletter', label: 'Newsletter', icon: Mail },
   { id: 'users', path: '/admin/users', label: 'Utilisateurs', icon: UserCog },
+  { id: 'security', path: '/admin/security', label: 'Sécurité', icon: ShieldAlert },
 ];
 
 const AdminLayout: React.FC = () => {

@@ -8,6 +8,7 @@ import InAppBrowserBanner from '../components/InAppBrowserBanner';
 import { InAppBrowserProvider, useInAppBrowserBanner } from '../context/InAppBrowserContext';
 import { isInAppBrowser } from '../utils/inAppBrowser';
 import { generateTicketPDF } from '../utils/ticketPdf';
+import { sanitizeHTML } from '../utils/sanitizeHtml';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -45,23 +46,6 @@ interface Event {
 
 // ─── Registration Modal (Step-by-step) ───────────────────────────────────────
 
-/** Supprime les scripts et handlers d'événements du HTML avant rendu */
-const sanitizeHTML = (html: string): string => {
-  try {
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    doc.querySelectorAll('script, iframe, object, embed').forEach(el => el.remove());
-    doc.querySelectorAll('*').forEach(el => {
-      Array.from(el.attributes).forEach(attr => {
-        if (attr.name.startsWith('on') || attr.value.toLowerCase().startsWith('javascript:')) {
-          el.removeAttribute(attr.name);
-        }
-      });
-    });
-    return doc.body.innerHTML;
-  } catch {
-    return '';
-  }
-};
 
 const EventRegistrationModal: React.FC<{
   event: Event;
