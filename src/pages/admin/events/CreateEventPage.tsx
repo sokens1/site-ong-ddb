@@ -1,41 +1,44 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCrud } from '../../../hooks/useCrud';
-import ImageUpload from '../../../components/admin/ImageUpload';
-import RichTextEditor from '../../../components/admin/RichTextEditor';
 import * as XLSX from 'xlsx';
 import {
-  ArrowLeft, Users, Trash2, Plus, Star, X as XIcon, GripVertical,
-  FileText, ClipboardList, MessageSquare, Eye, Search, Pencil, Send, CheckCircle2, Download, Loader2,
-  Building2, Handshake, Sparkles, BarChart2, FileSpreadsheet, HardHat, Upload, Mail,
+  ArrowLeft, Users, Trash2, Star, Eye, Search, Pencil, Send, CheckCircle2, Download, Loader2,
+  BarChart2, FileSpreadsheet, HardHat, Upload, Mail, Edit3, Award, Ticket, Sparkles, ClipboardList,
+  MessageSquare, Calendar, MapPin,
 } from 'lucide-react';
 import EventStatsTab from './EventStatsTab';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { supabase } from '../../../supabaseClient';
 import ConfirmationModal from '../../../components/admin/ConfirmationModal';
 import Modal from '../../../components/admin/Modal';
 import EventEmailComposerModal from '../../../components/admin/EventEmailComposerModal';
-import { generateTicketPDF } from '../../../utils/ticketPdf';
+import EventWizardModal from '../../../components/admin/EventWizardModal';
+import { generateTicketPDF, TicketTemplate } from '../../../utils/ticketPdf';
+import { generateCertificatePDF, CertificateTemplate } from '../../../utils/certificatePdf';
 import { logAdminActivity } from '../../../utils/securityLog';
+import { FormField } from '../../../components/admin/FieldBuilder';
+import { EVENT_TYPES } from '../../../utils/eventHelpers';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
-
-interface FormField {
-  id: string;
-  label: string;
-  type: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox';
-  options?: string[];
-  required: boolean;
-}
 
 interface FeedbackConfig {
   show_stars: boolean;
   fields: FormField[];
 }
 
+interface ProgramItem {
+  id: string;
+  time?: string;
+  title: string;
+  speaker?: string;
+  description?: string;
+}
+
 interface Event {
   id: number;
   title: string;
+  theme?: string;
   description: string;
   event_date: string;
   location: string;
@@ -52,20 +55,18 @@ interface Event {
   partner_logos?: string[];
   slug?: string;
   poster_enabled?: boolean;
+  event_type?: string;
+  program?: ProgramItem[];
+  ticket_tiers?: { id: string; label: string; price: number | null; description?: string }[];
+  ticket_template?: TicketTemplate;
+  invitation_text?: string;
+  invitation_subtext?: string;
+  certificate_enabled?: boolean;
+  certificate_template?: CertificateTemplate;
+  poster_template?: string;
 }
 
 const VISITOR_EMAIL = 'visiteur@ong-ddb.org';
-
-const generateSlug = (title: string): string =>
-  title
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .slice(0, 80);
 
 interface Registration {
   id: number;
@@ -76,6 +77,8 @@ interface Registration {
   ticket_ref?: string;
   created_at?: string;
   custom_data?: Record<string, any>;
+  scanned_at?: string;
+  certificate_sent_at?: string;
 }
 
 interface Volunteer {
@@ -96,211 +99,16 @@ interface EventFeedback {
   created_at: string;
 }
 
-// ─── MultiLogoUpload ─────────────────────────────────────────────────────────
-
-interface MultiLogoUploadProps {
-  value: string[];
-  onChange: (urls: string[]) => void;
-  label: string;
-  description?: string;
-  icon?: React.ElementType;
-}
-
-const MultiLogoUpload: React.FC<MultiLogoUploadProps> = ({ value, onChange, label, description, icon: Icon }) => {
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    setUploading(true);
-    const newUrls: string[] = [];
-    for (const file of files) {
-      if (file.size > 5 * 1024 * 1024) { alert('Fichier trop volumineux (max 5 Mo)'); continue; }
-      const ext = file.name.split('.').pop() || 'png';
-      const fileName = `events/logo_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error } = await supabase.storage.from('ong-backend').upload(fileName, file);
-      if (error) { alert(`Erreur d'upload : ${error.message}`); continue; }
-      const { data } = supabase.storage.from('ong-backend').getPublicUrl(fileName);
-      newUrls.push(data.publicUrl);
-    }
-    if (newUrls.length) onChange([...value, ...newUrls]);
-    setUploading(false);
-    e.target.value = '';
-  };
-
-  return (
-    <div>
-      <div className="flex items-center gap-2 mb-3">
-        {Icon && (
-          <div className="w-7 h-7 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-            <Icon size={14} className="text-green-700" />
-          </div>
-        )}
-        <div>
-          <p className="text-sm font-semibold text-gray-700">{label}</p>
-          {description && <p className="text-xs text-gray-400">{description}</p>}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-3 items-center p-3 bg-gray-50 rounded-xl border border-gray-200">
-        {value.map((url, idx) => (
-          <div key={idx} className="relative group w-20 h-20 bg-white border-2 border-gray-200 rounded-xl overflow-hidden flex items-center justify-center shadow-sm">
-            <img src={url} alt="" className="max-w-full max-h-full object-contain p-1.5" />
-            <button
-              type="button"
-              onClick={() => onChange(value.filter((_, i) => i !== idx))}
-              className="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full items-center justify-center hidden group-hover:flex transition-all shadow"
-            >
-              <XIcon size={10} className="text-white" />
-            </button>
-          </div>
-        ))}
-
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-green-400 hover:text-green-600 hover:bg-green-50 transition-all"
-        >
-          {uploading ? (
-            <span className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <>
-              <Plus size={18} />
-              <span className="text-[10px] mt-1 font-semibold">Ajouter</span>
-            </>
-          )}
-        </button>
-        <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFiles} />
-      </div>
-    </div>
-  );
-};
-
-// ─── FieldBuilder ─────────────────────────────────────────────────────────────
-
-interface FieldBuilderProps {
-  fields: FormField[];
-  onChange: (fields: FormField[]) => void;
-  addLabel?: string;
-}
-
-const FieldBuilder: React.FC<FieldBuilderProps> = ({ fields, onChange, addLabel = '+ Ajouter un champ' }) => {
-  const updateField = (index: number, patch: Partial<FormField>) => {
-    onChange(fields.map((f, i) => i === index ? { ...f, ...patch } : f));
-  };
-
-  const addOption = (index: number) => {
-    updateField(index, { options: [...(fields[index].options || []), ''] });
-  };
-
-  const updateOption = (fieldIdx: number, optIdx: number, value: string) => {
-    const opts = [...(fields[fieldIdx].options || [])];
-    opts[optIdx] = value;
-    updateField(fieldIdx, { options: opts });
-  };
-
-  const removeOption = (fieldIdx: number, optIdx: number) => {
-    updateField(fieldIdx, { options: (fields[fieldIdx].options || []).filter((_, i) => i !== optIdx) });
-  };
-
-  const hasOptions = (type: string) => ['select', 'radio', 'checkbox'].includes(type);
-
-  return (
-    <div className="space-y-4">
-      <AnimatePresence>
-        {fields.map((field, index) => (
-          <motion.div
-            key={field.id}
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden"
-          >
-            <div className="flex items-center gap-3 p-3 bg-gray-50 border-b border-gray-100">
-              <GripVertical size={16} className="text-gray-300 flex-shrink-0" />
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Champ {index + 1}</span>
-              <button type="button" onClick={() => onChange(fields.filter((_, i) => i !== index))}
-                className="ml-auto p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                <XIcon size={16} />
-              </button>
-            </div>
-            <div className="p-4 space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Libellé de la question</label>
-                  <input type="text" value={field.label} onChange={e => updateField(index, { label: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                    placeholder="Ex: Quelle est votre profession ?" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Type de champ</label>
-                  <select value={field.type}
-                    onChange={e => updateField(index, { type: e.target.value as FormField['type'], options: hasOptions(e.target.value) ? (field.options ?? []) : undefined })}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none">
-                    <option value="text">Texte court</option>
-                    <option value="textarea">Texte long</option>
-                    <option value="select">Liste déroulante</option>
-                    <option value="radio">Choix unique</option>
-                    <option value="checkbox">Choix multiple</option>
-                  </select>
-                </div>
-              </div>
-              {hasOptions(field.type) && (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-2">Options de réponse</label>
-                  <div className="space-y-2">
-                    {(field.options || []).map((opt, optIdx) => (
-                      <div key={optIdx} className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-full border-2 border-gray-300 flex-shrink-0 flex items-center justify-center">
-                          <span className="text-[9px] font-bold text-gray-400">{optIdx + 1}</span>
-                        </div>
-                        <input type="text" value={opt} onChange={e => updateOption(index, optIdx, e.target.value)}
-                          className="flex-1 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none"
-                          placeholder={`Option ${optIdx + 1}`} />
-                        <button type="button" onClick={() => removeOption(index, optIdx)}
-                          className="p-1 text-gray-400 hover:text-red-500 transition-colors rounded">
-                          <XIcon size={14} />
-                        </button>
-                      </div>
-                    ))}
-                    <button type="button" onClick={() => addOption(index)}
-                      className="flex items-center gap-1.5 text-sm text-green-600 hover:text-green-700 font-semibold py-1 px-2 rounded-lg hover:bg-green-50 transition-colors">
-                      <Plus size={14} /> Ajouter une option
-                    </button>
-                  </div>
-                </div>
-              )}
-              <label className="flex items-center gap-2 cursor-pointer w-fit">
-                <div onClick={() => updateField(index, { required: !field.required })}
-                  className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${field.required ? 'bg-green-500' : 'bg-gray-300'}`}>
-                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${field.required ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                </div>
-                <span className="text-sm text-gray-700">Réponse obligatoire</span>
-              </label>
-            </div>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-      <button type="button" onClick={() => onChange([...fields, { id: Date.now().toString(), label: '', type: 'text', required: false }])}
-        className="w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-gray-500 font-semibold hover:border-green-400 hover:text-green-600 hover:bg-green-50 transition-all flex items-center justify-center gap-2">
-        <Plus size={16} /> {addLabel}
-      </button>
-    </div>
-  );
-};
-
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 const CreateEventPage: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
-  const { create, update, data: eventsData } = useCrud<Event>({ tableName: 'events' });
+  const { data: eventsData, refresh: refreshEvents } = useCrud<Event>({ tableName: 'events' });
   const isEditing = !!id;
 
-  const [activeTab, setActiveTab] = useState<'info' | 'form' | 'feedback_config' | 'participants' | 'volunteers' | 'feedbacks' | 'stats'>('info');
-  const [creationStep, setCreationStep] = useState<1 | 2>(1);
+  const [activeTab, setActiveTab] = useState<'info' | 'participants' | 'volunteers' | 'feedbacks' | 'stats' | 'certificates'>('info');
+  const [infoWizardOpen, setInfoWizardOpen] = useState(false);
 
   const getCurrentDateTime = () => {
     const now = new Date();
@@ -317,15 +125,18 @@ const CreateEventPage: React.FC = () => {
     poster_enabled: true,
   });
 
-  const [loading, setLoading] = useState(false);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [registrationsLoading, setRegistrationsLoading] = useState(false);
   const [feedbacks, setFeedbacks] = useState<EventFeedback[]>([]);
   const [feedbacksLoading, setFeedbacksLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [participantSearch, setParticipantSearch] = useState('');
-  const slugTouched = React.useRef(false);
   const itemsPerPage = 10;
+
+  // ── Certificats : envoi automatique aux participants scannés ──────────────
+  const [certSendingIds, setCertSendingIds] = useState<Set<number>>(new Set());
+  const [certAutoSending, setCertAutoSending] = useState(false);
+  const certAutoSendDone = React.useRef(false);
 
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean; title: string; message: string; onConfirm: () => void; type?: 'danger' | 'info' | 'success';
@@ -346,6 +157,9 @@ const CreateEventPage: React.FC = () => {
         formData.location,
         formData.organizer_logos,
         formData.event_dates,
+        formData.ticket_template || 'classic',
+        formData.invitation_text,
+        formData.invitation_subtext,
       );
       const cleanTitle = (formData.title || 'evenement').replace(/[^a-z0-9]/gi, '_');
       const cleanName = (reg.fullname || 'participant').replace(/[^a-zA-Z0-9]/g, '_');
@@ -356,6 +170,60 @@ const CreateEventPage: React.FC = () => {
     } finally {
       setDownloadingId(null);
     }
+  };
+
+  // ── Certificats : génération + envoi par email ─────────────────────────────
+  const sendCertificateToRegistration = async (reg: Registration): Promise<boolean> => {
+    if (!reg.email || reg.email === VISITOR_EMAIL) return false;
+    setCertSendingIds(prev => new Set(prev).add(reg.id));
+    try {
+      const doc = await generateCertificatePDF(
+        reg.fullname,
+        formData.title || '',
+        formData.event_date || '',
+        formData.certificate_template || 'classic',
+        formData.logo_url,
+      );
+      const pdfBase64 = doc.output('datauristring').split('base64,')[1];
+      const cleanTitle = (formData.title || 'evenement').replace(/[^a-z0-9]/gi, '_');
+
+      const { error: fnError } = await supabase.functions.invoke('send-event-certificate', {
+        body: {
+          email: reg.email,
+          fullname: reg.fullname,
+          eventTitle: formData.title,
+          pdfBase64,
+          pdfName: `Certificat_${cleanTitle}.pdf`,
+        },
+      });
+      if (fnError) throw fnError;
+
+      const sentAt = new Date().toISOString();
+      const { error: updateError } = await supabase
+        .from('event_registrations')
+        .update({ certificate_sent_at: sentAt })
+        .eq('id', reg.id);
+      if (updateError) throw updateError;
+
+      setRegistrations(prev => prev.map(r => r.id === reg.id ? { ...r, certificate_sent_at: sentAt } : r));
+      logAdminActivity('send_certificate', `event_registrations:${reg.id}`, { email: reg.email });
+      return true;
+    } catch (err) {
+      console.error(`Erreur envoi certificat à ${reg.email}:`, err);
+      return false;
+    } finally {
+      setCertSendingIds(prev => { const s = new Set(prev); s.delete(reg.id); return s; });
+    }
+  };
+
+  const autoSendPendingCertificates = async (regs: Registration[]) => {
+    const pending = regs.filter(r => r.scanned_at && !r.certificate_sent_at && r.email && r.email !== VISITOR_EMAIL);
+    if (pending.length === 0) return;
+    setCertAutoSending(true);
+    for (const reg of pending) {
+      await sendCertificateToRegistration(reg);
+    }
+    setCertAutoSending(false);
   };
 
   // ── Édition d'inscription + renvoi du billet ──────────────────────────────
@@ -415,6 +283,9 @@ const CreateEventPage: React.FC = () => {
         formData.location,
         formData.organizer_logos,
         formData.event_dates,
+        formData.ticket_template || 'classic',
+        formData.invitation_text,
+        formData.invitation_subtext,
       );
       const pdfBase64 = doc.output('datauristring').split('base64,')[1];
       const cleanTitle = (formData.title || 'evenement').replace(/[^a-z0-9]/gi, '_');
@@ -470,11 +341,16 @@ const CreateEventPage: React.FC = () => {
   const [selectedVolunteerIds, setSelectedVolunteerIds] = useState<Set<number>>(new Set());
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<Set<number>>(new Set());
   const [emailComposer, setEmailComposer] = useState<{ targetGroup: 'volunteers' | 'participants'; recipients: { email?: string }[] } | null>(null);
+  const [volunteersError, setVolunteersError] = useState<string | null>(null);
 
   const fetchVolunteers = async (eventId: number) => {
     setVolunteersLoading(true);
+    setVolunteersError(null);
     const { data, error } = await supabase.from('event_volunteers').select('*').eq('event_id', eventId).order('created_at', { ascending: false });
-    if (!error && data) { setVolunteers(data); setVolunteerPage(1); }
+    if (error) {
+      console.error('Erreur chargement volontaires:', error);
+      setVolunteersError(error.message || 'Erreur lors du chargement des volontaires.');
+    } else if (data) { setVolunteers(data); setVolunteerPage(1); }
     setVolunteersLoading(false);
   };
 
@@ -632,6 +508,19 @@ const CreateEventPage: React.FC = () => {
     }
   }, [id, isEditing, eventsData]);
 
+  // Envoi automatique des certificats aux participants scannés qui n'en ont pas encore reçu,
+  // dès l'ouverture de l'onglet "Certificats" (idempotent grâce à certificate_sent_at).
+  useEffect(() => {
+    if (activeTab !== 'certificates') { certAutoSendDone.current = false; return; }
+    if (!formData.certificate_enabled) return;
+    if (certAutoSendDone.current || registrationsLoading) return;
+    const pending = registrations.filter(r => r.scanned_at && !r.certificate_sent_at && r.email && r.email !== VISITOR_EMAIL);
+    if (pending.length === 0) return;
+    certAutoSendDone.current = true;
+    autoSendPendingCertificates(registrations);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, formData.certificate_enabled, registrations, registrationsLoading]);
+
   const fetchFeedbacks = async (eventId: number) => {
     setFeedbacksLoading(true);
     const { data, error } = await supabase.from('event_feedbacks').select('*').eq('event_id', eventId).order('created_at', { ascending: false });
@@ -647,38 +536,6 @@ const CreateEventPage: React.FC = () => {
   };
 
   const handleBack = () => navigate('/admin/events');
-
-  const handleSave = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!formData.title || !formData.event_date) { alert('Le titre et la date sont obligatoires.'); return; }
-    try {
-      setLoading(true);
-      const dataToSubmit: any = {
-        title: formData.title,
-        description: formData.description || '',
-        event_date: formData.event_date,
-        location: formData.location || '',
-        image_url: formData.image_url || '',
-        max_slots: formData.max_slots ? parseInt(String(formData.max_slots)) : null,
-        price: formData.price ? parseFloat(String(formData.price)) : 0,
-        status: formData.status || 'draft',
-        form_fields: formData.form_fields || [],
-        feedback_config: formData.feedback_config ?? { show_stars: true, fields: [] },
-        event_dates: formData.event_dates || [],
-        logo_url: formData.logo_url || null,
-        organizer_logos: formData.organizer_logos || [],
-        partner_logos: formData.partner_logos || [],
-        slug: formData.slug?.trim() || generateSlug(formData.title || '') || undefined,
-        poster_enabled: formData.poster_enabled !== false,
-      };
-      if (isEditing && id) { await update(parseInt(id), dataToSubmit); }
-      else { await create(dataToSubmit); }
-      navigate('/admin/events');
-    } catch (err) {
-      alert("Erreur lors de l'enregistrement.");
-      console.error(err);
-    } finally { setLoading(false); }
-  };
 
   const handleDeleteRegistration = (regId: number) => {
     setConfirmModal({
@@ -722,17 +579,17 @@ const CreateEventPage: React.FC = () => {
     XLSX.writeFile(wb, `participants_${(formData.title || 'evenement').replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
+  const scannedRegistrations = registrations.filter(r => !!r.scanned_at);
+
   const tabs = [
-    { key: 'info', label: 'Informations', icon: FileText, sub: 'Détails & médias' },
-    { key: 'form', label: 'Formulaire', icon: ClipboardList, sub: "Champs d'inscription" },
-    { key: 'feedback_config', label: 'Config. Avis', icon: Star, sub: 'Questions post-événement' },
+    { key: 'info', label: 'Informations', icon: ClipboardList, sub: 'Résumé & configuration' },
     { key: 'participants', label: 'Participants', icon: Users, sub: 'Inscrits', badge: registrations.length || null },
+    { key: 'certificates', label: 'Certificats', icon: Award, sub: 'Envoi aux scannés', badge: scannedRegistrations.length || null },
     { key: 'volunteers', label: 'Volontaires', icon: HardHat, sub: 'Bénévoles', badge: volunteers.length || null },
     { key: 'stats', label: 'Statistiques', icon: BarChart2, sub: 'KPIs & graphes' },
     { key: 'feedbacks', label: 'Avis reçus', icon: MessageSquare, sub: 'Retours', badge: feedbacks.length || null },
   ] as const;
 
-  const fc = formData.feedback_config ?? { show_stars: true, fields: [] };
   const filteredRegs = participantSearch.trim()
     ? registrations.filter(r => {
         const q = participantSearch.toLowerCase();
@@ -774,6 +631,17 @@ const CreateEventPage: React.FC = () => {
     });
   };
 
+  // ── Création : la page se limite à ouvrir le wizard, en plein écran ──────
+  if (!isEditing) {
+    return (
+      <EventWizardModal
+        isOpen
+        onClose={handleBack}
+        onSaved={() => navigate('/admin/events')}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Top bar */}
@@ -781,603 +649,151 @@ const CreateEventPage: React.FC = () => {
         <button onClick={handleBack} className="flex items-center gap-2 text-green-600 hover:text-green-700 font-medium transition-colors">
           <ArrowLeft size={18} /> Retour
         </button>
-        <div className="text-gray-800 font-bold hidden sm:block">
-          {isEditing ? "Modifier l'Événement" : 'Créer un Événement'}
-        </div>
-        {isEditing ? (
-          <button onClick={handleSave} disabled={loading}
-            className="px-5 py-2 font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-sm disabled:opacity-50 flex items-center gap-2 text-sm">
-            {loading && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-            Enregistrer
-          </button>
-        ) : (
-          <div className="text-xs text-gray-400 font-medium">
-            Étape {creationStep} / 2
-          </div>
-        )}
+        <div className="text-gray-800 font-bold hidden sm:block truncate max-w-[50%]">{formData.title || "Gérer l'événement"}</div>
+        <button onClick={() => setInfoWizardOpen(true)}
+          className="px-5 py-2 font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-sm flex items-center gap-2 text-sm">
+          <Edit3 size={16} /> Modifier
+        </button>
       </div>
 
-      {/* Tab Navigation — édition uniquement */}
-      {isEditing && (
-        <div className="bg-white border-b border-gray-200 sticky top-14 z-10">
-          <div className="flex overflow-x-auto scrollbar-hide px-3 sm:px-6 gap-1.5 py-2.5">
-            {tabs.map(tab => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.key;
-              return (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
-                    isActive
-                      ? 'bg-green-600 text-white shadow-md shadow-green-200'
-                      : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
-                  }`}
-                >
-                  <Icon size={15} />
-                  <span>{tab.label}</span>
-                  {'badge' in tab && tab.badge ? (
-                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-white/25 text-white' : 'bg-green-100 text-green-800'}`}>
-                      {tab.badge}
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Step Indicator — création uniquement */}
-      {!isEditing && (
-        <div className="bg-white border-b border-gray-100 sticky top-14 z-10">
-          <div className="px-6 sm:px-10 py-4">
-            <div className="flex items-center gap-3">
-              {/* Step 1 */}
+      {/* Tab Navigation */}
+      <div className="bg-white border-b border-gray-200 sticky top-14 z-10">
+        <div className="flex overflow-x-auto scrollbar-hide px-3 sm:px-6 gap-1.5 py-2.5">
+          {tabs.map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
+            return (
               <button
-                type="button"
-                onClick={() => setCreationStep(1)}
-                className="flex items-center gap-2.5 group"
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
+                  isActive
+                    ? 'bg-green-600 text-white shadow-md shadow-green-200'
+                    : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
+                }`}
               >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
-                  creationStep >= 1 ? 'bg-green-600 text-white shadow-md shadow-green-200' : 'bg-gray-200 text-gray-400'
-                }`}>
-                  1
-                </div>
-                <div className="text-left hidden sm:block">
-                  <p className={`text-xs font-bold transition-colors ${creationStep === 1 ? 'text-green-700' : 'text-gray-400'}`}>
-                    ÉTAPE 1
-                  </p>
-                  <p className={`text-sm font-semibold transition-colors ${creationStep === 1 ? 'text-gray-800' : 'text-gray-400'}`}>
-                    Informations
-                  </p>
-                </div>
+                <Icon size={15} />
+                <span>{tab.label}</span>
+                {'badge' in tab && tab.badge ? (
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-white/25 text-white' : 'bg-green-100 text-green-800'}`}>
+                    {tab.badge}
+                  </span>
+                ) : null}
               </button>
-
-              {/* Connector */}
-              <div className="flex-1 flex items-center gap-1">
-                <div className={`h-1 rounded-full flex-1 transition-all duration-500 ${creationStep >= 2 ? 'bg-green-500' : 'bg-gray-200'}`} />
-                <div className={`h-1.5 w-1.5 rounded-full transition-all duration-500 ${creationStep >= 2 ? 'bg-green-500' : 'bg-gray-200'}`} />
-              </div>
-
-              {/* Step 2 */}
-              <div className="flex items-center gap-2.5">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
-                  creationStep >= 2 ? 'bg-green-600 text-white shadow-md shadow-green-200' : 'bg-gray-200 text-gray-400'
-                }`}>
-                  2
-                </div>
-                <div className="text-left hidden sm:block">
-                  <p className={`text-xs font-bold transition-colors ${creationStep === 2 ? 'text-green-700' : 'text-gray-400'}`}>
-                    ÉTAPE 2
-                  </p>
-                  <p className={`text-sm font-semibold transition-colors ${creationStep === 2 ? 'text-gray-800' : 'text-gray-400'}`}>
-                    Image & Logos
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
-      )}
+      </div>
 
       {/* Content */}
       <div className="flex-1 w-full">
 
-        {/* ── Info Tab ── */}
+        {/* ── Info Tab : résumé + accès au wizard ── */}
         {activeTab === 'info' && (
-          <AnimatePresence mode="wait">
-
-            {/* ══ CRÉATION — Étape 1 : Informations ══ */}
-            {(!isEditing && creationStep === 1) && (
-              <motion.div
-                key="step1"
-                initial={{ opacity: 0, x: -24 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -24 }}
-                transition={{ duration: 0.22 }}
-              >
-                <div className="px-6 sm:px-10 py-8 space-y-6">
-                  <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
-                    <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
-                      <FileText size={18} className="text-green-700" />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-bold text-gray-800">Informations générales</h2>
-                      <p className="text-xs text-gray-400">Renseignez les détails de votre événement.</p>
-                    </div>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-6 sm:px-10 py-8 space-y-6">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="flex items-start gap-4 min-w-0">
+                {formData.image_url ? (
+                  <img src={formData.image_url} alt="" className="w-20 h-20 rounded-2xl object-cover border border-gray-100 shadow-sm flex-shrink-0" />
+                ) : (
+                  <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <Calendar size={24} className="text-gray-300" />
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="sm:col-span-2 space-y-3">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Titre de l'événement *</label>
-                        <input type="text" value={formData.title || ''}
-                          onChange={(e) => {
-                            const title = e.target.value;
-                            const updates: Partial<Event> = { title };
-                            if (!slugTouched.current) updates.slug = generateSlug(title);
-                            setFormData({ ...formData, ...updates });
-                          }}
-                          className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all"
-                          placeholder="Ex: Conférence annuelle DDB 2025" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1.5">Lien personnalisé (slug)</label>
-                        <div className="flex items-center gap-0 rounded-xl border border-gray-200 bg-gray-50 overflow-hidden focus-within:ring-2 focus-within:ring-green-500">
-                          <span className="px-3 py-2.5 text-xs text-gray-400 bg-gray-100 border-r border-gray-200 whitespace-nowrap select-none">/events/</span>
-                          <input type="text" value={formData.slug || ''}
-                            onChange={(e) => {
-                              slugTouched.current = true;
-                              setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-') });
-                            }}
-                            className="flex-1 px-3 py-2.5 bg-transparent outline-none text-sm text-gray-700"
-                            placeholder="conference-annuelle-ddb-2025" />
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Date et heure (Début) *</label>
-                      <input type="datetime-local" value={formData.event_date || ''}
-                        onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all" />
-                    </div>
-
-                    <div className="sm:col-span-2 border border-gray-200 p-4 rounded-xl bg-gray-50/50 space-y-4">
-                      <div>
-                        <label className="block text-sm font-bold text-gray-700">Dates additionnelles</label>
-                        <p className="text-xs text-gray-400">Événement sur plusieurs jours.</p>
-                      </div>
-                      <div className="space-y-3">
-                        {(formData.event_dates || []).map((dateEntry, idx) => (
-                          <div key={idx} className="flex gap-3 items-center bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
-                            <div className="flex-1">
-                              <label className="block text-xs font-semibold text-gray-500 mb-1">Libellé</label>
-                              <input type="text" value={dateEntry.label || ''}
-                                onChange={(e) => {
-                                  const nd = [...(formData.event_dates || [])];
-                                  nd[idx] = { ...nd[idx], label: e.target.value };
-                                  setFormData({ ...formData, event_dates: nd });
-                                }}
-                                placeholder={`Jour ${idx + 2}`}
-                                className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none" />
-                            </div>
-                            <div className="flex-1">
-                              <label className="block text-xs font-semibold text-gray-500 mb-1">Date et heure</label>
-                              <input type="datetime-local" value={dateEntry.date || ''}
-                                onChange={(e) => {
-                                  const nd = [...(formData.event_dates || [])];
-                                  nd[idx] = { ...nd[idx], date: e.target.value };
-                                  setFormData({ ...formData, event_dates: nd });
-                                }}
-                                className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none" />
-                            </div>
-                            <button type="button"
-                              onClick={() => setFormData({ ...formData, event_dates: (formData.event_dates || []).filter((_, i) => i !== idx) })}
-                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg mt-5 transition-colors">
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        ))}
-                        <button type="button"
-                          onClick={() => setFormData({ ...formData, event_dates: [...(formData.event_dates || []), { date: '', label: `Jour ${(formData.event_dates || []).length + 2}` }] })}
-                          className="flex items-center gap-1.5 text-xs text-green-600 hover:text-green-700 font-bold py-1.5 px-3 rounded-lg border border-dashed border-green-200 hover:bg-green-50/50 transition-colors">
-                          <Plus size={14} /> Ajouter une date additionnelle
-                        </button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Lieu</label>
-                      <input type="text" value={formData.location || ''}
-                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all"
-                        placeholder="Ex: Salle des fêtes, Lomé" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Nombre de places</label>
-                      <input type="number" min="1" value={formData.max_slots === null ? '' : formData.max_slots}
-                        onChange={(e) => setFormData({ ...formData, max_slots: e.target.value ? parseInt(e.target.value) : null })}
-                        placeholder="Laisser vide = illimité"
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Statut</label>
-                      <select value={formData.status || 'published'}
-                        onChange={(e) => setFormData({ ...formData, status: e.target.value as Event['status'] })}
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all">
-                        <option value="published">Publié (Visible)</option>
-                        <option value="draft">Brouillon (Caché)</option>
-                        <option value="cancelled">Annulé</option>
-                      </select>
-                    </div>
+                )}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wide bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                      {EVENT_TYPES.find(t => t.value === formData.event_type)?.label || 'Conférence'}
+                    </span>
+                    <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${
+                      formData.status === 'published' ? 'bg-emerald-100 text-emerald-700' : formData.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {formData.status === 'published' ? 'Publié' : formData.status === 'cancelled' ? 'Annulé' : 'Brouillon'}
+                    </span>
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Description *</label>
-                    <RichTextEditor value={formData.description || ''}
-                      onChange={(html) => setFormData({ ...formData, description: html })}
-                      placeholder="Description détaillée de l'événement..." rows={10} />
+                  <h2 className="text-xl font-bold text-gray-800 leading-snug">{formData.title || 'Sans titre'}</h2>
+                  <div className="flex items-center gap-4 flex-wrap mt-1.5 text-sm text-gray-500">
+                    <span className="flex items-center gap-1.5">
+                      <Calendar size={14} className="text-green-500" />
+                      {formData.event_date ? new Date(formData.event_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}
+                    </span>
+                    {formData.location && (
+                      <span className="flex items-center gap-1.5">
+                        <MapPin size={14} className="text-green-500" />
+                        {formData.location}
+                      </span>
+                    )}
                   </div>
-
-                  {/* Navigation étape 1 */}
-                  <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
-                    <button type="button" onClick={handleBack}
-                      className="px-5 py-2.5 font-semibold text-gray-500 hover:text-gray-700 transition-colors text-sm">
-                      Annuler
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!formData.title?.trim()) { alert('Le titre de l\'événement est obligatoire.'); return; }
-                        if (!formData.event_date) { alert('La date est obligatoire.'); return; }
-                        setCreationStep(2);
-                        window.scrollTo(0, 0);
-                      }}
-                      className="flex items-center gap-2 px-7 py-2.5 font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-md text-sm"
-                    >
-                      Suivant
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* ══ CRÉATION — Étape 2 : Image & Logos ══ */}
-            {(!isEditing && creationStep === 2) && (
-              <motion.div
-                key="step2"
-                initial={{ opacity: 0, x: 24 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 24 }}
-                transition={{ duration: 0.22 }}
-              >
-                <div className="px-6 sm:px-10 py-8 space-y-8">
-                  <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
-                    <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
-                      <Sparkles size={18} className="text-green-700" />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-bold text-gray-800">Image & Logos</h2>
-                      <p className="text-xs text-gray-400">Ajoutez les visuels de votre événement.</p>
-                    </div>
-                  </div>
-
-                  {/* Cover image */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Image de couverture</label>
-                    <p className="text-xs text-gray-400 mb-3">Illustre l'événement sur la page publique.</p>
-                    <ImageUpload
-                      value={formData.image_url || ''}
-                      onChange={(url) => setFormData({ ...formData, image_url: url })}
-                      bucket="ong-backend" folder="events"
-                    />
-                  </div>
-
-                  <div className="h-px bg-gray-100" />
-
-                  {/* Logo principal */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-7 h-7 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-                        <Sparkles size={14} className="text-green-700" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-700">Logo principal de l'événement</p>
-                        <p className="text-xs text-gray-400">Affiché sur le visuel et le poster "J'y serai".</p>
-                      </div>
-                    </div>
-                    <div className="max-w-xs">
-                      <ImageUpload
-                        value={formData.logo_url || ''}
-                        onChange={(url) => setFormData({ ...formData, logo_url: url })}
-                        bucket="ong-backend" folder="events"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="h-px bg-gray-100" />
-
-                  {/* Logos organisateurs */}
-                  <MultiLogoUpload
-                    value={formData.organizer_logos || []}
-                    onChange={(urls) => setFormData({ ...formData, organizer_logos: urls })}
-                    label="Logos des organisateurs"
-                    description="Apparaîtront sur le billet et le poster J'y serai."
-                    icon={Building2}
-                  />
-
-                  <div className="h-px bg-gray-100" />
-
-                  {/* Logos partenaires */}
-                  <MultiLogoUpload
-                    value={formData.partner_logos || []}
-                    onChange={(urls) => setFormData({ ...formData, partner_logos: urls })}
-                    label="Logos des partenaires"
-                    description="Partenaires & sponsors de l'événement."
-                    icon={Handshake}
-                  />
-
-                  {/* Navigation étape 2 */}
-                  <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
-                    <button type="button"
-                      onClick={() => { setCreationStep(1); window.scrollTo(0, 0); }}
-                      className="flex items-center gap-2 px-5 py-2.5 font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all text-sm">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-                      Étape précédente
-                    </button>
-                    <button type="button" onClick={handleSave} disabled={loading}
-                      className="flex items-center gap-2 px-7 py-2.5 font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-md disabled:opacity-50 text-sm">
-                      {loading ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
-                      Créer l'événement
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* ══ ÉDITION — Info Tab : tout en une page ══ */}
-            {isEditing && (
-              <motion.div
-                key="edit-info"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                {/* Images & Logos */}
-                <div className="px-6 sm:px-10 py-8 border-b border-gray-100">
-                  <div className="flex items-center gap-3 pb-4 border-b border-gray-100 mb-6">
-                    <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
-                      <Sparkles size={18} className="text-green-700" />
-                    </div>
-                    <h2 className="text-base font-bold text-gray-800">Image & Logos</h2>
-                  </div>
-
-                  <div className="mb-6">
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Image de couverture *</label>
-                    <p className="text-xs text-gray-400 mb-3">Illustre l'événement sur la page publique.</p>
-                    <ImageUpload value={formData.image_url || ''} onChange={(url) => setFormData({ ...formData, image_url: url })} bucket="ong-backend" folder="events" />
-                  </div>
-
-                  <div className="mb-6 pb-6 border-b border-gray-100">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-7 h-7 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-                        <Sparkles size={14} className="text-green-700" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-700">Logo principal</p>
-                        <p className="text-xs text-gray-400">Affiché sur le visuel et le poster "J'y serai".</p>
-                      </div>
-                    </div>
-                    <div className="max-w-xs">
-                      <ImageUpload value={formData.logo_url || ''} onChange={(url) => setFormData({ ...formData, logo_url: url })} bucket="ong-backend" folder="events" />
-                    </div>
-                  </div>
-
-                  <div className="mb-6 pb-6 border-b border-gray-100">
-                    <MultiLogoUpload value={formData.organizer_logos || []} onChange={(urls) => setFormData({ ...formData, organizer_logos: urls })}
-                      label="Logos des organisateurs" description="Apparaîtront sur le billet et le poster J'y serai." icon={Building2} />
-                  </div>
-                  <MultiLogoUpload value={formData.partner_logos || []} onChange={(urls) => setFormData({ ...formData, partner_logos: urls })}
-                    label="Logos des partenaires" description="Partenaires & sponsors de l'événement." icon={Handshake} />
-
-                  {/* Toggle J'y serai */}
-                  <div className="mt-6 pt-6 border-t border-gray-100 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
-                        <Sparkles size={16} className="text-green-700" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-800">Visuel "J'y serai"</p>
-                        <p className="text-xs text-gray-400">Permettre aux inscrits de générer leur affiche personnalisée.</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, poster_enabled: !formData.poster_enabled })}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                        formData.poster_enabled !== false ? 'bg-green-600' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                        formData.poster_enabled !== false ? 'translate-x-6' : 'translate-x-1'
-                      }`} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Informations générales */}
-                <div className="px-6 sm:px-10 py-8">
-                  <div className="flex items-center gap-3 pb-4 border-b border-gray-100 mb-6">
-                    <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
-                      <FileText size={18} className="text-green-700" />
-                    </div>
-                    <h2 className="text-base font-bold text-gray-800">Informations générales</h2>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="sm:col-span-2 space-y-3">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Titre de l'événement *</label>
-                        <input type="text" required value={formData.title || ''}
-                          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                          className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all"
-                          placeholder="Ex: Conférence annuelle DDB 2025" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1.5">Lien personnalisé (slug)</label>
-                        <div className="flex items-center rounded-xl border border-gray-200 bg-gray-50 overflow-hidden focus-within:ring-2 focus-within:ring-green-500">
-                          <span className="px-3 py-2.5 text-xs text-gray-400 bg-gray-100 border-r border-gray-200 whitespace-nowrap select-none">/events/</span>
-                          <input type="text" value={formData.slug || ''}
-                            onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-') })}
-                            className="flex-1 px-3 py-2.5 bg-transparent outline-none text-sm text-gray-700"
-                            placeholder="conference-annuelle-ddb-2025" />
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Date et heure (Début) *</label>
-                      <input type="datetime-local" required value={formData.event_date || ''}
-                        onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all" />
-                    </div>
-
-                    <div className="sm:col-span-2 border border-gray-200 p-4 rounded-xl bg-gray-50/50 space-y-4">
-                      <div>
-                        <label className="block text-sm font-bold text-gray-700">Dates additionnelles</label>
-                        <p className="text-xs text-gray-400">Événement sur plusieurs jours.</p>
-                      </div>
-                      <div className="space-y-3">
-                        {(formData.event_dates || []).map((dateEntry, idx) => (
-                          <div key={idx} className="flex gap-3 items-center bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
-                            <div className="flex-1">
-                              <label className="block text-xs font-semibold text-gray-500 mb-1">Libellé</label>
-                              <input type="text" value={dateEntry.label || ''}
-                                onChange={(e) => { const nd = [...(formData.event_dates || [])]; nd[idx] = { ...nd[idx], label: e.target.value }; setFormData({ ...formData, event_dates: nd }); }}
-                                placeholder={`Jour ${idx + 2}`} className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none" />
-                            </div>
-                            <div className="flex-1">
-                              <label className="block text-xs font-semibold text-gray-500 mb-1">Date et heure</label>
-                              <input type="datetime-local" value={dateEntry.date || ''}
-                                onChange={(e) => { const nd = [...(formData.event_dates || [])]; nd[idx] = { ...nd[idx], date: e.target.value }; setFormData({ ...formData, event_dates: nd }); }}
-                                className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none" />
-                            </div>
-                            <button type="button" onClick={() => setFormData({ ...formData, event_dates: (formData.event_dates || []).filter((_, i) => i !== idx) })}
-                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg mt-5 transition-colors"><Trash2 size={16} /></button>
-                          </div>
-                        ))}
-                        <button type="button"
-                          onClick={() => setFormData({ ...formData, event_dates: [...(formData.event_dates || []), { date: '', label: `Jour ${(formData.event_dates || []).length + 2}` }] })}
-                          className="flex items-center gap-1.5 text-xs text-green-600 hover:text-green-700 font-bold py-1.5 px-3 rounded-lg border border-dashed border-green-200 hover:bg-green-50/50 transition-colors">
-                          <Plus size={14} /> Ajouter une date additionnelle
-                        </button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Lieu</label>
-                      <input type="text" value={formData.location || ''} onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all" placeholder="Ex: Salle des fêtes, Lomé" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Nombre de places</label>
-                      <input type="number" min="1" value={formData.max_slots === null ? '' : formData.max_slots}
-                        onChange={(e) => setFormData({ ...formData, max_slots: e.target.value ? parseInt(e.target.value) : null })}
-                        placeholder="Laisser vide = illimité" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Statut</label>
-                      <select value={formData.status || 'published'} onChange={(e) => setFormData({ ...formData, status: e.target.value as Event['status'] })}
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all">
-                        <option value="published">Publié (Visible)</option>
-                        <option value="draft">Brouillon (Caché)</option>
-                        <option value="cancelled">Annulé</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="mt-6">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Description *</label>
-                    <RichTextEditor value={formData.description || ''} onChange={(html) => setFormData({ ...formData, description: html })}
-                      placeholder="Description détaillée de l'événement..." rows={10} />
-                  </div>
-
-                  <div className="pt-6 mt-6 border-t border-gray-100 flex justify-end gap-3">
-                    <button type="button" onClick={handleBack} className="px-5 py-2.5 font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all text-sm">
-                      Annuler
-                    </button>
-                    <button type="button" onClick={handleSave} disabled={loading}
-                      className="px-7 py-2.5 font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-md disabled:opacity-50 flex items-center gap-2 text-sm">
-                      {loading && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                      Enregistrer les modifications
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-          </AnimatePresence>
-        )}
-
-        {/* ── Form Tab ── */}
-        {activeTab === 'form' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-6 sm:px-10 py-8">
-            <div className="mb-6">
-              <h2 className="text-xl font-bold text-gray-800">Champs du formulaire d'inscription</h2>
-              <p className="text-gray-500 text-sm mt-1">Ajoutez des questions supplémentaires (Nom, Email et Téléphone sont toujours inclus).</p>
-            </div>
-            <FieldBuilder fields={formData.form_fields || []}
-              onChange={(fields) => setFormData({ ...formData, form_fields: fields })}
-              addLabel="+ Ajouter une question" />
-            <div className="pt-6 mt-6 border-t border-gray-100 flex justify-end gap-3">
-              <button type="button" onClick={handleBack} className="px-5 py-2.5 font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all text-sm">Annuler</button>
-              <button type="button" onClick={handleSave} disabled={loading}
-                className="px-7 py-2.5 font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-md disabled:opacity-50 flex items-center gap-2 text-sm">
-                {loading && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                Enregistrer
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ── Feedback Config Tab ── */}
-        {activeTab === 'feedback_config' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-6 sm:px-10 py-8">
-            <div className="mb-6">
-              <h2 className="text-xl font-bold text-gray-800">Configuration du formulaire d'avis</h2>
-              <p className="text-gray-500 text-sm mt-1">Ce formulaire apparaît aux visiteurs lorsque l'événement est terminé.</p>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-yellow-100 rounded-full flex items-center justify-center">
-                  <Star size={18} className="text-yellow-500" fill="currentColor" />
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-800 text-sm">Notation par étoiles</p>
-                  <p className="text-xs text-gray-500">Afficher un sélecteur de 1 à 5 étoiles</p>
                 </div>
               </div>
-              <button type="button"
-                onClick={() => setFormData({ ...formData, feedback_config: { ...fc, show_stars: !fc.show_stars } })}
-                className={`w-11 h-6 rounded-full transition-colors relative flex-shrink-0 ${fc.show_stars ? 'bg-green-500' : 'bg-gray-300'}`}>
-                <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${fc.show_stars ? 'translate-x-6' : 'translate-x-1'}`} />
+              <button
+                type="button"
+                onClick={() => setInfoWizardOpen(true)}
+                className="flex items-center gap-2 px-5 py-2.5 font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-sm text-sm flex-shrink-0"
+              >
+                <Edit3 size={16} /> Modifier les informations
               </button>
             </div>
-            <div className="mb-4">
-              <h3 className="text-sm font-bold text-gray-700 mb-1">Questions personnalisées</h3>
-              <p className="text-xs text-gray-400 mb-4">Ajoutez des questions pour recueillir des retours spécifiques.</p>
+
+            {formData.description && (
+              <div className="prose prose-sm max-w-none text-gray-600 bg-gray-50 rounded-xl p-4 border border-gray-100 line-clamp-4"
+                dangerouslySetInnerHTML={{ __html: formData.description }} />
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+              <div className="border border-gray-100 rounded-xl p-4 bg-gray-50/50">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <ClipboardList size={15} className="text-green-600" />
+                  <p className="text-xs font-bold text-gray-700">Questionnaires</p>
+                </div>
+                <p className="text-xs text-gray-500">{(formData.form_fields || []).length} question(s) d'inscription, {(formData.feedback_config?.fields || []).length} question(s) d'avis</p>
+              </div>
+              <div className="border border-gray-100 rounded-xl p-4 bg-gray-50/50">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Ticket size={15} className="text-green-600" />
+                  <p className="text-xs font-bold text-gray-700">Billetterie</p>
+                </div>
+                <p className="text-xs text-gray-500">
+                  {(formData.program || []).length} étape(s) au programme · {(formData.ticket_tiers || []).length} tarif(s) · modèle {formData.ticket_template === 'modern' ? 'moderne' : 'classique'}
+                </p>
+              </div>
+              <div className="border border-gray-100 rounded-xl p-4 bg-gray-50/50">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Award size={15} className={formData.certificate_enabled ? 'text-green-600' : 'text-gray-300'} />
+                  <p className="text-xs font-bold text-gray-700">Certificats</p>
+                </div>
+                <p className="text-xs text-gray-500">
+                  {formData.certificate_enabled ? `Activés · modèle ${formData.certificate_template === 'modern' ? 'moderne' : 'classique'}` : 'Désactivés'}
+                </p>
+              </div>
+              <div className="border border-gray-100 rounded-xl p-4 bg-gray-50/50">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Sparkles size={15} className={formData.poster_enabled !== false ? 'text-green-600' : 'text-gray-300'} />
+                  <p className="text-xs font-bold text-gray-700">Visuel "J'y serai"</p>
+                </div>
+                <p className="text-xs text-gray-500">
+                  {formData.poster_enabled !== false ? `Activé · modèle ${formData.poster_template === 'modern' ? 'moderne' : 'classique'}` : 'Désactivé'}
+                </p>
+              </div>
             </div>
-            <FieldBuilder fields={fc.fields}
-              onChange={(fields) => setFormData({ ...formData, feedback_config: { ...fc, fields } })}
-              addLabel="+ Ajouter une question d'avis" />
-            <div className="pt-6 mt-6 border-t border-gray-100 flex justify-end gap-3">
-              <button type="button" onClick={handleBack} className="px-5 py-2.5 font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all text-sm">Annuler</button>
-              <button type="button" onClick={handleSave} disabled={loading}
-                className="px-7 py-2.5 font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-md disabled:opacity-50 flex items-center gap-2 text-sm">
-                {loading && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                Enregistrer
-              </button>
-            </div>
+
+            {(formData.logo_url || (formData.organizer_logos || []).length > 0 || (formData.partner_logos || []).length > 0) && (
+              <div className="border border-gray-100 rounded-xl p-4">
+                <p className="text-xs font-bold text-gray-700 mb-3">Logos</p>
+                <div className="flex flex-wrap gap-3">
+                  {formData.logo_url && (
+                    <div className="w-14 h-14 bg-gray-50 border border-gray-200 rounded-xl overflow-hidden flex items-center justify-center">
+                      <img src={formData.logo_url} alt="" className="max-w-full max-h-full object-contain p-1" />
+                    </div>
+                  )}
+                  {[...(formData.organizer_logos || []), ...(formData.partner_logos || [])].map((url, idx) => (
+                    <div key={idx} className="w-14 h-14 bg-gray-50 border border-gray-200 rounded-xl overflow-hidden flex items-center justify-center">
+                      <img src={url} alt="" className="max-w-full max-h-full object-contain p-1" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -1552,6 +968,103 @@ const CreateEventPage: React.FC = () => {
           </motion.div>
         )}
 
+        {/* ── Certificates Tab ── */}
+        {activeTab === 'certificates' && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="flex items-center justify-between px-6 sm:px-10 py-5 border-b border-gray-100 flex-wrap gap-3">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800">Certificats de participation</h2>
+                <p className="text-gray-500 text-sm mt-0.5">
+                  <span className="font-bold text-green-600">{scannedRegistrations.length}</span> participant{scannedRegistrations.length !== 1 ? 's' : ''} scanné{scannedRegistrations.length !== 1 ? 's' : ''} à l'entrée
+                </p>
+              </div>
+              {certAutoSending && (
+                <div className="flex items-center gap-2 text-xs font-semibold text-green-700 bg-green-50 px-3 py-2 rounded-lg border border-green-200">
+                  <Loader2 size={14} className="animate-spin" /> Envoi automatique des certificats en cours…
+                </div>
+              )}
+            </div>
+
+            {!formData.certificate_enabled ? (
+              <div className="text-center py-16 mx-6 sm:mx-10 my-6 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                <Award size={40} className="mx-auto mb-3 text-gray-300" />
+                <p className="font-semibold text-gray-700">Les certificats ne sont pas activés pour cet événement.</p>
+                <p className="text-sm text-gray-400 mt-1 mb-4">Activez-les depuis l'étape "Certificats" du wizard.</p>
+                <button type="button" onClick={() => setInfoWizardOpen(true)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-sm text-sm">
+                  <Edit3 size={16} /> Activer les certificats
+                </button>
+              </div>
+            ) : registrationsLoading ? (
+              <div className="text-center py-16">
+                <span className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin inline-block" />
+              </div>
+            ) : scannedRegistrations.length === 0 ? (
+              <div className="text-center py-16 mx-6 sm:mx-10 my-6 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                <Award size={40} className="mx-auto mb-3 text-gray-300" />
+                <p className="font-semibold text-gray-700">Aucun participant scanné pour le moment.</p>
+                <p className="text-sm text-gray-400 mt-1">Dès qu'un billet est scanné à l'entrée (onglet Scan), le participant apparaît ici et reçoit automatiquement son certificat.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      <th className="text-left px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Participant</th>
+                      <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Scanné le</th>
+                      <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Certificat</th>
+                      <th className="text-center px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {scannedRegistrations.map(reg => {
+                      const isSending = certSendingIds.has(reg.id);
+                      return (
+                        <tr key={reg.id} className="hover:bg-green-50/30 transition-colors">
+                          <td className="px-5 py-4">
+                            <p className="font-bold text-gray-900">{reg.fullname}</p>
+                            <p className="text-gray-500 text-xs">{reg.email}</p>
+                          </td>
+                          <td className="px-4 py-4 hidden sm:table-cell text-gray-500 text-xs whitespace-nowrap">
+                            {reg.scanned_at ? new Date(reg.scanned_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                          </td>
+                          <td className="px-4 py-4">
+                            {isSending ? (
+                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full">
+                                <Loader2 size={12} className="animate-spin" /> Envoi…
+                              </span>
+                            ) : reg.certificate_sent_at ? (
+                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full" title={new Date(reg.certificate_sent_at).toLocaleString('fr-FR')}>
+                                <CheckCircle2 size={12} /> Envoyé le {new Date(reg.certificate_sent_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">
+                                En attente
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => sendCertificateToRegistration(reg)}
+                                disabled={isSending || !reg.email || reg.email === VISITOR_EMAIL}
+                                title={reg.certificate_sent_at ? 'Renvoyer le certificat' : 'Envoyer le certificat'}
+                                className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                <Send size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </motion.div>
+        )}
+
         {/* ── Volunteers Tab ── */}
         {activeTab === 'volunteers' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
@@ -1610,6 +1123,13 @@ const CreateEventPage: React.FC = () => {
                 </button>
               </div>
             </div>
+
+            {volunteersError && (
+              <div className="mx-6 sm:mx-10 mt-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-start justify-between gap-3">
+                <span className="break-words">{volunteersError}</span>
+                <button onClick={() => fetchVolunteers(parseInt(id!))} className="font-semibold underline underline-offset-2 flex-shrink-0">Réessayer</button>
+              </div>
+            )}
 
             {volunteersLoading ? (
               <div className="text-center py-16">
@@ -1776,6 +1296,13 @@ const CreateEventPage: React.FC = () => {
       </div>
 
       {/* Modals */}
+      <EventWizardModal
+        isOpen={infoWizardOpen}
+        eventId={id ? parseInt(id) : undefined}
+        onClose={() => setInfoWizardOpen(false)}
+        onSaved={() => { setInfoWizardOpen(false); refreshEvents(); }}
+      />
+
       <ConfirmationModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
@@ -1790,17 +1317,26 @@ const CreateEventPage: React.FC = () => {
         <Modal
           isOpen={!!viewingParticipant}
           onClose={() => setViewingParticipant(null)}
-          title={`Détails — ${viewingParticipant.fullname}`}
+          title="Détails du participant"
           size="lg"
         >
-          <div className="p-5 space-y-5">
-            {/* Base info */}
+          <div className="space-y-6">
+            {/* En-tête récapitulatif */}
+            <div className="flex items-center gap-4 p-4 bg-green-50/60 rounded-2xl border border-green-100">
+              <div className="w-12 h-12 rounded-full bg-green-600 text-white flex items-center justify-center font-bold text-lg flex-shrink-0">
+                {(viewingParticipant.fullname || '?').charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="font-bold text-gray-900 text-base break-words">{viewingParticipant.fullname}</p>
+                <p className="text-sm text-gray-500 break-words">{viewingParticipant.email}</p>
+              </div>
+            </div>
+
+            {/* Informations de base */}
             <div>
               <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Informations de base</h4>
-              <div className="bg-gray-50 rounded-xl p-4 space-y-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
-                  { label: 'Nom complet', value: viewingParticipant.fullname },
-                  { label: 'Email', value: viewingParticipant.email },
                   { label: 'Téléphone', value: viewingParticipant.phone || '—' },
                   { label: 'Réf. billet', value: viewingParticipant.ticket_ref || '—' },
                   {
@@ -1809,29 +1345,35 @@ const CreateEventPage: React.FC = () => {
                       ? new Date(viewingParticipant.created_at).toLocaleString('fr-FR')
                       : '—',
                   },
+                  {
+                    label: 'Statut',
+                    value: viewingParticipant.scanned_at
+                      ? `Scanné le ${new Date(viewingParticipant.scanned_at).toLocaleString('fr-FR')}`
+                      : 'Pas encore scanné',
+                  },
                 ].map(row => (
-                  <div key={row.label} className="flex gap-3">
-                    <span className="text-xs font-semibold text-gray-500 w-36 flex-shrink-0 pt-0.5">{row.label}</span>
-                    <span className="text-sm text-gray-800 font-medium">{row.value}</span>
+                  <div key={row.label} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">{row.label}</p>
+                    <p className="text-sm text-gray-800 font-medium break-words whitespace-pre-wrap leading-snug">{row.value}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Custom form answers */}
+            {/* Réponses au formulaire */}
             {viewingParticipant.custom_data && Object.keys(viewingParticipant.custom_data).length > 0 && (
               <div>
                 <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Réponses au formulaire</h4>
-                <div className="bg-gray-50 rounded-xl p-4 space-y-2.5">
+                <div className="space-y-2.5">
                   {(formData.form_fields || []).map(field => {
                     const val = viewingParticipant.custom_data?.[field.id];
                     if (val === undefined || val === null || val === '') return null;
                     return (
-                      <div key={field.id} className="flex gap-3">
-                        <span className="text-xs font-semibold text-gray-500 w-36 flex-shrink-0 pt-0.5">{field.label}</span>
-                        <span className="text-sm text-gray-800 font-medium">
+                      <div key={field.id} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">{field.label}</p>
+                        <p className="text-sm text-gray-800 font-medium break-words whitespace-pre-wrap leading-relaxed">
                           {Array.isArray(val) ? val.join(', ') : String(val)}
-                        </span>
+                        </p>
                       </div>
                     );
                   })}
@@ -1839,11 +1381,11 @@ const CreateEventPage: React.FC = () => {
                   {Object.entries(viewingParticipant.custom_data).filter(([key]) =>
                     !(formData.form_fields || []).find(f => f.id === key) && key !== 'phone'
                   ).map(([key, val]) => (
-                    <div key={key} className="flex gap-3">
-                      <span className="text-xs font-semibold text-gray-500 w-36 flex-shrink-0 pt-0.5">{key}</span>
-                      <span className="text-sm text-gray-800 font-medium">
+                    <div key={key} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">{key}</p>
+                      <p className="text-sm text-gray-800 font-medium break-words whitespace-pre-wrap leading-relaxed">
                         {Array.isArray(val) ? val.join(', ') : String(val)}
-                      </span>
+                      </p>
                     </div>
                   ))}
                 </div>

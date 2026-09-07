@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../../supabaseClient';
 import ConfirmationModal from '../../../components/admin/ConfirmationModal';
+import EventWizardModal from '../../../components/admin/EventWizardModal';
 import { Plus, Trash2, Users, MapPin, Edit3, MoreVertical, Eye, Calendar, CheckCircle, Clock, XCircle } from 'lucide-react';
 import useUserRole from '../../../hooks/useUserRole';
 import { logAdminActivity } from '../../../utils/securityLog';
@@ -19,6 +20,7 @@ interface Event {
   max_slots?: number | null;
   status: 'draft' | 'published' | 'cancelled';
   created_at?: string;
+  slug?: string;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: any }> = {
@@ -30,8 +32,9 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
 const EventCard: React.FC<{
   event: Event;
   onEdit: (id: number) => void;
+  onManage: (id: number) => void;
   onDelete: (event: Event) => void;
-}> = ({ event, onEdit, onDelete }) => {
+}> = ({ event, onEdit, onManage, onDelete }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const status = STATUS_CONFIG[event.status] || STATUS_CONFIG.draft;
@@ -54,7 +57,11 @@ const EventCard: React.FC<{
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col"
+      onClick={() => onManage(event.id)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={e => { if (e.key === 'Enter') onManage(event.id); }}
+      className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden flex flex-col cursor-pointer"
     >
       {/* Image */}
       <div className="relative h-44 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
@@ -112,14 +119,14 @@ const EventCard: React.FC<{
       {/* Footer actions */}
       <div className="border-t border-gray-100 px-4 py-3 flex items-center justify-between">
         <button
-          onClick={() => onEdit(event.id)}
+          onClick={e => { e.stopPropagation(); onManage(event.id); }}
           className="flex items-center gap-1.5 text-xs text-green-700 font-semibold hover:text-green-800 transition-colors"
         >
-          <Edit3 size={13} /> Modifier
+          <Eye size={13} /> Voir
         </button>
 
         {/* 3-dot menu */}
-        <div className="relative" ref={menuRef}>
+        <div className="relative" ref={menuRef} onClick={e => e.stopPropagation()}>
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
@@ -136,16 +143,16 @@ const EventCard: React.FC<{
                 className="absolute right-0 bottom-full mb-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden"
               >
                 <button
-                  onClick={() => { onEdit(event.id); setMenuOpen(false); }}
+                  onClick={() => { onManage(event.id); setMenuOpen(false); }}
                   className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  <Edit3 size={15} className="text-blue-500" /> Modifier l'événement
+                  <Eye size={15} className="text-purple-500" /> Voir le détail
                 </button>
                 <button
                   onClick={() => { onEdit(event.id); setMenuOpen(false); }}
                   className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  <Users size={15} className="text-green-500" /> Voir les participants
+                  <Edit3 size={15} className="text-blue-500" /> Modifier l'événement
                 </button>
                 <a
                   href={`/events/${event.slug || event.id}`}
@@ -154,7 +161,7 @@ const EventCard: React.FC<{
                   onClick={() => setMenuOpen(false)}
                   className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  <Eye size={15} className="text-purple-500" /> Voir la page publique
+                  <Users size={15} className="text-green-500" /> Voir la page publique
                 </a>
                 <div className="border-t border-gray-100" />
                 <button
@@ -184,6 +191,8 @@ const EventsAdmin: React.FC = () => {
     isOpen: boolean; title: string; message: string; onConfirm: () => void; type?: 'danger' | 'info' | 'success';
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
+  const [wizard, setWizard] = useState<{ isOpen: boolean; eventId?: number }>({ isOpen: false });
+
   useEffect(() => { fetchEvents(); }, []);
 
   const fetchEvents = async () => {
@@ -192,14 +201,14 @@ const EventsAdmin: React.FC = () => {
       // Try with logo_url first (requires migration)
       const { data, error: e } = await supabase
         .from('events')
-        .select('id, title, event_date, location, image_url, logo_url, max_slots, status, created_at')
+        .select('id, title, event_date, location, image_url, logo_url, max_slots, status, created_at, slug')
         .order('event_date', { ascending: false });
 
       if (e && e.message?.includes('logo_url')) {
         // Fallback: migration not yet applied — fetch without logo_url
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('events')
-          .select('id, title, event_date, location, image_url, max_slots, status, created_at')
+          .select('id, title, event_date, location, image_url, max_slots, status, created_at, slug')
           .order('event_date', { ascending: false });
         if (fallbackError) throw fallbackError;
         setEvents(fallbackData || []);
@@ -251,7 +260,7 @@ const EventsAdmin: React.FC = () => {
           <p className="text-sm text-gray-500 mt-0.5">{events.length} événement{events.length > 1 ? 's' : ''} au total</p>
         </div>
         <button
-          onClick={() => navigate('/admin/events/create')}
+          onClick={() => setWizard({ isOpen: true, eventId: undefined })}
           className="flex items-center gap-2 bg-green-600 text-white px-5 py-2.5 rounded-xl hover:bg-green-700 transition shadow-sm text-sm font-semibold"
         >
           <Plus size={18} /> Nouvel événement
@@ -292,7 +301,7 @@ const EventsAdmin: React.FC = () => {
           </p>
           {!search && (
             <button
-              onClick={() => navigate('/admin/events/create')}
+              onClick={() => setWizard({ isOpen: true, eventId: undefined })}
               className="mt-4 inline-flex items-center gap-2 text-green-600 font-semibold text-sm hover:underline"
             >
               <Plus size={16} /> Créer le premier événement
@@ -305,12 +314,20 @@ const EventsAdmin: React.FC = () => {
             <EventCard
               key={event.id}
               event={event}
-              onEdit={(id) => navigate(`/admin/events/edit/${id}`)}
+              onEdit={(id) => setWizard({ isOpen: true, eventId: id })}
+              onManage={(id) => navigate(`/admin/events/edit/${id}`)}
               onDelete={handleDelete}
             />
           ))}
         </div>
       )}
+
+      <EventWizardModal
+        isOpen={wizard.isOpen}
+        eventId={wizard.eventId}
+        onClose={() => setWizard({ isOpen: false })}
+        onSaved={() => fetchEvents()}
+      />
 
       <ConfirmationModal
         isOpen={confirmModal.isOpen}

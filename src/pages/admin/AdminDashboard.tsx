@@ -292,12 +292,12 @@ const AdminDashboard: React.FC = () => {
   };
 
   const statCards = useMemo(() => [
-    { label: 'Projets', value: stats.projects.total, icon: FolderKanban, color: 'bg-blue-500', bgGradient: 'from-blue-500 to-blue-600' },
-    { label: 'Rapports', value: stats.reports, icon: FileText, color: 'bg-purple-500', bgGradient: 'from-purple-500 to-purple-600' },
-    { label: 'Actualités', value: stats.news, icon: Newspaper, color: 'bg-green-500', bgGradient: 'from-green-500 to-green-600' },
-    { label: 'Engagement', value: stats.submissions + stats.newsletter, icon: Users, color: 'bg-pink-500', bgGradient: 'from-pink-500 to-pink-600' },
-    { label: 'Membres équipe', value: stats.teamMembers, icon: Users, color: 'bg-yellow-500', bgGradient: 'from-yellow-500 to-yellow-600' },
-    { label: 'Newsletters envoyées', value: stats.newslettersSent, icon: Mail, color: 'bg-teal-500', bgGradient: 'from-teal-500 to-teal-600' },
+    { label: 'Projets', value: stats.projects.total, icon: FolderKanban, tint: 'bg-blue-50 text-blue-600', bar: 'bg-blue-500' },
+    { label: 'Rapports', value: stats.reports, icon: FileText, tint: 'bg-purple-50 text-purple-600', bar: 'bg-purple-500' },
+    { label: 'Actualités', value: stats.news, icon: Newspaper, tint: 'bg-green-50 text-green-600', bar: 'bg-green-500' },
+    { label: 'Engagement', value: stats.submissions + stats.newsletter, icon: Users, tint: 'bg-pink-50 text-pink-600', bar: 'bg-pink-500' },
+    { label: 'Membres équipe', value: stats.teamMembers, icon: Users, tint: 'bg-amber-50 text-amber-600', bar: 'bg-amber-500' },
+    { label: 'Newsletters envoyées', value: stats.newslettersSent, icon: Mail, tint: 'bg-teal-50 text-teal-600', bar: 'bg-teal-500' },
   ], [stats]);
 
   const pieData = useMemo(() => [
@@ -315,20 +315,23 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="w-full max-w-full overflow-x-hidden">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Tableau de bord</h1>
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <Calendar size={18} />
-          <span>{new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Tableau de bord</h1>
+          <p className="text-sm text-gray-400 mt-0.5">Vue d'ensemble de l'activité</p>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-gray-500 bg-white border border-gray-100 rounded-xl px-3 py-2 shadow-sm">
+          <Calendar size={16} className="text-green-600" />
+          <span className="capitalize">{new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
         </div>
       </div>
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="bg-white rounded-lg shadow-md p-6 animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
-              <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+            <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 animate-pulse">
+              <div className="h-4 bg-gray-100 rounded-lg w-1/2 mb-4"></div>
+              <div className="h-8 bg-gray-100 rounded-lg w-1/3"></div>
             </div>
           ))}
         </div>
@@ -339,30 +342,30 @@ const AdminDashboard: React.FC = () => {
             {statCards.map((stat) => {
               const Icon = stat.icon;
               return (
-                <div key={stat.label} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden">
+                <div key={stat.label} className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden">
                   <div className="p-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className={`${stat.color} p-3 rounded-lg shadow-sm`}>
-                        <Icon className="text-white" size={20} />
+                    <div className="flex items-center justify-between mb-4">
+                      <div className={`${stat.tint} w-11 h-11 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105`}>
+                        <Icon size={20} />
                       </div>
-                      <TrendingUp className="text-gray-400" size={18} />
+                      <TrendingUp className="text-gray-300" size={16} />
                     </div>
-                    <p className="text-gray-600 text-sm font-medium mb-1">{stat.label}</p>
+                    <p className="text-gray-500 text-sm font-medium mb-1">{stat.label}</p>
                     <p className="text-3xl font-bold text-gray-800">{stat.value}</p>
                   </div>
-                  <div className={`h-1 bg-gradient-to-r ${stat.bgGradient}`}></div>
+                  <div className={`h-1 ${stat.bar}`}></div>
                 </div>
               );
             })}
           </div>
 
           {/* Graphique des visites journalières */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold text-gray-800">Visites</h2>
-                <div className="flex items-center gap-1 text-xs text-green-600 font-semibold">
-                  <TrendingUp size={14} />
+                <div className="flex items-center gap-1 text-xs text-green-600 font-semibold bg-green-50 px-2 py-1 rounded-full">
+                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
                   <span>En direct</span>
                 </div>
               </div>
@@ -427,7 +430,7 @@ const AdminDashboard: React.FC = () => {
           {/* Graphiques */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Graphique Projets */}
-            <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
               <h2 className="text-lg font-bold text-gray-800 mb-4">État des Projets</h2>
               {projectPieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
@@ -457,7 +460,7 @@ const AdminDashboard: React.FC = () => {
             </div>
 
             {/* Graphique Répartition du contenu */}
-            <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
               <h2 className="text-lg font-bold text-gray-800 mb-4">Répartition du contenu</h2>
               {pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
@@ -491,7 +494,7 @@ const AdminDashboard: React.FC = () => {
 
 
           {/* Graphique linéaire pour l'évolution temporelle */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
             <h2 className="text-lg font-bold text-gray-800 mb-4">Évolution des 6 derniers mois</h2>
             {monthlyData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>

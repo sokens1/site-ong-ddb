@@ -21,6 +21,9 @@ import {
   ChevronDown,
   ChevronRight,
   ShieldAlert,
+  Bell,
+  BellOff,
+  KeyRound,
 } from 'lucide-react';
 import { useNotifications } from '../../hooks/useNotifications';
 import DiscussionSidebar from '../DiscussionSidebar';
@@ -358,24 +361,24 @@ const AdminLayout: React.FC = () => {
               <button
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
                 aria-label="Notifications"
-                className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-full transition-all relative"
+                className="p-2.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all relative"
               >
                 {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-white flex items-center justify-center">
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-white flex items-center justify-center">
                     {unreadCount}
                   </span>
                 )}
-                <i className="fas fa-bell text-xl"></i>
+                <Bell size={20} />
               </button>
 
               {notificationsOpen && (
-                <div className="absolute right-0 mt-3 w-80 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/70">
                     <h3 className="font-bold text-gray-800">Notifications</h3>
                     {unreadCount > 0 && (
                       <button
                         onClick={() => markAllAsRead()}
-                        className="text-xs text-green-600 hover:underline font-medium"
+                        className="text-xs text-green-600 hover:underline font-semibold"
                       >
                         Tout marquer
                       </button>
@@ -384,7 +387,7 @@ const AdminLayout: React.FC = () => {
                   <div className="max-h-96 overflow-y-auto">
                     {notifications.length === 0 ? (
                       <div className="p-12 text-center text-gray-400">
-                        <i className="fas fa-bell-slash text-3xl mb-2 opacity-20"></i>
+                        <BellOff size={32} className="mx-auto mb-2 opacity-20" />
                         <p className="text-sm">Aucune notification</p>
                       </div>
                     ) : (
@@ -584,10 +587,10 @@ const AdminLayout: React.FC = () => {
                   className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-green-50 rounded-xl transition-all group"
                 >
                   <div className="flex items-center gap-3 text-gray-700 font-semibold group-hover:text-green-700">
-                    <i className="fas fa-key text-gray-400 group-hover:text-green-500"></i>
+                    <KeyRound size={16} className="text-gray-400 group-hover:text-green-500" />
                     <span>Changer le mot de passe</span>
                   </div>
-                  <i className="fas fa-chevron-right text-xs text-gray-300"></i>
+                  <ChevronRight size={14} className="text-gray-300" />
                 </button>
               ) : (
                 <form onSubmit={handleUpdatePassword} className="space-y-3 animate-in fade-in slide-in-from-right-2">

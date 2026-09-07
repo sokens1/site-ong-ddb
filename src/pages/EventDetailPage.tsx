@@ -8,6 +8,7 @@ import InAppBrowserBanner from '../components/InAppBrowserBanner';
 import { InAppBrowserProvider, useInAppBrowserBanner } from '../context/InAppBrowserContext';
 import { isInAppBrowser } from '../utils/inAppBrowser';
 import { generateTicketPDF } from '../utils/ticketPdf';
+import { generateCertificatePDF } from '../utils/certificatePdf';
 import { sanitizeHTML } from '../utils/sanitizeHtml';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -28,6 +29,7 @@ interface FeedbackConfig {
 interface Event {
   id: number;
   title: string;
+  theme?: string;
   description: string;
   event_date: string;
   location: string;
@@ -42,6 +44,15 @@ interface Event {
   partner_logos?: string[];
   slug?: string;
   poster_enabled?: boolean;
+  event_type?: string;
+  program?: { id: string; time?: string; title: string; speaker?: string; description?: string }[];
+  ticket_tiers?: { id: string; label: string; price: number | null; description?: string }[];
+  ticket_template?: 'classic' | 'modern' | 'invitation';
+  invitation_text?: string;
+  invitation_subtext?: string;
+  certificate_enabled?: boolean;
+  certificate_template?: 'classic' | 'modern';
+  poster_template?: 'classic' | 'modern';
 }
 
 // ─── Registration Modal (Step-by-step) ───────────────────────────────────────
@@ -217,7 +228,17 @@ const EventRegistrationModal: React.FC<{
     const cleanTitle = event.title.replace(/[^a-z0-9]/gi, '_');
     let pdfBase64 = '';
     try {
-      const doc = await generateTicketPDF(finalName, event.title, event.event_date, event.location, event.organizer_logos, event.event_dates);
+      const doc = await generateTicketPDF(
+        finalName,
+        event.title,
+        event.event_date,
+        event.location,
+        event.organizer_logos,
+        event.event_dates,
+        event.ticket_template || 'classic',
+        event.invitation_text,
+        event.invitation_subtext
+      );
       doc.save(`Billet_${cleanTitle}.pdf`);
       pdfBase64 = doc.output('datauristring').split('base64,')[1];
     } catch (pdfErr) {
@@ -717,6 +738,11 @@ const EventDetailPage: React.FC = () => {
   const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const recoveryDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [certRecoveryOpen, setCertRecoveryOpen] = useState(false);
+  const [certRecoveryEmail, setCertRecoveryEmail] = useState('');
+  const [certRecoveryLoading, setCertRecoveryLoading] = useState(false);
+  const [certRecoveryError, setCertRecoveryError] = useState<string | null>(null);
+  const certRecoveryDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchEventData = async () => {
     if (!id) { setLoading(false); return; }
@@ -792,6 +818,36 @@ const EventDetailPage: React.FC = () => {
     }, 700);
     return () => { if (recoveryDebounce.current) clearTimeout(recoveryDebounce.current); };
   }, [recoveryEmail, recoveryOpen, event]);
+
+  // Vérification automatique pour la récupération du certificat (debounce 700ms)
+  useEffect(() => {
+    if (!certRecoveryOpen || !event) return;
+    const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(certRecoveryEmail.trim());
+    if (!isValidEmail) { setCertRecoveryError(null); return; }
+    if (certRecoveryDebounce.current) clearTimeout(certRecoveryDebounce.current);
+    certRecoveryDebounce.current = setTimeout(async () => {
+      setCertRecoveryLoading(true);
+      setCertRecoveryError(null);
+      const { data: name, error } = await supabase.rpc('get_registration_name', {
+        p_event_id: event.id,
+        p_email: certRecoveryEmail.trim(),
+      });
+      setCertRecoveryLoading(false);
+      if (!error && name) {
+        setCertRecoveryOpen(false);
+        try {
+          const doc = await generateCertificatePDF(String(name), event.title, event.event_date, event.certificate_template || 'classic', event.logo_url);
+          const cleanTitle = event.title.replace(/[^a-z0-9]/gi, '_');
+          doc.save(`Certificat_${cleanTitle}.pdf`);
+        } catch (certErr) {
+          console.error('Erreur génération certificat:', certErr);
+        }
+      } else {
+        setCertRecoveryError('Aucune inscription trouvée pour cet email.');
+      }
+    }, 700);
+    return () => { if (certRecoveryDebounce.current) clearTimeout(certRecoveryDebounce.current); };
+  }, [certRecoveryEmail, certRecoveryOpen, event]);
 
   if (loading) {
     return (
@@ -989,6 +1045,25 @@ const EventDetailPage: React.FC = () => {
                   dangerouslySetInnerHTML={{ __html: sanitizeHTML(event.description || '') }}
                 />
 
+                {event.ticket_tiers && event.ticket_tiers.length > 0 && (
+                  <div className="mt-10 pt-8 border-t border-gray-100">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4">Tarifs</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {event.ticket_tiers.map(tier => (
+                        <div key={tier.id} className="flex items-center justify-between gap-4 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-gray-800 text-sm truncate">{tier.label || 'Tarif'}</p>
+                            {tier.description && <p className="text-xs text-gray-500 mt-0.5">{tier.description}</p>}
+                          </div>
+                          <p className="font-bold text-green-700 text-sm whitespace-nowrap">
+                            {tier.price ? `${tier.price.toLocaleString('fr-FR')} FCFA` : 'Gratuit'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="mt-10 pt-8 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-6">
                   <div>
                     {event.max_slots ? (
@@ -1124,6 +1199,58 @@ const EventDetailPage: React.FC = () => {
                         </div>
                         {recoveryError && (
                           <p className="mt-2 text-xs text-red-500 font-medium">{recoveryError}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Récupération du certificat */}
+                {isPast && event.certificate_enabled && (
+                  <div className="mt-4">
+                    {!certRecoveryOpen ? (
+                      <button
+                        onClick={() => { setCertRecoveryOpen(true); setCertRecoveryError(null); setCertRecoveryEmail(''); }}
+                        className="text-sm text-green-600 hover:text-green-700 transition-colors underline underline-offset-2"
+                      >
+                        Récupérer mon certificat de participation
+                      </button>
+                    ) : (
+                      <div className="bg-green-50 border border-green-100 rounded-2xl p-5">
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-sm font-bold text-green-800">Récupérer mon certificat</p>
+                          <button onClick={() => setCertRecoveryOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                            <X size={16} />
+                          </button>
+                        </div>
+                        <p className="text-xs text-green-700 mb-3">Entrez l'adresse email utilisée lors de votre inscription.</p>
+                        <div className="relative">
+                          <input
+                            type="email"
+                            id="cert-recovery-email"
+                            name="cert-recovery-email"
+                            autoComplete="email"
+                            value={certRecoveryEmail}
+                            onChange={e => setCertRecoveryEmail(e.target.value)}
+                            placeholder="votre@email.com"
+                            autoFocus
+                            className={`w-full px-4 py-2.5 pr-10 rounded-xl border bg-white text-sm focus:outline-none focus:ring-2 transition-all ${
+                              certRecoveryError
+                                ? 'border-red-300 focus:ring-red-300'
+                                : 'border-green-200 focus:ring-green-500'
+                            }`}
+                          />
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                            {certRecoveryLoading && (
+                              <span className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin block" />
+                            )}
+                            {!certRecoveryLoading && certRecoveryError && (
+                              <X size={16} className="text-red-400" />
+                            )}
+                          </div>
+                        </div>
+                        {certRecoveryError && (
+                          <p className="mt-2 text-xs text-red-500 font-medium">{certRecoveryError}</p>
                         )}
                       </div>
                     )}

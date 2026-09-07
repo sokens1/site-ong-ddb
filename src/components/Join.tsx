@@ -91,6 +91,7 @@ const MemberForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         if (admins) await supabase.from('notifications').insert(admins.map(p => ({ user_id: p.id, type: 'new_submission', title: 'Nouvelle candidature membre', message: `${formData.fullname} a soumis une candidature.`, link: `/admin/submissions?highlight=${sub.id}`, is_read: false, submission_id: sub.id })));
       } catch { /* silent */ }
       try { await supabase.functions.invoke('send-submission-ack', { body: { email: formData.email, fullname: formData.fullname } }); } catch { /* silent */ }
+      try { await supabase.functions.invoke('notify-new-submission', { body: { candidateName: formData.fullname, candidateEmail: formData.email, interest: formData.interest } }); } catch { /* silent */ }
       setShowModal(true);
       setFormData({ civility: '', fullname: '', email: '', phone: '', city: '', interest: '', skills: '', motivation: '', cv: null, captcha: false });
       setUploadProgress(0); setCurrentStep(1); localStorage.removeItem('joinFormData');
@@ -276,6 +277,7 @@ const PartnerForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         const { data: admins } = await supabase.from('user_profiles').select('id').in('role', ['admin', 'charge_communication']);
         if (admins) await supabase.from('notifications').insert(admins.map(p => ({ user_id: p.id, type: 'new_submission', title: 'Nouvelle demande de partenariat', message: `${formData.fullname} propose un partenariat.`, link: `/admin/submissions?highlight=${sub.id}`, is_read: false, submission_id: sub.id })));
       } catch { /* silent */ }
+      try { await supabase.functions.invoke('notify-new-submission', { body: { candidateName: formData.fullname, candidateEmail: formData.email, interest: `Partenariat — ${formData.organization}` } }); } catch { /* silent */ }
       setShowModal(true);
       setFormData({ fullname: '', email: '', phone: '', organization: '', sector: '', partnership_type: '', description: '', captcha: false });
     } else { alert("Une erreur est survenue."); }

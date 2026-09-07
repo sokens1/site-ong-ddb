@@ -24,21 +24,21 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden">
       <div className="flex items-center justify-center min-h-screen px-4 py-4">
-        <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose}></div>
+        <div className="fixed inset-0 transition-opacity bg-black/40 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}></div>
 
-        <div className={`relative bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all align-middle ${sizeClasses[size]} w-full max-h-[90vh] flex flex-col`}>
-          <div className="bg-white px-4 pt-4 pb-4 sm:p-5 max-w-full overflow-x-hidden flex-shrink-0">
-            <div className="flex justify-between items-center mb-3 gap-4">
+        <div className={`relative bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all align-middle animate-in zoom-in-95 slide-in-from-bottom-2 duration-200 ${sizeClasses[size]} w-full max-h-[90vh] flex flex-col`}>
+          <div className="bg-white px-5 pt-5 pb-4 sm:px-6 sm:pt-6 max-w-full overflow-x-hidden flex-shrink-0 border-b border-gray-100">
+            <div className="flex justify-between items-center mb-4 gap-4">
               <h3 className="text-lg sm:text-xl font-bold text-gray-900 truncate flex-1">{title}</h3>
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-500 shrink-0"
+                className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1.5 rounded-full transition-colors shrink-0"
               >
-                <X size={24} />
+                <X size={20} />
               </button>
             </div>
           </div>
-          <div className="max-w-full overflow-x-hidden flex-1 px-4 pb-4 sm:px-5 sm:pb-5 flex flex-col min-h-0 overflow-y-auto">
+          <div className="max-w-full overflow-x-hidden flex-1 px-5 pb-5 pt-4 sm:px-6 sm:pb-6 flex flex-col min-h-0 overflow-y-auto">
             {children}
           </div>
         </div>
