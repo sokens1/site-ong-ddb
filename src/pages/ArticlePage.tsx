@@ -56,7 +56,7 @@ const ArticlePage: React.FC = () => {
             .limit(6);
 
           if (!otherError && otherData) {
-            setOtherArticles(otherData);
+            setOtherArticles(otherData as unknown as NewsArticle[]);
           }
         }
       } catch (err) {

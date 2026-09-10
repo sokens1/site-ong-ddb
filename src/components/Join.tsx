@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { supabase } from '../supabaseClient';
+import Turnstile, { verifySubmission, VERIFY_MESSAGES } from './Turnstile';
 
 // Animation Variants
 const containerVariants = {
@@ -40,6 +41,8 @@ const MemberForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaError, setCaptchaError] = useState<string | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { id, value, type } = e.target;
@@ -60,7 +63,7 @@ const MemberForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const isStepValid = (step: number) => {
     if (step === 1) return formData.civility && formData.fullname && formData.email && formData.phone && formData.city;
     if (step === 2) return formData.interest && formData.skills && formData.motivation;
-    if (step === 3) return formData.captcha;
+    if (step === 3) return true;
     return false;
   };
 
@@ -68,6 +71,14 @@ const MemberForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     e.preventDefault();
     if (!isStepValid(3)) return;
     setIsSubmitting(true);
+    setCaptchaError(null);
+
+    const check = await verifySubmission({ token: captchaToken, email: formData.email });
+    if (!check.ok) {
+      setCaptchaError(VERIFY_MESSAGES[check.reason ?? 'server_error'] || 'Vérification échouée.');
+      setIsSubmitting(false);
+      return;
+    }
     let cvUrl = null;
     if (formData.cv) {
       const ext = formData.cv.name.split('.').pop();
@@ -206,10 +217,8 @@ const MemberForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                <input type="checkbox" id="captcha" checked={formData.captcha} onChange={handleInputChange} className="h-4 w-4 text-green-600 accent-green-600" />
-                <label htmlFor="captcha" className="text-sm text-gray-700">Je ne suis pas un robot</label>
-              </div>
+              <Turnstile onToken={setCaptchaToken} className="mt-1" />
+              {captchaError && <p className="text-xs text-red-600">{captchaError}</p>}
             </motion.div>
           )}
         </AnimatePresence>
@@ -248,9 +257,11 @@ const MemberForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
 // ===== PARTNER FORM =====
 const PartnerForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [formData, setFormData] = useState({ fullname: '', email: '', phone: '', organization: '', sector: '', partnership_type: '', description: '', captcha: false });
+  const [formData, setFormData] = useState({ fullname: '', email: '', phone: '', organization: '', sector: '', partnership_type: '', description: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaError, setCaptchaError] = useState<string | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { id, value, type } = e.target;
@@ -259,8 +270,14 @@ const PartnerForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.captcha) return;
     setIsSubmitting(true);
+    setCaptchaError(null);
+    const check = await verifySubmission({ token: captchaToken, email: formData.email });
+    if (!check.ok) {
+      setCaptchaError(VERIFY_MESSAGES[check.reason ?? 'server_error'] || 'Vérification échouée.');
+      setIsSubmitting(false);
+      return;
+    }
     const { data: sub, error } = await supabase.from('form_submissions').insert([{
       civility: '',
       fullname: formData.fullname, email: formData.email, phone: formData.phone,
@@ -279,7 +296,7 @@ const PartnerForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       } catch { /* silent */ }
       try { await supabase.functions.invoke('notify-new-submission', { body: { candidateName: formData.fullname, candidateEmail: formData.email, interest: `Partenariat — ${formData.organization}` } }); } catch { /* silent */ }
       setShowModal(true);
-      setFormData({ fullname: '', email: '', phone: '', organization: '', sector: '', partnership_type: '', description: '', captcha: false });
+      setFormData({ fullname: '', email: '', phone: '', organization: '', sector: '', partnership_type: '', description: '' });
     } else { alert("Une erreur est survenue."); }
     setIsSubmitting(false);
   };
@@ -338,15 +355,15 @@ const PartnerForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           <label className="block text-xs font-semibold text-gray-600 mb-1">Description de la proposition *</label>
           <textarea id="description" rows={4} value={formData.description} onChange={handleInputChange} required placeholder="Décrivez votre proposition de partenariat…" className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none resize-none"></textarea>
         </div>
-        <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-          <input type="checkbox" id="captcha" checked={formData.captcha} onChange={handleInputChange} className="h-4 w-4 accent-green-600" />
-          <label htmlFor="captcha" className="text-sm text-gray-700">Je ne suis pas un robot</label>
+        <div>
+          <Turnstile onToken={setCaptchaToken} />
+          {captchaError && <p className="text-xs text-red-600 mt-1">{captchaError}</p>}
         </div>
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
           <button type="button" onClick={onBack} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 font-medium">
             <i className="fas fa-arrow-left text-xs"></i> Retour
           </button>
-          <button type="submit" disabled={!formData.captcha || isSubmitting} className="bg-green-700 hover:bg-green-800 text-white text-sm font-bold py-2 px-5 rounded-lg disabled:opacity-50 transition-colors">
+          <button type="submit" disabled={isSubmitting} className="bg-green-700 hover:bg-green-800 text-white text-sm font-bold py-2 px-5 rounded-lg disabled:opacity-50 transition-colors">
             {isSubmitting ? <><i className="fas fa-spinner fa-spin mr-2"></i>Envoi…</> : <><i className="fas fa-handshake mr-2"></i>Soumettre</>}
           </button>
         </div>
@@ -368,10 +385,12 @@ const PartnerForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 // ===== DONATION FORM =====
 const DonationForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const WHATSAPP_NUMBER = '241077617776';
-  const [formData, setFormData] = useState({ fullname: '', email: '', phone: '', donation_type: 'financier', amount: '', description: '', captcha: false });
+  const [formData, setFormData] = useState({ fullname: '', email: '', phone: '', donation_type: 'financier', amount: '', description: '', consent: false });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [whatsappLink, setWhatsappLink] = useState('');
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaError, setCaptchaError] = useState<string | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { id, value, type } = e.target;
@@ -380,8 +399,15 @@ const DonationForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.captcha) return;
+    if (!formData.consent) return;
     setIsSubmitting(true);
+    setCaptchaError(null);
+    const check = await verifySubmission({ token: captchaToken, email: formData.email });
+    if (!check.ok) {
+      setCaptchaError(VERIFY_MESSAGES[check.reason ?? 'server_error'] || 'Vérification échouée.');
+      setIsSubmitting(false);
+      return;
+    }
     await supabase.from('donations').insert([{
       fullname: formData.fullname, email: formData.email, phone: formData.phone || null,
       donation_type: formData.donation_type, amount: formData.amount || null,
@@ -453,14 +479,18 @@ const DonationForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           <textarea id="description" rows={3} value={formData.description} onChange={handleInputChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none resize-none"></textarea>
         </div>
         <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-          <input type="checkbox" id="captcha" checked={formData.captcha} onChange={handleInputChange} className="h-4 w-4 accent-green-600" />
-          <label htmlFor="captcha" className="text-sm text-gray-700">Je confirme vouloir faire ce don</label>
+          <input type="checkbox" id="consent" checked={formData.consent} onChange={handleInputChange} className="h-4 w-4 accent-green-600" />
+          <label htmlFor="consent" className="text-sm text-gray-700">Je confirme vouloir faire ce don</label>
+        </div>
+        <div>
+          <Turnstile onToken={setCaptchaToken} />
+          {captchaError && <p className="text-xs text-red-600 mt-1">{captchaError}</p>}
         </div>
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
           <button type="button" onClick={onBack} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 font-medium">
             <i className="fas fa-arrow-left text-xs"></i> Retour
           </button>
-          <button type="submit" disabled={!formData.captcha || isSubmitting} className="bg-green-600 hover:bg-green-700 text-white text-sm font-bold py-2 px-5 rounded-lg disabled:opacity-50 transition-colors flex items-center gap-2">
+          <button type="submit" disabled={!formData.consent || isSubmitting} className="bg-green-600 hover:bg-green-700 text-white text-sm font-bold py-2 px-5 rounded-lg disabled:opacity-50 transition-colors flex items-center gap-2">
             {isSubmitting ? <><i className="fas fa-spinner fa-spin"></i> Traitement…</> : <><i className="fas fa-paper-plane text-base"></i> Soumettre</>}
           </button>
         </div>
@@ -477,7 +507,7 @@ const DonationForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 onClick={() => {
                   window.open(whatsappLink, '_blank');
                   setShowModal(false);
-                  setFormData({ fullname: '', email: '', phone: '', donation_type: 'financier', amount: '', description: '', captcha: false });
+                  setFormData({ fullname: '', email: '', phone: '', donation_type: 'financier', amount: '', description: '', consent: false });
                 }} 
                 className="bg-green-600 text-white font-bold py-3 px-8 rounded-xl w-full hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
               >
@@ -486,7 +516,7 @@ const DonationForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
               <button 
                 onClick={() => {
                   setShowModal(false);
-                  setFormData({ fullname: '', email: '', phone: '', donation_type: 'financier', amount: '', description: '', captcha: false });
+                  setFormData({ fullname: '', email: '', phone: '', donation_type: 'financier', amount: '', description: '', consent: false });
                 }} 
                 className="text-gray-500 font-medium py-2 px-8 rounded-xl w-full hover:bg-gray-100 transition-colors"
               >

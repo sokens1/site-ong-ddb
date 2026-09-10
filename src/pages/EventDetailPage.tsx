@@ -10,6 +10,7 @@ import { isInAppBrowser } from '../utils/inAppBrowser';
 import { generateTicketPDF } from '../utils/ticketPdf';
 import { generateCertificatePDF } from '../utils/certificatePdf';
 import { sanitizeHTML } from '../utils/sanitizeHtml';
+import Turnstile, { verifySubmission, VERIFY_MESSAGES } from '../components/Turnstile';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -87,6 +88,7 @@ const EventRegistrationModal: React.FC<{
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailSent, setEmailSent] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
 
   // ── Vérification doublon email en temps réel ──────────────────────────────
   type EmailDupStatus = 'idle' | 'checking' | 'duplicate' | 'ok';
@@ -183,6 +185,14 @@ const EventRegistrationModal: React.FC<{
     const finalName = ticketName.trim() || 'Participant';
     const finalEmail = ticketEmail.trim();
 
+    // ── Vérif serveur : anti-bot + format email + domaine jetable ──────────
+    const check = await verifySubmission({ token: captchaToken, email: finalEmail });
+    if (!check.ok) {
+      setError(VERIFY_MESSAGES[check.reason ?? 'server_error'] || 'Vérification échouée.');
+      setIsSubmitting(false);
+      return;
+    }
+
     // ── Vérifier doublon inscription (vérification préalable côté client) ───
     if (finalEmail) {
       const { data: existing } = await supabase
@@ -210,6 +220,11 @@ const EventRegistrationModal: React.FC<{
       // 23505 = unique_violation: the database constraint blocked a duplicate
       if (insertError.code === '23505') {
         setError('Vous êtes déjà inscrit à cet événement avec cette adresse email.');
+      } else if (/complet/i.test(insertError.message)) {
+        // trigger enforce_event_capacity : plus de places
+        setError('Cet événement est complet, les inscriptions sont closes.');
+      } else if (insertError.code === '23514') {
+        setError('Cette adresse email n\'est pas valide.');
       } else {
         console.error('Insert error:', insertError);
         setError(`Erreur lors de l'inscription : ${insertError.message}`);
@@ -549,6 +564,8 @@ const EventRegistrationModal: React.FC<{
                 {pageFields.map(field => renderField(field))}
               </div>
 
+              {isLastStep && <div className="mt-5"><Turnstile onToken={setCaptchaToken} /></div>}
+
               <div className="flex gap-3 mt-6">
                 {step > 0 && (
                   <button
@@ -729,6 +746,7 @@ const EventDetailPage: React.FC = () => {
   const [event, setEvent] = useState<Event | null>(null);
   const [otherEvents, setOtherEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [seatsTaken, setSeatsTaken] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [posterState, setPosterState] = useState<{isOpen: boolean; name: string}>({ isOpen: false, name: '' });
   const [shareOpen, setShareOpen] = useState(false);
@@ -773,6 +791,15 @@ const EventDetailPage: React.FC = () => {
           .eq('status', 'published').neq('id', eventData.id)
           .order('event_date', { ascending: false }).limit(8);
         if (othersData) setOtherEvents(othersData as unknown as Event[]);
+
+        // Nombre d'inscrits (uniquement si l'event a une limite de places)
+        if (eventData.max_slots) {
+          const { count } = await supabase
+            .from('event_registrations')
+            .select('id', { count: 'exact', head: true })
+            .eq('event_id', eventData.id);
+          setSeatsTaken(count ?? 0);
+        }
       }
     } catch (err) {
       console.error('Error fetching event:', err);
@@ -876,6 +903,7 @@ const EventDetailPage: React.FC = () => {
 
   const status = getEventStatus(event.event_date);
   const isPast = status.label === 'Terminé';
+  const isFull = event.max_slots != null && seatsTaken != null && seatsTaken >= event.max_slots;
 
   return (
     <InAppBrowserProvider>
@@ -1144,13 +1172,13 @@ const EventDetailPage: React.FC = () => {
                     </div>
                     <button
                       onClick={() => setShowModal(true)}
-                      disabled={isPast}
+                      disabled={isPast || isFull}
                       className={`flex-1 sm:flex-initial font-bold py-3.5 px-10 rounded-xl transition-all text-lg flex justify-center items-center gap-2 ${
-                        isPast ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 text-white shadow-md active:scale-95'
+                        isPast || isFull ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 text-white shadow-md active:scale-95'
                       }`}
                     >
-                      {isPast ? 'Événement terminé' : "S'inscrire"}
-                      {!isPast && <Calendar size={18} />}
+                      {isPast ? 'Événement terminé' : isFull ? 'Complet' : "S'inscrire"}
+                      {!isPast && !isFull && <Calendar size={18} />}
                     </button>
                   </div>
                 </div>
