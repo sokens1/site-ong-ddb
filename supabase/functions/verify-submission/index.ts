@@ -22,15 +22,14 @@ const DISPOSABLE = new Set([
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
-async function verifyTurnstile(token: string): Promise<{ ok: boolean; codes?: string[] }> {
+async function checkTurnstile(token: string): Promise<{ pass: boolean; codes?: string[] }> {
   const secret = Deno.env.get('TURNSTILE_SECRET_KEY')
-  if (!secret) return { ok: true }           // pas configuré -> on n'exige pas le token
-  if (!token) return { ok: false, codes: ['missing-input-response'] }
+  if (!secret) return { pass: true, codes: ['no-secret'] }
+  if (!token) return { pass: false, codes: ['missing-input-response'] }
 
   const form = new URLSearchParams()
   form.set('secret', secret)
   form.set('response', token)
-  // NB: pas de remoteip (optionnel, source d'échecs côté Deno/Supabase)
 
   try {
     const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
@@ -38,10 +37,10 @@ async function verifyTurnstile(token: string): Promise<{ ok: boolean; codes?: st
     })
     const data = await r.json()
     console.log('siteverify:', JSON.stringify(data))
-    return { ok: data.success === true, codes: data['error-codes'] }
+    return { pass: data.success === true, codes: data['error-codes'] }
   } catch (e) {
     console.error('siteverify fetch failed:', e)
-    return { ok: false, codes: ['fetch-failed'] }
+    return { pass: false, codes: ['fetch-failed'] }
   }
 }
 
@@ -54,20 +53,27 @@ serve(async (req: Request) => {
   try {
     const { token, email } = await req.json().catch(() => ({}))
 
-    // 1. Anti-bot
-    const ts = await verifyTurnstile(token ?? '')
-    if (!ts.ok) return json({ ok: false, reason: 'captcha', codes: ts.codes })
-
-    // 2. Format email
+    // ── 1. Email : format + domaine jetable (toujours bloquant) ──
     const e = String(email ?? '').trim().toLowerCase()
     if (!EMAIL_RE.test(e)) return json({ ok: false, reason: 'email_format' })
+    if (DISPOSABLE.has(e.split('@')[1])) return json({ ok: false, reason: 'email_disposable' })
 
-    // 3. Domaine jetable
-    const domain = e.split('@')[1]
-    if (DISPOSABLE.has(domain)) return json({ ok: false, reason: 'email_disposable' })
+    // ── 2. Turnstile ──
+    // Mode strict seulement si TURNSTILE_ENFORCE=true. Sinon on
+    // journalise le résultat mais on ne bloque pas le visiteur
+    // (un widget cassé par un navigateur strict ne doit pas
+    // empêcher une vraie inscription).
+    const ts = await checkTurnstile(token ?? '')
+    const enforce = (Deno.env.get('TURNSTILE_ENFORCE') ?? '').toLowerCase() === 'true'
+    if (!ts.pass) {
+      console.log(`turnstile fail (enforce=${enforce}) codes=${JSON.stringify(ts.codes)}`)
+      if (enforce) return json({ ok: false, reason: 'captcha', codes: ts.codes })
+    }
 
-    return json({ ok: true })
+    return json({ ok: true, turnstile: ts.pass })
   } catch (err: any) {
-    return json({ ok: false, reason: 'server_error', detail: err?.message }, 200)
+    console.error('verify-submission error:', err?.message)
+    // En cas d'erreur interne, on ne bloque pas non plus.
+    return json({ ok: true, turnstile: false, softError: err?.message })
   }
 })

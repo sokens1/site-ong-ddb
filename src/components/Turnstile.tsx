@@ -105,10 +105,12 @@ export async function verifySubmission(
 ): Promise<{ ok: boolean; reason?: string }> {
   try {
     const { data, error } = await supabase.functions.invoke('verify-submission', { body: params });
-    if (error) return { ok: false, reason: 'network' };
+    // Fonction injoignable : on ne bloque pas le visiteur. La contrainte
+    // CHECK email en base (migration 040) reste le garde-fou.
+    if (error || !data) return { ok: true };
     return data as { ok: boolean; reason?: string };
   } catch {
-    return { ok: false, reason: 'network' };
+    return { ok: true };
   }
 }
 
