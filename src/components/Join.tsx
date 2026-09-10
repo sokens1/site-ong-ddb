@@ -92,23 +92,29 @@ const MemberForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         if (!ue) { const { data } = supabase.storage.from('cv-uploads').getPublicUrl(fn); cvUrl = data.publicUrl; }
       } catch { clearInterval(pi); setUploadProgress(0); }
     }
-    const { data: sub, error } = await supabase.from('form_submissions').insert([{
+    // Pas de .select() : l'anon n'a pas le droit de RELIRE form_submissions
+    // (RLS #035). On insère seulement.
+    const { error } = await supabase.from('form_submissions').insert([{
       civility: formData.civility, fullname: formData.fullname, email: formData.email,
       phone: formData.phone, city: formData.city, interest: formData.interest,
       skills: formData.skills, motivation: formData.motivation, cv_url: cvUrl,
       status: 'en_attente', type: 'membership'
-    }]).select('id').single();
-    if (!error && sub) {
+    }]);
+    if (!error) {
+      // Notif admin : n'aboutit que si un staff est connecté (RLS notifications).
       try {
         const { data: admins } = await supabase.from('user_profiles').select('id').in('role', ['admin', 'charge_communication']);
-        if (admins) await supabase.from('notifications').insert(admins.map(p => ({ user_id: p.id, type: 'new_submission', title: 'Nouvelle candidature membre', message: `${formData.fullname} a soumis une candidature.`, link: `/admin/submissions?highlight=${sub.id}`, read: false, submission_id: sub.id })));
+        if (admins) await supabase.from('notifications').insert(admins.map(p => ({ user_id: p.id, type: 'new_submission', title: 'Nouvelle candidature membre', message: `${formData.fullname} a soumis une candidature.`, link: `/admin/submissions`, read: false })));
       } catch { /* silent */ }
       try { await supabase.functions.invoke('send-submission-ack', { body: { email: formData.email, fullname: formData.fullname } }); } catch { /* silent */ }
       try { await supabase.functions.invoke('notify-new-submission', { body: { candidateName: formData.fullname, candidateEmail: formData.email, interest: formData.interest } }); } catch { /* silent */ }
       setShowModal(true);
       setFormData({ civility: '', fullname: '', email: '', phone: '', city: '', interest: '', skills: '', motivation: '', cv: null, captcha: false });
       setUploadProgress(0); setCurrentStep(1); localStorage.removeItem('joinFormData');
-    } else { alert("Une erreur est survenue lors de l'envoi de votre candidature."); }
+    } else {
+      setCaptchaNonce(n => n + 1);
+      alert("Une erreur est survenue lors de l'envoi de votre candidature.");
+    }
     setIsSubmitting(false);
   };
 
@@ -282,26 +288,28 @@ const PartnerForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       setIsSubmitting(false);
       return;
     }
-    const { data: sub, error } = await supabase.from('form_submissions').insert([{
+    // Pas de .select() : l'anon ne peut pas relire form_submissions (RLS #035)
+    const { error } = await supabase.from('form_submissions').insert([{
       civility: '',
       fullname: formData.fullname, email: formData.email, phone: formData.phone,
       city: '',
       interest: `Secteur: ${formData.sector} | Type: ${formData.partnership_type} | Org: ${formData.organization}`,
       skills: '',
       motivation: formData.description, status: 'en_attente', type: 'partnership'
-    }]).select('id').single();
-    if (error) {
-       console.error("Supabase Error:", error);
-    }
-    if (!error && sub) {
+    }]);
+    if (!error) {
       try {
         const { data: admins } = await supabase.from('user_profiles').select('id').in('role', ['admin', 'charge_communication']);
-        if (admins) await supabase.from('notifications').insert(admins.map(p => ({ user_id: p.id, type: 'new_submission', title: 'Nouvelle demande de partenariat', message: `${formData.fullname} propose un partenariat.`, link: `/admin/submissions?highlight=${sub.id}`, read: false, submission_id: sub.id })));
+        if (admins) await supabase.from('notifications').insert(admins.map(p => ({ user_id: p.id, type: 'new_submission', title: 'Nouvelle demande de partenariat', message: `${formData.fullname} propose un partenariat.`, link: `/admin/submissions`, read: false })));
       } catch { /* silent */ }
       try { await supabase.functions.invoke('notify-new-submission', { body: { candidateName: formData.fullname, candidateEmail: formData.email, interest: `Partenariat — ${formData.organization}` } }); } catch { /* silent */ }
       setShowModal(true);
       setFormData({ fullname: '', email: '', phone: '', organization: '', sector: '', partnership_type: '', description: '' });
-    } else { alert("Une erreur est survenue."); }
+    } else {
+      console.error("Supabase Error:", error);
+      setCaptchaNonce(n => n + 1);
+      alert("Une erreur est survenue.");
+    }
     setIsSubmitting(false);
   };
 
