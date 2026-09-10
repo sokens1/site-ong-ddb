@@ -767,10 +767,12 @@ const EventDetailPage: React.FC = () => {
       setEvent(eventData);
 
       if (eventData) {
+        // Cartes "autres événements" : seules ces colonnes sont affichées
         const { data: othersData } = await supabase
-          .from('events').select('*').eq('status', 'published').neq('id', eventData.id)
+          .from('events').select('id, slug, title, event_date, image_url')
+          .eq('status', 'published').neq('id', eventData.id)
           .order('event_date', { ascending: false }).limit(8);
-        if (othersData) setOtherEvents(othersData);
+        if (othersData) setOtherEvents(othersData as unknown as Event[]);
       }
     } catch (err) {
       console.error('Error fetching event:', err);

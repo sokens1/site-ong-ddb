@@ -45,11 +45,13 @@ const ArticlePage: React.FC = () => {
         if (articleData) {
           setArticle(articleData);
 
-          // Récupérer les autres articles (exclure l'article actuel)
+          // Autres articles : uniquement les colonnes affichées dans les cartes
+          // (surtout pas `content`, le corps HTML complet)
           const { data: otherData, error: otherError } = await supabase
             .from('news')
-            .select('*')
+            .select('id, title, image, description, category, date')
             .neq('id', parseInt(id))
+            .eq('status', 'published')
             .order('date', { ascending: false })
             .limit(6);
 

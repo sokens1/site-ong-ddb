@@ -97,32 +97,19 @@ function App() {
   }, []);
 
   const trackVisit = async () => {
+    // Un seul ping par session navigateur : évite de compter les
+    // refresh, les bots et le monitoring uptime, et limite les écritures.
     try {
       const today = new Date().toISOString().split('T')[0];
-
-      // Essayer d'insérer ou d'incrémenter le compteur pour aujourd'hui
+      if (sessionStorage.getItem('visitPinged') === today) return;
       const { error } = await supabase.rpc('increment_visit', { d: today });
-
       if (error) {
-        // Si la fonction RPC n'existe pas, utiliser une approche directe simplifiée
-        const { data: existing } = await supabase
-          .from('site_visits')
-          .select('count')
-          .eq('visit_date', today)
-          .single();
-
-        if (existing) {
-          await supabase
-            .from('site_visits')
-            .update({ count: (existing.count || 0) + 1 })
-            .eq('visit_date', today);
-        } else {
-          await supabase
-            .from('site_visits')
-            .insert([{ visit_date: today, count: 1 }]);
-        }
+        console.error('Error tracking visit:', error);
+        return;
       }
+      sessionStorage.setItem('visitPinged', today);
     } catch (err) {
+      // sessionStorage indisponible (mode privé, etc.) — non bloquant
       console.error('Error tracking visit:', err);
     }
   };

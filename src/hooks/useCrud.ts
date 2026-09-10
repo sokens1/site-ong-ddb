@@ -26,24 +26,32 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
       setLoading(true);
       setError(null);
 
+      // Borne haute : évite de tout transférer si une table grossit
+      // (newsletter_subscribers, form_submissions, security_events…).
+      // Au-delà, il faudra une vraie pagination sur l'écran concerné.
+      const MAX_ROWS = 2000;
+
       // Essayer d'abord avec id (qui devrait toujours exister)
       let { data: fetchedData, error: fetchError } = await supabase
         .from(tableName)
         .select('*')
-        .order('id', { ascending: false });
+        .order('id', { ascending: false })
+        .limit(MAX_ROWS);
 
       // Si id échoue, essayer avec created_at
       if (fetchError) {
         const retry = await supabase
           .from(tableName)
           .select('*')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(MAX_ROWS);
 
         if (retry.error) {
           // Si les deux échouent, essayer sans tri
           const noOrder = await supabase
             .from(tableName)
-            .select('*');
+            .select('*')
+            .limit(MAX_ROWS);
 
           if (noOrder.error) throw noOrder.error;
           fetchedData = noOrder.data;
@@ -86,9 +94,7 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
         }
       });
 
-      console.log(`Creating ${tableName} with data:`, cleanedItem);
-      console.log(`Cleaned item keys:`, Object.keys(cleanedItem));
-      console.log(`Cleaned item values:`, Object.values(cleanedItem));
+      if (import.meta.env.DEV) console.log(`Creating ${tableName}:`, cleanedItem);
 
       const { data: newItem, error: createError } = await supabase
         .from(tableName)
@@ -97,13 +103,7 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
         .single();
 
       if (createError) {
-        console.error(`Error creating ${tableName}:`, createError);
-        console.error('Error code:', createError.code);
-        console.error('Error message:', createError.message);
-        console.error('Error details:', createError.details);
-        console.error('Error hint:', createError.hint);
-        console.error('Full error object:', JSON.stringify(createError, null, 2));
-        console.error('Data being inserted:', JSON.stringify(cleanedItem, null, 2));
+        console.error(`Error creating ${tableName}:`, createError.message, createError.code);
         throw createError;
       }
 
@@ -127,7 +127,6 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
 
       setError(errorMessage);
       console.error(`Error creating ${tableName}:`, err);
-      console.error('Item data:', item);
       throw err;
     }
   };
@@ -147,7 +146,7 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
         }
       });
 
-      console.log(`Updating ${tableName} with data:`, cleanedItem);
+      if (import.meta.env.DEV) console.log(`Updating ${tableName} #${id}:`, cleanedItem);
 
       const { data: updatedItem, error: updateError } = await supabase
         .from(tableName)
@@ -157,11 +156,7 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
         .single();
 
       if (updateError) {
-        console.error(`Error updating ${tableName}:`, updateError);
-        console.error('Error code:', updateError.code);
-        console.error('Error message:', updateError.message);
-        console.error('Error details:', updateError.details);
-        console.error('Data being updated:', JSON.stringify(cleanedItem, null, 2));
+        console.error(`Error updating ${tableName}:`, updateError.message, updateError.code);
         throw updateError;
       }
 
@@ -185,7 +180,6 @@ export function useCrud<T extends { id: number }>({ tableName }: UseCrudOptions<
 
       setError(errorMessage);
       console.error(`Error updating ${tableName}:`, err);
-      console.error('Item data:', item);
       throw err;
     }
   };

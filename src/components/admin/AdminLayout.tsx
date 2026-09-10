@@ -95,13 +95,15 @@ const AdminLayout: React.FC = () => {
     if (userId) {
       fetchUnreadMessageCount();
 
-      // Subscribe to changes in discussion_messages
+      // Ne s'abonner qu'aux messages qui ME sont destinés, pas à
+      // toute la table (chaque event Realtime compte dans l'egress).
       const channel = supabase
-        .channel('global_unread_messages')
+        .channel(`unread_messages_${userId}`)
         .on('postgres_changes', {
           event: '*',
           schema: 'public',
-          table: 'discussion_messages'
+          table: 'discussion_messages',
+          filter: `recipient_id=eq.${userId}`,
         }, () => {
           fetchUnreadMessageCount();
         })

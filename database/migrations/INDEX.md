@@ -57,6 +57,7 @@ déjà appliquée en production ; le supprimer effacerait la trace de ce qui a
 | 035 | `fix-form-submissions-rls.sql` | 2026-09-10 | **Correctif critique** : RLS était désactivé sur `form_submissions` (candidatures lisibles par tous). Réactive RLS + 4 policies (insert public, select/update/delete staff) | ✅ **ACTIF** — source de vérité pour `form_submissions` (remplace le volet correspondant de #010 qui n'avait pas été appliqué) |
 | 036 | `cleanup_schema.sql` | 2026-09-10 | Nettoyage post-audit : DROP table orpheline `discussions`, DROP colonnes mortes `documents.format`/`doc_type`, 10 index sur FK non indexées, ANALYZE. Partie B (types `donations.amount`/`videos.date`) laissée en commentaire | ✅ PERMANENT (partie A) |
 | 037 | `schema_types_and_notifications.sql` | 2026-09-10 | Partie B exécutable : fusion doublon `notifications.read`/`is_read` → `read` (NOT NULL + défaut + index partiel), `videos.date` TEXT→DATE. `donations.amount` : reste en TEXT (choix assumé). Corrige aussi les 2 `is_read` de `Join.tsx` | ✅ PERMANENT |
+| 038 | `secure_site_visits.sql` | 2026-09-10 | **Correctif sécurité** : `site_visits` avait une policy `FOR ALL USING(true)` (anon pouvait tout lire/modifier/supprimer). RLS remis : lecture `authenticated` seule, écriture uniquement via `increment_visit()` (SECURITY DEFINER, `search_path` fixé). Fallback SQL direct retiré de `App.tsx` | ✅ **ACTIF** — source de vérité pour `site_visits` |
 
 ## En clair : où regarder pour savoir "qui a le droit de faire quoi" aujourd'hui
 
