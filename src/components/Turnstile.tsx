@@ -47,10 +47,12 @@ function loadScript(): Promise<void> {
 interface Props {
   /** Reçoit le token à chaque résolution (ou '' si Turnstile non configuré / expiré). */
   onToken: (token: string) => void;
+  /** Incrémente cette valeur pour forcer un nouveau token (après un échec d'envoi). */
+  resetSignal?: number;
   className?: string;
 }
 
-export default function Turnstile({ onToken, className }: Props) {
+export default function Turnstile({ onToken, resetSignal = 0, className }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const widgetId = useRef<string | null>(null);
   const cb = useRef(onToken);
@@ -80,6 +82,15 @@ export default function Turnstile({ onToken, className }: Props) {
       }
     };
   }, []);
+
+  // Un token Turnstile est à usage unique : après un échec d'envoi,
+  // le formulaire incrémente resetSignal pour en obtenir un neuf.
+  useEffect(() => {
+    if (resetSignal > 0 && widgetId.current && window.turnstile) {
+      cb.current('');
+      try { window.turnstile.reset(widgetId.current); } catch { /* noop */ }
+    }
+  }, [resetSignal]);
 
   if (!SITE_KEY) return null;
   return <div ref={ref} className={className} />;

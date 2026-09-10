@@ -89,6 +89,7 @@ const EventRegistrationModal: React.FC<{
   const [error, setError] = useState<string | null>(null);
   const [emailSent, setEmailSent] = useState(false);
   const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaNonce, setCaptchaNonce] = useState(0);
 
   // ── Vérification doublon email en temps réel ──────────────────────────────
   type EmailDupStatus = 'idle' | 'checking' | 'duplicate' | 'ok';
@@ -189,6 +190,7 @@ const EventRegistrationModal: React.FC<{
     const check = await verifySubmission({ token: captchaToken, email: finalEmail });
     if (!check.ok) {
       setError(VERIFY_MESSAGES[check.reason ?? 'server_error'] || 'Vérification échouée.');
+      setCaptchaNonce(n => n + 1);
       setIsSubmitting(false);
       return;
     }
@@ -229,6 +231,7 @@ const EventRegistrationModal: React.FC<{
         console.error('Insert error:', insertError);
         setError(`Erreur lors de l'inscription : ${insertError.message}`);
       }
+      setCaptchaNonce(n => n + 1);
       setIsSubmitting(false);
       return;
     }
@@ -564,7 +567,7 @@ const EventRegistrationModal: React.FC<{
                 {pageFields.map(field => renderField(field))}
               </div>
 
-              {isLastStep && <div className="mt-5"><Turnstile onToken={setCaptchaToken} /></div>}
+              {isLastStep && <div className="mt-5"><Turnstile onToken={setCaptchaToken} resetSignal={captchaNonce} /></div>}
 
               <div className="flex gap-3 mt-6">
                 {step > 0 && (

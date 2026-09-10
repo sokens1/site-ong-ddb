@@ -43,6 +43,7 @@ const MemberForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [captchaToken, setCaptchaToken] = useState('');
   const [captchaError, setCaptchaError] = useState<string | null>(null);
+  const [captchaNonce, setCaptchaNonce] = useState(0);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { id, value, type } = e.target;
@@ -76,6 +77,7 @@ const MemberForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const check = await verifySubmission({ token: captchaToken, email: formData.email });
     if (!check.ok) {
       setCaptchaError(VERIFY_MESSAGES[check.reason ?? 'server_error'] || 'Vérification échouée.');
+      setCaptchaNonce(n => n + 1);
       setIsSubmitting(false);
       return;
     }
@@ -217,7 +219,7 @@ const MemberForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   )}
                 </div>
               </div>
-              <Turnstile onToken={setCaptchaToken} className="mt-1" />
+              <Turnstile onToken={setCaptchaToken} resetSignal={captchaNonce} className="mt-1" />
               {captchaError && <p className="text-xs text-red-600">{captchaError}</p>}
             </motion.div>
           )}
@@ -262,6 +264,7 @@ const PartnerForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [showModal, setShowModal] = useState(false);
   const [captchaToken, setCaptchaToken] = useState('');
   const [captchaError, setCaptchaError] = useState<string | null>(null);
+  const [captchaNonce, setCaptchaNonce] = useState(0);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { id, value, type } = e.target;
@@ -275,6 +278,7 @@ const PartnerForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const check = await verifySubmission({ token: captchaToken, email: formData.email });
     if (!check.ok) {
       setCaptchaError(VERIFY_MESSAGES[check.reason ?? 'server_error'] || 'Vérification échouée.');
+      setCaptchaNonce(n => n + 1);
       setIsSubmitting(false);
       return;
     }
@@ -356,7 +360,7 @@ const PartnerForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           <textarea id="description" rows={4} value={formData.description} onChange={handleInputChange} required placeholder="Décrivez votre proposition de partenariat…" className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none resize-none"></textarea>
         </div>
         <div>
-          <Turnstile onToken={setCaptchaToken} />
+          <Turnstile onToken={setCaptchaToken} resetSignal={captchaNonce} />
           {captchaError && <p className="text-xs text-red-600 mt-1">{captchaError}</p>}
         </div>
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
@@ -391,6 +395,7 @@ const DonationForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [whatsappLink, setWhatsappLink] = useState('');
   const [captchaToken, setCaptchaToken] = useState('');
   const [captchaError, setCaptchaError] = useState<string | null>(null);
+  const [captchaNonce, setCaptchaNonce] = useState(0);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { id, value, type } = e.target;
@@ -405,6 +410,7 @@ const DonationForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const check = await verifySubmission({ token: captchaToken, email: formData.email });
     if (!check.ok) {
       setCaptchaError(VERIFY_MESSAGES[check.reason ?? 'server_error'] || 'Vérification échouée.');
+      setCaptchaNonce(n => n + 1);
       setIsSubmitting(false);
       return;
     }
@@ -483,7 +489,7 @@ const DonationForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           <label htmlFor="consent" className="text-sm text-gray-700">Je confirme vouloir faire ce don</label>
         </div>
         <div>
-          <Turnstile onToken={setCaptchaToken} />
+          <Turnstile onToken={setCaptchaToken} resetSignal={captchaNonce} />
           {captchaError && <p className="text-xs text-red-600 mt-1">{captchaError}</p>}
         </div>
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
