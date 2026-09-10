@@ -199,3 +199,55 @@ GROUP BY lower(email) HAVING count(*) > 1;
 
 -- ── 17. TAILLE GLOBALE DE LA BASE (quota 500 Mo free) ─────
 SELECT pg_size_pretty(pg_database_size(current_database())) AS taille_base;
+
+
+-- ── 18. FICHIERS STORAGE ORPHELINS (référencés nulle part) ─
+-- Construit un "haystack" de toutes les colonnes qui stockent une
+-- URL/chemin de fichier, puis liste les objets du storage dont le
+-- `name` n'apparaît dans aucune de ces colonnes.
+-- ⚠️ Si une colonne n'existe pas -> erreur "column X does not exist" :
+--    commente la ligne fautive et relance.
+WITH refs AS (
+  SELECT string_agg(t, ' ') AS haystack FROM (
+    SELECT coalesce(image,'')||' '||coalesce(image2,'')||' '||coalesce(content,'') AS t FROM public.news
+    UNION ALL SELECT coalesce(filepath,'')||' '||coalesce(thumbnailpath,'')||' '||coalesce(videourl,'') FROM public.videos
+    UNION ALL SELECT coalesce(image,'') FROM public.team_members
+    UNION ALL SELECT coalesce(image_url,'')||' '||coalesce(document_url,'') FROM public.projects
+    UNION ALL SELECT coalesce(document_url,'') FROM public.project_tasks
+    UNION ALL SELECT coalesce(image,'')||' '||coalesce("fileUrl",'') FROM public.reports
+    UNION ALL SELECT coalesce(image,'') FROM public.actions
+    UNION ALL SELECT coalesce(file_url,'') FROM public.documents
+    UNION ALL SELECT coalesce(avatar_url,'') FROM public.user_profiles
+    UNION ALL SELECT coalesce(cv_url,'') FROM public.form_submissions
+    UNION ALL SELECT coalesce(image_url,'')||' '||coalesce(logo_url,'')||' '||
+                     coalesce(organizer_logos::text,'')||' '||coalesce(partner_logos::text,'')||' '||
+                     coalesce(program::text,'')||' '||coalesce(form_fields::text,'')||' '||
+                     coalesce(poster_template,'')||' '||coalesce(ticket_template,'')||' '||
+                     coalesce(certificate_template,'') FROM public.events
+  ) x
+)
+SELECT o.bucket_id, o.name,
+       pg_size_pretty((o.metadata->>'size')::bigint) AS taille,
+       o.created_at
+FROM storage.objects o, refs
+WHERE o.bucket_id IN ('ong-backend','ong-backend2','cv-uploads','thumbnails')
+  AND position(o.name IN refs.haystack) = 0
+ORDER BY (o.metadata->>'size')::bigint DESC NULLS LAST;
+
+
+-- ── 19. Le bucket ong-backend2 est-il encore référencé ? ──
+-- 0 partout => bucket mort, supprimable en entier.
+WITH h AS (
+  SELECT string_agg(t,' ') AS s FROM (
+    SELECT coalesce(image,'')||coalesce(image2,'')||coalesce(content,'') t FROM public.news
+    UNION ALL SELECT coalesce(image_url,'')||coalesce(document_url,'') FROM public.projects
+    UNION ALL SELECT coalesce(image,'')||coalesce("fileUrl",'') FROM public.reports
+    UNION ALL SELECT coalesce(image,'') FROM public.actions
+    UNION ALL SELECT coalesce(image,'') FROM public.team_members
+    UNION ALL SELECT coalesce(file_url,'') FROM public.documents
+    UNION ALL SELECT coalesce(avatar_url,'') FROM public.user_profiles
+    UNION ALL SELECT coalesce(image_url,'')||coalesce(logo_url,'')||coalesce(organizer_logos::text,'')||coalesce(partner_logos::text,'') FROM public.events
+  ) x
+)
+SELECT (SELECT count(*) FROM storage.objects WHERE bucket_id='ong-backend2') AS fichiers_bucket2,
+       (position('ong-backend2' IN (SELECT s FROM h)) > 0)                   AS encore_reference;
