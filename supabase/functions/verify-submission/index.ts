@@ -22,24 +22,26 @@ const DISPOSABLE = new Set([
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
-async function verifyTurnstile(token: string, ip: string | null): Promise<boolean> {
+async function verifyTurnstile(token: string): Promise<{ ok: boolean; codes?: string[] }> {
   const secret = Deno.env.get('TURNSTILE_SECRET_KEY')
-  if (!secret) return true // pas encore configuré -> on n'exige pas le token (déploiement progressif)
-  if (!token) return false
+  if (!secret) return { ok: true }           // pas configuré -> on n'exige pas le token
+  if (!token) return { ok: false, codes: ['missing-input-response'] }
 
   const form = new URLSearchParams()
   form.set('secret', secret)
   form.set('response', token)
-  if (ip) form.set('remoteip', ip)
+  // NB: pas de remoteip (optionnel, source d'échecs côté Deno/Supabase)
 
   try {
     const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST', body: form,
     })
     const data = await r.json()
-    return data.success === true
-  } catch {
-    return false
+    console.log('siteverify:', JSON.stringify(data))
+    return { ok: data.success === true, codes: data['error-codes'] }
+  } catch (e) {
+    console.error('siteverify fetch failed:', e)
+    return { ok: false, codes: ['fetch-failed'] }
   }
 }
 
@@ -51,11 +53,10 @@ serve(async (req: Request) => {
 
   try {
     const { token, email } = await req.json().catch(() => ({}))
-    const ip = req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null
 
     // 1. Anti-bot
-    const human = await verifyTurnstile(token ?? '', ip)
-    if (!human) return json({ ok: false, reason: 'captcha' })
+    const ts = await verifyTurnstile(token ?? '')
+    if (!ts.ok) return json({ ok: false, reason: 'captcha', codes: ts.codes })
 
     // 2. Format email
     const e = String(email ?? '').trim().toLowerCase()
