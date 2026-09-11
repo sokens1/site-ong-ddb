@@ -9,7 +9,6 @@ import { InAppBrowserProvider, useInAppBrowserBanner } from '../context/InAppBro
 import { isInAppBrowser } from '../utils/inAppBrowser';
 import { generateTicketPDF } from '../utils/ticketPdf';
 import { generateCertificatePDF } from '../utils/certificatePdf';
-import { sanitizeHTML } from '../utils/sanitizeHtml';
 import Turnstile, { verifySubmission, VERIFY_MESSAGES } from '../components/Turnstile';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -604,9 +603,8 @@ const EventRegistrationModal: React.FC<{
 
 // ─── Feedback Form ────────────────────────────────────────────────────────────
 
-const FeedbackSection: React.FC<{ event: Event }> = ({ event }) => {
+const FeedbackModal: React.FC<{ event: Event; onClose: () => void }> = ({ event, onClose }) => {
   const config: FeedbackConfig = event.feedback_config ?? { show_stars: true, fields: [] };
-  const hasContent = config.show_stars || config.fields.length > 0;
 
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -627,117 +625,132 @@ const FeedbackSection: React.FC<{ event: Event }> = ({ event }) => {
     setStatus(error ? 'error' : 'success');
   };
 
-  if (!hasContent) return null;
-
   return (
-    <div className="mt-12 pt-8 border-t border-gray-100">
-      <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 md:p-8 border border-green-100">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-green-200 text-green-700 rounded-full flex items-center justify-center flex-shrink-0">
-            <MessageSquare size={20} />
+    <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
+      <motion.div
+        initial={{ y: '100%', opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: '100%', opacity: 0 }}
+        transition={{ type: 'spring', damping: 28, stiffness: 350 }}
+        className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxHeight: '95vh' }}
+      >
+        <div className="bg-green-800 text-white px-6 pt-6 pb-5 relative">
+          <button onClick={onClose} aria-label="Fermer" className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors p-1">
+            <X size={20} />
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-green-300">
+              <MessageSquare size={20} />
+            </div>
+            <div>
+              <p className="text-xs text-green-300 uppercase tracking-widest font-semibold mb-0.5">Votre avis</p>
+              <h3 className="text-lg font-bold leading-tight pr-8 line-clamp-2">{event.title}</h3>
+            </div>
           </div>
-          <h3 className="text-xl font-bold text-gray-800">Donnez votre avis</h3>
         </div>
-        <p className="text-gray-500 text-sm mb-6 ml-13">Avez-vous participé à cet événement ? Votre retour nous aide à nous améliorer.</p>
 
-        {status === 'success' ? (
-          <div className="bg-white p-6 rounded-xl text-center border border-green-100 shadow-sm">
-            <CheckCircle className="text-green-500 mx-auto mb-2" size={32} />
-            <p className="font-bold text-gray-800">Merci pour votre retour !</p>
-            <p className="text-gray-500 text-sm mt-1">Votre avis a bien été enregistré.</p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="bg-white p-5 rounded-xl border border-gray-100 space-y-5 shadow-sm">
-            {status === 'error' && <p className="text-red-500 text-sm">Une erreur s'est produite. Veuillez réessayer.</p>}
+        <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(95vh - 110px)' }}>
+          {status === 'success' ? (
+            <div className="text-center py-4">
+              <CheckCircle className="mx-auto mb-2 text-green-500" size={32} />
+              <p className="font-bold text-gray-800">Merci pour votre retour !</p>
+              <p className="mt-1 text-sm text-gray-500">Votre avis a bien été enregistré.</p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {status === 'error' && <p className="text-sm text-red-500">Une erreur s'est produite. Veuillez réessayer.</p>}
 
-            {/* Stars */}
-            {config.show_stars && (
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-3">Note globale *</label>
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map(star => (
-                    <button
-                      key={star} type="button"
-                      onClick={() => setRating(star)}
-                      onMouseEnter={() => setHoverRating(star)}
-                      onMouseLeave={() => setHoverRating(0)}
-                      className="transition-transform hover:scale-110"
-                    >
-                      <Star
-                        size={36}
-                        className={(hoverRating || rating) >= star ? 'text-yellow-400' : 'text-gray-200'}
-                        fill={(hoverRating || rating) >= star ? 'currentColor' : 'none'}
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Custom fields */}
-            {config.fields.map(field => (
-              <div key={field.id}>
-                <label className="block text-sm font-bold text-gray-700 mb-2">
-                  {field.label}{field.required ? ' *' : ''}
-                </label>
-                {field.type === 'text' && (
-                  <input required={field.required} type="text" value={customAnswers[field.id] || ''}
-                    onChange={e => handleCustomChange(field.id, e.target.value)}
-                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none" />
-                )}
-                {field.type === 'textarea' && (
-                  <textarea required={field.required} rows={3} value={customAnswers[field.id] || ''}
-                    onChange={e => handleCustomChange(field.id, e.target.value)}
-                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none resize-none" />
-                )}
-                {field.type === 'select' && (
-                  <select required={field.required} value={customAnswers[field.id] || ''}
-                    onChange={e => handleCustomChange(field.id, e.target.value)}
-                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none">
-                    <option value="">Sélectionner...</option>
-                    {field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                  </select>
-                )}
-                {field.type === 'radio' && (
-                  <div className="space-y-2">
-                    {field.options?.map(opt => (
-                      <label key={opt} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${customAnswers[field.id] === opt ? 'border-green-400 bg-green-50' : 'border-gray-200'}`}>
-                        <input type="radio" className="w-4 h-4 text-green-600" checked={customAnswers[field.id] === opt} onChange={() => handleCustomChange(field.id, opt)} />
-                        <span className="text-sm">{opt}</span>
-                      </label>
+              {/* Stars */}
+              {config.show_stars && (
+                <div>
+                  <label className="mb-3 block text-sm font-bold text-gray-700">Note globale *</label>
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <button
+                        key={star} type="button"
+                        onClick={() => setRating(star)}
+                        onMouseEnter={() => setHoverRating(star)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        className="transition-transform hover:scale-110"
+                      >
+                        <Star
+                          size={36}
+                          className={(hoverRating || rating) >= star ? 'text-yellow-400' : 'text-gray-200'}
+                          fill={(hoverRating || rating) >= star ? 'currentColor' : 'none'}
+                        />
+                      </button>
                     ))}
                   </div>
-                )}
-                {field.type === 'checkbox' && (
-                  <div className="space-y-2">
-                    {field.options?.map(opt => {
-                      const checked = (customAnswers[field.id] || []).includes(opt);
-                      return (
-                        <label key={opt} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${checked ? 'border-green-400 bg-green-50' : 'border-gray-200'}`}>
-                          <input type="checkbox" className="w-4 h-4 rounded text-green-600 border-gray-300" checked={checked} onChange={e => {
-                            const current = customAnswers[field.id] || [];
-                            if (e.target.checked) handleCustomChange(field.id, [...current, opt]);
-                            else handleCustomChange(field.id, current.filter((v: string) => v !== opt));
-                          }} />
+                </div>
+              )}
+
+              {/* Custom fields */}
+              {config.fields.map(field => (
+                <div key={field.id}>
+                  <label className="mb-2 block text-sm font-bold text-gray-700">
+                    {field.label}{field.required ? ' *' : ''}
+                  </label>
+                  {field.type === 'text' && (
+                    <input required={field.required} type="text" value={customAnswers[field.id] || ''}
+                      onChange={e => handleCustomChange(field.id, e.target.value)}
+                      className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500" />
+                  )}
+                  {field.type === 'textarea' && (
+                    <textarea required={field.required} rows={3} value={customAnswers[field.id] || ''}
+                      onChange={e => handleCustomChange(field.id, e.target.value)}
+                      className="w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500" />
+                  )}
+                  {field.type === 'select' && (
+                    <select required={field.required} value={customAnswers[field.id] || ''}
+                      onChange={e => handleCustomChange(field.id, e.target.value)}
+                      className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500">
+                      <option value="">Sélectionner...</option>
+                      {field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                  )}
+                  {field.type === 'radio' && (
+                    <div className="space-y-2">
+                      {field.options?.map(opt => (
+                        <label key={opt} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${customAnswers[field.id] === opt ? 'border-green-400 bg-green-50' : 'border-gray-200'}`}>
+                          <input type="radio" className="w-4 h-4 text-green-600" checked={customAnswers[field.id] === opt} onChange={() => handleCustomChange(field.id, opt)} />
                           <span className="text-sm">{opt}</span>
                         </label>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            ))}
+                      ))}
+                    </div>
+                  )}
+                  {field.type === 'checkbox' && (
+                    <div className="space-y-2">
+                      {field.options?.map(opt => {
+                        const checked = (customAnswers[field.id] || []).includes(opt);
+                        return (
+                          <label key={opt} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${checked ? 'border-green-400 bg-green-50' : 'border-gray-200'}`}>
+                            <input type="checkbox" className="w-4 h-4 rounded text-green-600 border-gray-300" checked={checked} onChange={e => {
+                              const current = customAnswers[field.id] || [];
+                              if (e.target.checked) handleCustomChange(field.id, [...current, opt]);
+                              else handleCustomChange(field.id, current.filter((v: string) => v !== opt));
+                            }} />
+                            <span className="text-sm">{opt}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ))}
 
-            <button
-              type="submit"
-              disabled={(config.show_stars && rating === 0) || status === 'submitting'}
-              className="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
-            >
-              {status === 'submitting' ? 'Envoi en cours...' : 'Soumettre mon avis'}
-            </button>
-          </form>
-        )}
-      </div>
+              <button
+                type="submit"
+                disabled={(config.show_stars && rating === 0) || status === 'submitting'}
+                className="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
+              >
+                {status === 'submitting' ? 'Envoi en cours...' : 'Soumettre mon avis'}
+              </button>
+            </form>
+          )}
+        </div>
+      </motion.div>
     </div>
   );
 };
@@ -751,6 +764,7 @@ const EventDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [seatsTaken, setSeatsTaken] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
   const [posterState, setPosterState] = useState<{isOpen: boolean; name: string}>({ isOpen: false, name: '' });
   const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -764,6 +778,7 @@ const EventDetailPage: React.FC = () => {
   const [certRecoveryLoading, setCertRecoveryLoading] = useState(false);
   const [certRecoveryError, setCertRecoveryError] = useState<string | null>(null);
   const certRecoveryDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   const fetchEventData = async () => {
     if (!id) { setLoading(false); return; }
@@ -907,26 +922,92 @@ const EventDetailPage: React.FC = () => {
   const status = getEventStatus(event.event_date);
   const isPast = status.label === 'Terminé';
   const isFull = event.max_slots != null && seatsTaken != null && seatsTaken >= event.max_slots;
+  const feedbackConfig: FeedbackConfig = event.feedback_config ?? { show_stars: true, fields: [] };
+  const hasFeedback = feedbackConfig.show_stars || feedbackConfig.fields.length > 0;
 
   return (
     <InAppBrowserProvider>
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-ddb-900 pb-28 lg:pb-20">
       <InAppBrowserBanner />
-      {/* Hero Header */}
-      <div className="bg-green-900 border-b border-green-800 relative z-10 pt-24 pb-16 overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-10 pointer-events-none">
-          <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[150%] rounded-full bg-white blur-3xl transform rotate-12" />
-          <div className="absolute -bottom-[20%] -left-[10%] w-[40%] h-[100%] rounded-full bg-white blur-3xl" />
+
+      {/* ── Hero : mobile = image + tout superposé dessus ; desktop = image à gauche, éléments à droite ── */}
+      <div className="relative -mt-24 bg-ddb-900 pt-24 lg:grid lg:grid-cols-2 lg:items-stretch">
+        {/* Image */}
+        <div className="relative h-[75vh] min-h-[480px] w-full overflow-hidden sm:h-[620px] lg:h-auto lg:min-h-[640px]">
+          {event.image_url ? (
+            <img
+              src={event.image_url}
+              alt={event.title}
+              className="absolute inset-0 h-full w-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+              }}
+            />
+          ) : null}
+          <div
+            className={`absolute inset-0 flex items-center justify-center bg-ddb-900 ${event.image_url ? 'hidden' : ''}`}
+          >
+            <Calendar size={64} className="text-white/20" />
+          </div>
+
+          {/* Contrôles + titre superposés — mobile/tablette uniquement */}
+          <div className="absolute inset-0 bg-gradient-to-t from-ddb-900 via-black/10 to-black/40 lg:hidden" />
+          <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-ddb-900 to-transparent lg:hidden" />
+
+          {/* Fondus haut/bas/droite — desktop aussi, pour fondre avec le vert autour */}
+          <div className="absolute inset-x-0 top-0 hidden h-24 bg-gradient-to-b from-ddb-900 to-transparent lg:block" />
+          <div className="absolute inset-x-0 bottom-0 hidden h-24 bg-gradient-to-t from-ddb-900 to-transparent lg:block" />
+          <div className="absolute inset-y-0 right-0 hidden w-24 bg-gradient-to-l from-ddb-900 to-transparent lg:block" />
+          <div className="absolute inset-0 flex flex-col justify-between pb-6 pt-6 sm:pt-8 lg:hidden">
+            <div className="container mx-auto max-w-5xl px-4">
+              <div className="flex items-center justify-between">
+                <Link
+                  to="/"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+                >
+                  <ChevronLeft size={20} />
+                </Link>
+                <span className="font-heading text-xs font-bold uppercase tracking-widest text-white/50">
+                  Détails
+                </span>
+                <button
+                  onClick={() => {
+                    const shareUrl = `${window.location.origin}/events/${event.slug || event.id}`;
+                    if (navigator.share) {
+                      navigator.share({ title: event.title, url: shareUrl }).catch(() => {});
+                    } else {
+                      setShareOpen(v => !v);
+                    }
+                  }}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+                  aria-label="Partager"
+                >
+                  <Share2 size={17} />
+                </button>
+              </div>
+            </div>
+            <div className="container mx-auto max-w-5xl px-4">
+              <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold uppercase tracking-widest text-white ${status.color}`}>
+                {status.label}
+              </span>
+              <h1 className="mt-3 font-heading text-2xl font-extrabold leading-tight text-white drop-shadow-md sm:text-4xl">
+                {event.title}
+              </h1>
+            </div>
+          </div>
         </div>
 
-        <div className="container mx-auto px-4 relative z-20">
-          <div className="flex items-center justify-between mb-6">
-            <Link to="/" className="inline-flex items-center gap-2 text-green-300 hover:text-white transition-colors text-sm font-medium">
+        {/* Panneau à droite — desktop uniquement : tous les éléments */}
+        <div className="hidden flex-col justify-center gap-6 bg-ddb-900 p-10 lg:flex xl:p-16">
+          <div className="flex items-center justify-between">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-white/60 transition-colors hover:text-white"
+            >
               <ChevronLeft size={16} />
-              Retour à l'accueil
+              Retour aux événements
             </Link>
-
-            {/* Bouton partage */}
             <div className="relative">
               <button
                 onClick={() => {
@@ -937,23 +1018,20 @@ const EventDetailPage: React.FC = () => {
                     setShareOpen(v => !v);
                   }
                 }}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-sm font-semibold backdrop-blur-sm border border-white/20 transition-all"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+                aria-label="Partager"
               >
-                <Share2 size={15} />
-                Partager
+                <Share2 size={17} />
               </button>
 
-              {/* Popover desktop */}
               {shareOpen && (
-                <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 z-50">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Partager cet événement</p>
-
-                  {/* Copy link */}
-                  <div className="flex items-center gap-2 mb-3">
+                <div className="absolute right-0 top-full z-50 mt-2 w-72 rounded-2xl border border-gray-100 bg-white p-4 shadow-2xl">
+                  <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">Partager cet événement</p>
+                  <div className="mb-3 flex items-center gap-2">
                     <input
                       readOnly
                       value={`${window.location.origin}/events/${event.slug || event.id}`}
-                      className="flex-1 text-xs bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-600 outline-none truncate"
+                      className="flex-1 truncate rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600 outline-none"
                     />
                     <button
                       onClick={() => {
@@ -961,134 +1039,191 @@ const EventDetailPage: React.FC = () => {
                         setCopied(true);
                         setTimeout(() => setCopied(false), 2000);
                       }}
-                      className={`flex-shrink-0 p-2 rounded-lg transition-all ${copied ? 'bg-green-100 text-green-600' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
+                      className={`flex-shrink-0 rounded-lg p-2 transition-all ${copied ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                     >
                       {copied ? <Check size={14} /> : <Copy size={14} />}
                     </button>
                   </div>
-
-                  {/* WhatsApp */}
                   <a
                     href={`https://wa.me/?text=${encodeURIComponent(`${event.title} — ${window.location.origin}/events/${event.slug || event.id}`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20b858] text-white text-sm font-semibold transition-colors mb-2"
+                    className="mb-2 flex w-full items-center gap-3 rounded-xl bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#20b858]"
                   >
-                    <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current flex-shrink-0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.554 4.122 1.526 5.853L.05 23.95l6.254-1.638A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.894a9.88 9.88 0 01-5.034-1.374l-.36-.214-3.732.978.995-3.63-.235-.374A9.859 9.859 0 012.107 12c0-5.457 4.436-9.893 9.893-9.893 5.457 0 9.893 4.436 9.893 9.893 0 5.457-4.436 9.894-9.893 9.894z"/></svg>
+                    <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0 fill-current"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.554 4.122 1.526 5.853L.05 23.95l6.254-1.638A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.894a9.88 9.88 0 01-5.034-1.374l-.36-.214-3.732.978.995-3.63-.235-.374A9.859 9.859 0 012.107 12c0-5.457 4.436-9.893 9.893-9.893 5.457 0 9.893 4.436 9.893 9.893 0 5.457-4.436 9.894-9.893 9.894z"/></svg>
                     WhatsApp
                   </a>
-
-                  {/* Facebook */}
                   <a
                     href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${window.location.origin}/events/${event.slug || event.id}`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl bg-[#1877F2] hover:bg-[#1565d8] text-white text-sm font-semibold transition-colors"
+                    className="flex w-full items-center gap-3 rounded-xl bg-[#1877F2] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1565d8]"
                   >
-                    <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current flex-shrink-0"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                    <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0 fill-current"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                     Facebook
                   </a>
-
-                  <button onClick={() => setShareOpen(false)} className="absolute top-3 right-3 text-gray-300 hover:text-gray-500 transition-colors">
+                  <button onClick={() => setShareOpen(false)} className="absolute right-3 top-3 text-gray-300 transition-colors hover:text-gray-500">
                     <X size={14} />
                   </button>
                 </div>
               )}
-
-              {/* Overlay pour fermer */}
               {shareOpen && <div className="fixed inset-0 z-40" onClick={() => setShareOpen(false)} />}
             </div>
           </div>
 
-          <h1 className="text-3xl md:text-5xl font-black text-white mb-6 leading-tight max-w-4xl drop-shadow-md">
-            {event.title}
-          </h1>
+          <div>
+            <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold uppercase tracking-widest text-white ${status.color}`}>
+              {status.label}
+            </span>
+            <h1 className="mt-4 font-heading text-4xl font-extrabold leading-[1.1] text-white xl:text-5xl">
+              {event.title}
+            </h1>
+          </div>
 
-          <div className="flex flex-wrap gap-4 md:gap-8 bg-white/10 backdrop-blur-md border border-white/20 p-4 md:p-6 rounded-2xl w-fit">
-            <div className="flex items-start gap-3 text-white">
-              <div className="w-10 h-10 rounded-full bg-green-500/30 flex items-center justify-center mt-0.5">
-                <Calendar size={20} className="text-green-300" />
-              </div>
-              <div>
-                <p className="text-xs text-green-200 uppercase tracking-widest font-semibold mb-1">Date(s)</p>
-                <div>
-                  {(() => {
-                    const extras = (event.event_dates || []).filter(d => d.date);
-                    const fmtD = (d: string) =>
-                      new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
-                    if (extras.length > 0) {
-                      const last = extras[extras.length - 1].date;
-                      return (
-                        <p className="font-medium text-sm md:text-base">
-                          <span className="whitespace-nowrap">Du {fmtD(event.event_date)}</span>{' '}
-                          <span className="whitespace-nowrap">au {fmtD(last)}</span>
-                        </p>
-                      );
-                    }
-                    return (
-                      <p className="font-medium text-sm md:text-base">
-                        {new Date(event.event_date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                      </p>
-                    );
-                  })()}
-                </div>
+          {/* Ligne d'infos */}
+          <div className="grid grid-cols-1 gap-5 rounded-2xl border border-white/10 bg-white/5 p-5 sm:grid-cols-3">
+            <div>
+              <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-white/40">
+                <Calendar size={13} />
+                Date
+              </p>
+              <div className="mt-1 text-sm font-semibold text-white">
+                {(() => {
+                  const extras = (event.event_dates || []).filter(d => d.date);
+                  const fmtD = (d: string) =>
+                    new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+                  if (extras.length > 0) {
+                    const last = extras[extras.length - 1].date;
+                    return <>Du {fmtD(event.event_date)} au {fmtD(last)}</>;
+                  }
+                  return <>{new Date(event.event_date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</>;
+                })()}
               </div>
             </div>
 
             {event.location && (
-              <>
-                <div className="w-px bg-white/20 hidden md:block" />
-                <div className="flex items-center gap-3 text-white">
-                  <div className="w-10 h-10 rounded-full bg-green-500/30 flex items-center justify-center">
-                    <MapPin size={20} className="text-green-300" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-green-200 uppercase tracking-widest font-semibold mb-0.5">Lieu</p>
-                    <p className="font-medium text-sm md:text-base">{event.location}</p>
-                  </div>
-                </div>
-              </>
+              <div className="sm:border-l sm:border-white/10 sm:pl-5">
+                <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-white/40">
+                  <MapPin size={13} />
+                  Lieu
+                </p>
+                <p className="mt-1 text-sm font-semibold text-white">{event.location}</p>
+              </div>
+            )}
+
+            <div className="sm:border-l sm:border-white/10 sm:pl-5">
+              <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-white/40">
+                <Users size={13} />
+                Places
+              </p>
+              <p className="mt-1 text-sm font-semibold text-white">
+                {event.max_slots ? `${seatsTaken ?? 0} / ${event.max_slots} inscrits` : 'Entrée libre'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowModal(true)}
+              disabled={isPast || isFull}
+              className={`flex-1 inline-flex items-center justify-center gap-2 rounded-full py-3.5 font-heading text-base font-bold transition-all ${
+                isPast || isFull
+                  ? 'cursor-not-allowed bg-white/10 text-white/30'
+                  : 'bg-white text-ddb-950 hover:-translate-y-0.5 active:scale-95'
+              }`}
+            >
+              {isPast ? 'Événement terminé' : isFull ? 'Complet' : "S'inscrire"}
+              {!isPast && !isFull && <Calendar size={18} />}
+            </button>
+            {isPast && hasFeedback && (
+              <button
+                onClick={() => setFeedbackOpen(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 py-3.5 px-5 font-heading text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-95"
+              >
+                <MessageSquare size={16} />
+                Donner mon avis
+              </button>
             )}
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 -mt-8 relative z-30">
+      {/* Ligne d'infos — mobile/tablette uniquement (le panneau desktop l'affiche déjà) */}
+      <div className="container mx-auto max-w-5xl px-4 lg:hidden">
+        <div className="mt-6 grid grid-cols-3 divide-x divide-white/10 rounded-2xl border border-white/10 bg-white/5 p-4">
+          {event.location && (
+            <div className="px-1 first:pl-0 last:pr-0">
+              <p className="text-xs font-bold text-white sm:text-sm">Lieu</p>
+              <p className="mt-1 flex items-center gap-1 text-[11px] text-white/60 sm:text-xs">
+                <MapPin size={12} className="shrink-0 text-ddb-300" />
+                <span className="truncate">{event.location}</span>
+              </p>
+            </div>
+          )}
+
+          <div className="px-1 first:pl-0 last:pr-0">
+            <p className="text-xs font-bold text-white sm:text-sm">Date</p>
+            <p className="mt-1 flex items-center gap-1 text-[11px] text-white/60 sm:text-xs">
+              <Calendar size={12} className="shrink-0 text-ddb-300" />
+              <span className="truncate">
+                {new Date(event.event_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+              </span>
+            </p>
+          </div>
+
+          <div className="px-1 first:pl-0 last:pr-0">
+            <p className="text-xs font-bold text-white sm:text-sm">Places</p>
+            <p className="mt-1 flex items-center gap-1 text-[11px] text-white/60 sm:text-xs">
+              <Users size={12} className="shrink-0 text-ddb-300" />
+              <span className="truncate">
+                {event.max_slots ? `${seatsTaken ?? 0}/${event.max_slots}` : 'Libre'}
+              </span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 pt-8 relative z-30">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
 
-          {/* Main Content */}
+          {/* Main Content — pas de carte blanche, écritures directement sur le vert */}
           <div className="lg:col-span-2 space-y-8">
-            <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
-              {event.image_url && (
-                <div className="relative w-full bg-gray-50 flex items-center justify-center overflow-hidden h-[250px] sm:h-[420px] border-b border-gray-100">
-                  <img src={event.image_url} alt={event.title} className="max-w-full max-h-full object-contain" />
-                </div>
-              )}
+            <div>
+              <h2 className="font-heading text-2xl font-bold text-white">À propos de l'événement</h2>
 
-              <div className="p-6 md:p-10">
-                <div className="flex items-center gap-3 mb-6">
-                  <span className={`px-3 py-1 rounded-full text-white text-xs font-bold uppercase tracking-widest ${status.color}`}>
-                    {status.label}
-                  </span>
-                  <h2 className="text-2xl font-bold text-gray-800">À propos de l'événement</h2>
-                </div>
+              {(() => {
+                const plainDesc = (event.description || '').replace(/<[^>]+>/g, '').trim();
+                const PREVIEW_LEN = 220;
+                const isLong = plainDesc.length > PREVIEW_LEN;
+                const shown = descExpanded || !isLong ? plainDesc : plainDesc.slice(0, PREVIEW_LEN).trimEnd();
 
-                <div
-                  className="prose prose-green max-w-none text-gray-600 leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: sanitizeHTML(event.description || '') }}
-                />
+                return (
+                  <p className="mt-4 whitespace-pre-line leading-relaxed text-white/70">
+                    {shown}
+                    {isLong && !descExpanded && '… '}
+                    {isLong && (
+                      <button
+                        onClick={() => setDescExpanded(v => !v)}
+                        className="ml-1 font-heading text-sm font-bold text-ddb-300 transition-colors hover:text-white"
+                      >
+                        {descExpanded ? 'Réduire' : 'Lire plus'}
+                      </button>
+                    )}
+                  </p>
+                );
+              })()}
 
                 {event.ticket_tiers && event.ticket_tiers.length > 0 && (
-                  <div className="mt-10 pt-8 border-t border-gray-100">
-                    <h3 className="text-lg font-bold text-gray-800 mb-4">Tarifs</h3>
+                  <div className="mt-10 pt-8 border-t border-white/10">
+                    <h3 className="font-heading text-lg font-bold text-white mb-4">Tarifs</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {event.ticket_tiers.map(tier => (
-                        <div key={tier.id} className="flex items-center justify-between gap-4 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3">
+                        <div key={tier.id} className="flex items-center justify-between gap-4 bg-white/5 border border-white/10 rounded-xl px-4 py-3">
                           <div className="min-w-0">
-                            <p className="font-semibold text-gray-800 text-sm truncate">{tier.label || 'Tarif'}</p>
-                            {tier.description && <p className="text-xs text-gray-500 mt-0.5">{tier.description}</p>}
+                            <p className="font-semibold text-white text-sm truncate">{tier.label || 'Tarif'}</p>
+                            {tier.description && <p className="text-xs text-white/50 mt-0.5">{tier.description}</p>}
                           </div>
-                          <p className="font-bold text-green-700 text-sm whitespace-nowrap">
+                          <p className="font-bold text-ddb-300 text-sm whitespace-nowrap">
                             {tier.price ? `${tier.price.toLocaleString('fr-FR')} FCFA` : 'Gratuit'}
                           </p>
                         </div>
@@ -1097,20 +1232,7 @@ const EventDetailPage: React.FC = () => {
                   </div>
                 )}
 
-                <div className="mt-10 pt-8 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-6">
-                  <div>
-                    {event.max_slots ? (
-                      <p className="flex items-center gap-2 text-gray-500 font-medium bg-gray-100 px-4 py-2 rounded-xl">
-                        <Users size={18} className="text-green-600" />
-                        {event.max_slots} places disponibles
-                      </p>
-                    ) : (
-                      <p className="flex items-center gap-2 text-green-600 font-medium bg-green-50 px-4 py-2 rounded-xl">
-                        <CheckCircle size={18} />
-                        Entrée libre
-                      </p>
-                    )}
-                  </div>
+                <div className="mt-10 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center sm:justify-end gap-6">
                   <div className="flex items-center gap-3 w-full sm:w-auto">
                     {/* Share button */}
                     <div className="relative">
@@ -1123,7 +1245,7 @@ const EventDetailPage: React.FC = () => {
                             setShareOpen(v => !v);
                           }
                         }}
-                        className="flex items-center gap-2 px-4 py-3.5 rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-600 text-sm font-semibold transition-all"
+                        className="flex items-center gap-2 px-4 py-3.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white/70 text-sm font-semibold transition-all"
                         title="Partager"
                       >
                         <Share2 size={18} />
@@ -1176,13 +1298,22 @@ const EventDetailPage: React.FC = () => {
                     <button
                       onClick={() => setShowModal(true)}
                       disabled={isPast || isFull}
-                      className={`flex-1 sm:flex-initial font-bold py-3.5 px-10 rounded-xl transition-all text-lg flex justify-center items-center gap-2 ${
-                        isPast || isFull ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 text-white shadow-md active:scale-95'
+                      className={`flex-1 sm:flex-initial font-bold py-3 px-4 sm:py-3.5 sm:px-10 rounded-xl transition-all text-sm sm:text-lg flex justify-center items-center gap-2 whitespace-nowrap ${
+                        isPast || isFull ? 'bg-white/10 text-white/30 cursor-not-allowed' : 'bg-white hover:-translate-y-0.5 text-ddb-950 shadow-md active:scale-95'
                       }`}
                     >
                       {isPast ? 'Événement terminé' : isFull ? 'Complet' : "S'inscrire"}
-                      {!isPast && !isFull && <Calendar size={18} />}
+                      {!isPast && !isFull && <Calendar size={16} className="hidden sm:block" />}
                     </button>
+                    {isPast && hasFeedback && (
+                      <button
+                        onClick={() => setFeedbackOpen(true)}
+                        className="font-bold py-3 px-3 sm:py-3.5 sm:px-6 rounded-xl transition-all text-sm sm:text-base flex justify-center items-center gap-2 border border-white/20 bg-white/5 text-white hover:bg-white/10 active:scale-95 whitespace-nowrap"
+                      >
+                        <MessageSquare size={16} />
+                        Donner mon avis
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -1192,19 +1323,19 @@ const EventDetailPage: React.FC = () => {
                     {!recoveryOpen ? (
                       <button
                         onClick={() => { setRecoveryOpen(true); setRecoveryError(null); setRecoveryEmail(''); }}
-                        className="text-sm text-green-600 hover:text-green-700 transition-colors underline underline-offset-2"
+                        className="text-sm text-ddb-300 hover:text-white transition-colors underline underline-offset-2"
                       >
                         Déjà inscrit ? Récupérez votre affiche J'y serai
                       </button>
                     ) : (
-                      <div className="bg-green-50 border border-green-100 rounded-2xl p-5">
+                      <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
                         <div className="flex items-center justify-between mb-3">
-                          <p className="text-sm font-bold text-green-800">Récupérer mon affiche</p>
-                          <button onClick={() => setRecoveryOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                          <p className="text-sm font-bold text-white">Récupérer mon affiche</p>
+                          <button onClick={() => setRecoveryOpen(false)} className="text-white/40 hover:text-white transition-colors">
                             <X size={16} />
                           </button>
                         </div>
-                        <p className="text-xs text-green-700 mb-3">Entrez l'adresse email utilisée lors de votre inscription.</p>
+                        <p className="text-xs text-white/50 mb-3">Entrez l'adresse email utilisée lors de votre inscription.</p>
                         <div className="relative">
                           <input
                             type="email"
@@ -1215,23 +1346,23 @@ const EventDetailPage: React.FC = () => {
                             onChange={e => setRecoveryEmail(e.target.value)}
                             placeholder="votre@email.com"
                             autoFocus
-                            className={`w-full px-4 py-2.5 pr-10 rounded-xl border bg-white text-sm focus:outline-none focus:ring-2 transition-all ${
+                            className={`w-full px-4 py-2.5 pr-10 rounded-xl border bg-white/5 text-white placeholder-white/30 text-sm focus:outline-none focus:ring-2 transition-all ${
                               recoveryError
-                                ? 'border-red-300 focus:ring-red-300'
-                                : 'border-green-200 focus:ring-green-500'
+                                ? 'border-red-400/40 focus:ring-red-400/40'
+                                : 'border-white/15 focus:ring-ddb-400'
                             }`}
                           />
                           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                             {recoveryLoading && (
-                              <span className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin block" />
+                              <span className="w-4 h-4 border-2 border-ddb-300 border-t-transparent rounded-full animate-spin block" />
                             )}
                             {!recoveryLoading && recoveryError && (
-                              <X size={16} className="text-red-400" />
+                              <X size={16} className="text-red-300" />
                             )}
                           </div>
                         </div>
                         {recoveryError && (
-                          <p className="mt-2 text-xs text-red-500 font-medium">{recoveryError}</p>
+                          <p className="mt-2 text-xs text-red-300 font-medium">{recoveryError}</p>
                         )}
                       </div>
                     )}
@@ -1244,19 +1375,19 @@ const EventDetailPage: React.FC = () => {
                     {!certRecoveryOpen ? (
                       <button
                         onClick={() => { setCertRecoveryOpen(true); setCertRecoveryError(null); setCertRecoveryEmail(''); }}
-                        className="text-sm text-green-600 hover:text-green-700 transition-colors underline underline-offset-2"
+                        className="text-sm text-ddb-300 hover:text-white transition-colors underline underline-offset-2"
                       >
                         Récupérer mon certificat de participation
                       </button>
                     ) : (
-                      <div className="bg-green-50 border border-green-100 rounded-2xl p-5">
+                      <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
                         <div className="flex items-center justify-between mb-3">
-                          <p className="text-sm font-bold text-green-800">Récupérer mon certificat</p>
-                          <button onClick={() => setCertRecoveryOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                          <p className="text-sm font-bold text-white">Récupérer mon certificat</p>
+                          <button onClick={() => setCertRecoveryOpen(false)} className="text-white/40 hover:text-white transition-colors">
                             <X size={16} />
                           </button>
                         </div>
-                        <p className="text-xs text-green-700 mb-3">Entrez l'adresse email utilisée lors de votre inscription.</p>
+                        <p className="text-xs text-white/50 mb-3">Entrez l'adresse email utilisée lors de votre inscription.</p>
                         <div className="relative">
                           <input
                             type="email"
@@ -1267,66 +1398,63 @@ const EventDetailPage: React.FC = () => {
                             onChange={e => setCertRecoveryEmail(e.target.value)}
                             placeholder="votre@email.com"
                             autoFocus
-                            className={`w-full px-4 py-2.5 pr-10 rounded-xl border bg-white text-sm focus:outline-none focus:ring-2 transition-all ${
+                            className={`w-full px-4 py-2.5 pr-10 rounded-xl border bg-white/5 text-white placeholder-white/30 text-sm focus:outline-none focus:ring-2 transition-all ${
                               certRecoveryError
-                                ? 'border-red-300 focus:ring-red-300'
-                                : 'border-green-200 focus:ring-green-500'
+                                ? 'border-red-400/40 focus:ring-red-400/40'
+                                : 'border-white/15 focus:ring-ddb-400'
                             }`}
                           />
                           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                             {certRecoveryLoading && (
-                              <span className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin block" />
+                              <span className="w-4 h-4 border-2 border-ddb-300 border-t-transparent rounded-full animate-spin block" />
                             )}
                             {!certRecoveryLoading && certRecoveryError && (
-                              <X size={16} className="text-red-400" />
+                              <X size={16} className="text-red-300" />
                             )}
                           </div>
                         </div>
                         {certRecoveryError && (
-                          <p className="mt-2 text-xs text-red-500 font-medium">{certRecoveryError}</p>
+                          <p className="mt-2 text-xs text-red-300 font-medium">{certRecoveryError}</p>
                         )}
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* Feedback section — driven by config */}
-                {isPast && <FeedbackSection event={event} />}
               </div>
-            </div>
           </div>
 
           {/* Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sticky top-28">
-              <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                <Calendar className="text-green-600" size={24} />
+            <div className="sticky top-28">
+              <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                <Calendar className="text-ddb-300" size={24} />
                 Autres événements
               </h3>
 
               {otherEvents.length === 0 ? (
-                <p className="text-gray-500 text-sm">Aucun autre événement programmé pour le moment.</p>
+                <p className="text-white/50 text-sm">Aucun autre événement programmé pour le moment.</p>
               ) : (
                 <div className="space-y-3">
                   {otherEvents.map(other => (
                     <Link
                       key={other.id}
                       to={`/events/${other.slug || other.id}`}
-                      className="flex gap-3 rounded-xl border border-gray-100 p-3 hover:border-green-300 hover:bg-green-50 transition-all group"
+                      className="flex gap-3 rounded-xl border border-gray-100 bg-white p-3 shadow-sm hover:shadow-md hover:border-ddb-300 transition-all group"
                     >
                       {other.image_url ? (
                         <img src={other.image_url} alt={other.title} className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />
                       ) : (
-                        <div className="w-14 h-14 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-                          <Calendar size={20} className="text-green-600/50" />
+                        <div className="w-14 h-14 rounded-lg bg-ddb-50 flex items-center justify-center flex-shrink-0">
+                          <Calendar size={20} className="text-ddb-300" />
                         </div>
                       )}
                       <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
-                        <h4 className="font-bold text-gray-800 text-sm truncate group-hover:text-green-700 transition-colors">
+                        <h4 className="font-bold text-gray-800 text-sm truncate group-hover:text-ddb-700 transition-colors">
                           {other.title}
                         </h4>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
+                          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
                             {new Date(other.event_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                           </span>
                           <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded text-white ${getEventStatus(other.event_date).color}`}>
@@ -1350,6 +1478,12 @@ const EventDetailPage: React.FC = () => {
             onClose={() => setShowModal(false)}
             onGeneratePoster={(name) => setPosterState({ isOpen: true, name })}
           />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {feedbackOpen && (
+          <FeedbackModal event={event} onClose={() => setFeedbackOpen(false)} />
         )}
       </AnimatePresence>
 

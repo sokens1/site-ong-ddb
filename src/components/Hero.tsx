@@ -121,7 +121,7 @@ const Hero: React.FC = () => {
         ))}
       </div>
 
-      <div className="container relative mx-auto grid w-full grid-cols-1 items-center gap-14 px-4 pb-20 pt-28 lg:grid-cols-2 lg:gap-10 lg:pb-28 lg:pt-36">
+      <div className="container relative mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-14 px-4 pb-20 pt-28 lg:grid-cols-2 lg:gap-10 lg:pb-28 lg:pt-36">
         {/* ── Colonne texte ── */}
         <motion.div
           className="flex flex-col items-center text-center lg:items-start lg:text-left"
@@ -133,7 +133,7 @@ const Hero: React.FC = () => {
             variants={item}
             className="font-heading text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl"
           >
-            La préservation de l'environnement
+            <span className="whitespace-nowrap">La préservation de</span> l'environnement
             <br className="hidden sm:block" />
             <span className="text-ddb-200"> par l'éducation au changement</span>
           </motion.h1>
@@ -169,7 +169,7 @@ const Hero: React.FC = () => {
 
         {/* ── Colonne collage ── */}
         <motion.div
-          className="relative mx-auto h-[440px] w-full max-w-lg sm:h-[560px] lg:h-[620px] lg:max-w-none"
+          className="relative mx-auto h-[440px] w-full max-w-lg sm:h-[560px] lg:ml-8 lg:h-[620px] lg:max-w-none"
           style={{ perspective: 1200 }}
           variants={container}
           initial="hidden"

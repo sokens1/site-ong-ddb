@@ -78,7 +78,7 @@ const Team: React.FC = () => {
   return (
     <section id="team" className="bg-white py-20 text-ddb-950 sm:py-24">
       <div className="container mx-auto max-w-6xl px-4">
-        <div className="lg:grid lg:grid-cols-[460px_1fr] lg:gap-14">
+        <div className="lg:grid lg:grid-cols-[320px_1fr] lg:gap-14">
           {/* ── Colonne gauche : titre + sous-titre ── */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}

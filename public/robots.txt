@@ -1,5 +1,4 @@
 User-agent: *
 Allow: /
-Disallow: /espace-ddb
 
 Sitemap: https://ongddb.com/sitemap.xml

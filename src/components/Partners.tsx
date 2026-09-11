@@ -20,7 +20,7 @@ const Partners: React.FC = () => {
 
   return (
     <section id="partners" className="py-16 bg-ddb-50 overflow-hidden border-t border-ddb-100">
-      <div className="container mx-auto px-4 mb-10">
+      <div className="container mx-auto max-w-6xl px-4 mb-10">
         <div className="text-center">
           <h2 className="font-heading text-4xl font-extrabold tracking-tight text-ddb-950 sm:text-5xl mb-4">
             Nos Partenaires

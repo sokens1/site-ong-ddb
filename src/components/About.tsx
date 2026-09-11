@@ -44,7 +44,7 @@ const About: React.FC = () => {
 
   return (
     <section id="about" className="bg-white">
-      <div className="container mx-auto px-4 py-20">
+      <div className="container mx-auto max-w-6xl px-4 py-20">
         {/* Nos missions */}
         <div className="-mx-4">
           <Missions />
@@ -53,12 +53,52 @@ const About: React.FC = () => {
 
       {/* Documents statutaires — plein cadre, même vert que la section Actualités */}
       <AnimatedSection className="bg-ddb-900 py-20">
-        <div className="container mx-auto px-4">
-          <div className="relative mx-auto max-w-3xl sm:px-10">
-            {/* Cadre */}
+        <div className="container mx-auto max-w-6xl px-4">
+          <div className="flex flex-col items-center gap-14 lg:flex-row lg:justify-center lg:gap-16">
+            {/* ── Animation à gauche : fiches document flottantes ── */}
             <motion.div
               variants={itemVariants}
-              className="relative rounded-[2rem] border-2 border-white/15 bg-ddb-950 px-6 py-16 text-center sm:px-14"
+              className="relative h-64 w-full max-w-xs shrink-0 sm:h-72 lg:w-72"
+            >
+              <motion.div
+                initial={{ opacity: 0, y: -10, rotate: 6 }}
+                whileInView={{ opacity: 1, rotate: -6 }}
+                viewport={{ once: true }}
+                animate={{ y: [0, -8, 0] }}
+                transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
+                className="absolute left-2 top-0 w-40 rounded-2xl bg-ddb-950 p-4 shadow-2xl ring-1 ring-ddb-400/20 sm:w-48"
+              >
+                <div className="flex items-center justify-between">
+                  <FileText className="h-5 w-5 text-ddb-400" />
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-white/40">PDF</span>
+                </div>
+                <p className="mt-3 text-sm font-bold text-white">Statuts ONG</p>
+                <p className="mt-0.5 text-[11px] text-white/40">01/02/2019</p>
+                <div className="mt-4 h-10 rounded-lg bg-gradient-to-r from-ddb-600 via-ddb-400 to-transparent opacity-60 blur-md" />
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10, rotate: -6 }}
+                whileInView={{ opacity: 1, rotate: 6 }}
+                viewport={{ once: true }}
+                animate={{ y: [0, 8, 0] }}
+                transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
+                className="absolute bottom-0 right-2 w-40 rounded-2xl bg-ddb-950 p-4 shadow-2xl ring-1 ring-ddb-400/20 sm:w-48"
+              >
+                <div className="flex items-center justify-between">
+                  <FileText className="h-5 w-5 text-ddb-400" />
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-white/40">PDF</span>
+                </div>
+                <p className="mt-3 text-sm font-bold text-white">Règlement intérieur</p>
+                <p className="mt-0.5 text-[11px] text-white/40">01/02/2019</p>
+                <div className="mt-4 h-10 rounded-lg bg-gradient-to-r from-ddb-500 via-ddb-300 to-transparent opacity-60 blur-md" />
+              </motion.div>
+            </motion.div>
+
+            {/* ── Carte à droite ── */}
+            <motion.div
+              variants={itemVariants}
+              className="relative w-full max-w-xl rounded-[2rem] border-2 border-white/15 bg-ddb-950 px-6 py-16 text-center sm:px-14"
             >
               <h3 className="font-heading text-3xl font-extrabold text-white sm:text-4xl">
                 Statuts et Règlement intérieur
@@ -90,41 +130,6 @@ const About: React.FC = () => {
                   Télécharger
                 </button>
               </div>
-            </motion.div>
-
-            {/* Fiches document flottantes, aux coins opposés */}
-            <motion.div
-              initial={{ opacity: 0, y: -10, rotate: 6 }}
-              whileInView={{ opacity: 1, rotate: 3 }}
-              viewport={{ once: true }}
-              animate={{ y: [0, -8, 0] }}
-              transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute -top-4 right-2 w-40 rounded-2xl bg-ddb-950 p-4 shadow-2xl ring-1 ring-ddb-400/20 sm:-top-6 sm:right-6 sm:w-48"
-            >
-              <div className="flex items-center justify-between">
-                <FileText className="h-5 w-5 text-ddb-400" />
-                <span className="text-[9px] font-bold uppercase tracking-widest text-white/40">PDF</span>
-              </div>
-              <p className="mt-3 text-sm font-bold text-white">Statuts ONG</p>
-              <p className="mt-0.5 text-[11px] text-white/40">01/02/2019</p>
-              <div className="mt-4 h-10 rounded-lg bg-gradient-to-r from-ddb-600 via-ddb-400 to-transparent opacity-60 blur-md" />
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10, rotate: -6 }}
-              whileInView={{ opacity: 1, rotate: -3 }}
-              viewport={{ once: true }}
-              animate={{ y: [0, 8, 0] }}
-              transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
-              className="absolute -bottom-4 left-2 w-40 rounded-2xl bg-ddb-950 p-4 shadow-2xl ring-1 ring-ddb-400/20 sm:-bottom-6 sm:left-6 sm:w-48"
-            >
-              <div className="flex items-center justify-between">
-                <FileText className="h-5 w-5 text-ddb-400" />
-                <span className="text-[9px] font-bold uppercase tracking-widest text-white/40">PDF</span>
-              </div>
-              <p className="mt-3 text-sm font-bold text-white">Règlement intérieur</p>
-              <p className="mt-0.5 text-[11px] text-white/40">01/02/2019</p>
-              <div className="mt-4 h-10 rounded-lg bg-gradient-to-r from-ddb-500 via-ddb-300 to-transparent opacity-60 blur-md" />
             </motion.div>
           </div>
         </div>

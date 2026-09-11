@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { ArrowLeft } from 'lucide-react';
 import Turnstile from '../components/Turnstile';
+import { useNoIndex } from '../utils/useNoIndex';
 
 const LOGIN_ERROR_MESSAGES: Record<string, string> = {
   invalid_credentials: 'Email ou mot de passe incorrect.',
@@ -11,6 +12,7 @@ const LOGIN_ERROR_MESSAGES: Record<string, string> = {
 };
 
 const AdminLogin: React.FC = () => {
+  useNoIndex();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);

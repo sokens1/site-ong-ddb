@@ -108,7 +108,7 @@ const EventsSection: React.FC = () => {
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: '-100px' }}
-        className="relative container mx-auto flex min-h-[70vh] flex-col items-center gap-14 px-4 py-20 sm:py-24 lg:flex-row lg:justify-between lg:gap-10"
+        className="relative container mx-auto flex min-h-[70vh] max-w-6xl flex-col items-center gap-14 px-4 py-20 sm:py-24 lg:flex-row lg:justify-between lg:gap-10"
       >
         {/* Texte */}
         <div className="flex max-w-xl flex-col items-center text-center lg:items-start lg:text-left">

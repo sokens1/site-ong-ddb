@@ -28,6 +28,7 @@ import {
 import { useNotifications } from '../../hooks/useNotifications';
 import DiscussionSidebar from '../DiscussionSidebar';
 import { MessageSquare } from 'lucide-react';
+import { useNoIndex } from '../../utils/useNoIndex';
 
 // Define which menu items each role can see
 const ROLE_MENU_ACCESS: Record<UserRole, string[]> = {
@@ -55,6 +56,7 @@ const ALL_MENU_ITEMS = [
 ];
 
 const AdminLayout: React.FC = () => {
+  useNoIndex();
   const [user, setUser] = useState<any>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [profile, setProfile] = useState<any>(null);

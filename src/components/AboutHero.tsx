@@ -32,7 +32,7 @@ const AboutHero: React.FC = () => {
     // les pages non-accueil, pour que le fond remonte jusqu'en haut de la
     // page, exactement comme le Hero de l'accueil.
     <section className="relative isolate -mt-24 overflow-hidden bg-gradient-to-br from-ddb-800 via-ddb-700 to-ddb-600 text-white">
-      <div className="container mx-auto grid gap-12 px-4 pb-20 pt-32 sm:pb-24 sm:pt-36 lg:grid-cols-2 lg:items-center lg:gap-10">
+      <div className="container mx-auto grid max-w-6xl gap-12 px-4 pb-20 pt-32 sm:pb-24 sm:pt-36 lg:grid-cols-2 lg:items-center lg:gap-10">
         {/* Texte */}
         <motion.div
           variants={container}

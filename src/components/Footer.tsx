@@ -70,7 +70,7 @@ const Footer: React.FC = () => {
   ];
 
   return (
-    <footer className="bg-ddb-950 py-16 text-white">
+    <footer className="bg-ddb-900 py-16 text-white">
       <div className="container mx-auto max-w-6xl px-4">
         <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4 lg:gap-10">
           {/* Marque */}

@@ -120,7 +120,7 @@ const MissionCard: React.FC<Mission & { index: number }> = ({
 const Missions: React.FC = () => {
   return (
     <section id="missions" className="bg-ddb-50 py-20 sm:py-24">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto max-w-6xl px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}

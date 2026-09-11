@@ -58,12 +58,12 @@ const CoreReports: React.FC = () => {
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: '-100px' }}
-        className="container mx-auto flex flex-col-reverse items-center gap-16 px-4 lg:flex-row lg:justify-between lg:gap-12"
+        className="container mx-auto flex max-w-6xl flex-col-reverse items-center gap-16 px-4 lg:flex-row lg:justify-center lg:gap-20"
       >
         {/* ── Sac écologique + documents (gauche) ── */}
         <motion.div
           variants={item}
-          className="relative h-[440px] w-full max-w-sm shrink-0 sm:h-[500px] lg:w-1/2"
+          className="relative h-[440px] w-full max-w-sm shrink-0 sm:h-[500px] lg:w-[420px]"
         >
           {/* Documents qui sortent / rentrent dans le sac */}
           {docs.map((doc, i) => {
@@ -140,7 +140,7 @@ const CoreReports: React.FC = () => {
         </motion.div>
 
         {/* ── Texte (droite) ── */}
-        <div className="flex max-w-xl flex-col items-center text-center lg:items-start lg:text-left">
+        <div className="flex max-w-xl flex-col items-center text-center lg:ml-6 lg:items-start lg:text-left">
           <motion.h2
             variants={item}
             className="font-heading text-4xl font-extrabold leading-[1.1] tracking-tight text-ddb-950 sm:text-5xl lg:text-6xl"
