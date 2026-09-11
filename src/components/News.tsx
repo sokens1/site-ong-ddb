@@ -208,14 +208,14 @@ const News: React.FC = () => {
                   <div className="mt-4 flex flex-row gap-2 sm:mt-8 sm:w-auto sm:gap-3">
                     <button
                       onClick={() => openItem(item)}
-                      className="group inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-ddb-700 px-2 py-2 text-center font-heading text-[11px] font-bold leading-tight text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-ddb-800 sm:flex-none sm:px-6 sm:py-3 sm:text-sm"
+                      className="group inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-ddb-700 px-2 py-2 text-center font-heading text-[11px] font-bold leading-tight text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-ddb-800 sm:flex-none sm:px-6 sm:py-3 sm:text-sm"
                     >
                       Lire ce blog
                       <ArrowRight className="hidden h-4 w-4 transition-transform duration-300 group-hover:translate-x-1 sm:block" />
                     </button>
                     <button
                       onClick={() => navigate('/news')}
-                      className="inline-flex flex-1 items-center justify-center rounded-full border-2 border-ddb-200 px-2 py-2 text-center font-heading text-[11px] font-bold leading-tight text-ddb-700 transition-colors duration-300 hover:border-ddb-400 hover:bg-ddb-50 sm:flex-none sm:px-6 sm:py-3 sm:text-sm"
+                      className="inline-flex flex-1 items-center justify-center whitespace-nowrap rounded-full border-2 border-ddb-200 px-2 py-2 text-center font-heading text-[11px] font-bold leading-tight text-ddb-700 transition-colors duration-300 hover:border-ddb-400 hover:bg-ddb-50 sm:flex-none sm:px-6 sm:py-3 sm:text-sm"
                     >
                       Voir d'autres
                     </button>
