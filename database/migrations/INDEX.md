@@ -60,6 +60,7 @@ déjà appliquée en production ; le supprimer effacerait la trace de ce qui a
 | 038 | `secure_site_visits.sql` | 2026-09-10 | **Correctif sécurité** : `site_visits` avait une policy `FOR ALL USING(true)` (anon pouvait tout lire/modifier/supprimer). RLS remis : lecture `authenticated` seule, écriture uniquement via `increment_visit()` (SECURITY DEFINER, `search_path` fixé). Fallback SQL direct retiré de `App.tsx` | ✅ **ACTIF** — source de vérité pour `site_visits` |
 | 039 | `event_capacity.sql` | 2026-09-10 | Trigger `BEFORE INSERT` sur `event_registrations` : refuse l'inscription si `events.max_slots` atteint, avec `SELECT ... FOR UPDATE` sur la ligne event pour bloquer la race condition sur la dernière place | ✅ PERMANENT |
 | 040 | `email_validation.sql` | 2026-09-10 | Contraintes `CHECK` de format email (`NOT VALID`) sur `form_submissions`, `donations`, `newsletter_subscribers`, `event_registrations` — défense en profondeur si le client est contourné | ✅ PERMANENT |
+| 041 | `login_attempts.sql` | 2026-09-11 | Table `login_attempts` (email, ip, succès, date) pour le verrouillage anti brute-force de `/admin/login`, géré par l'edge function `admin-login`. RLS activée sans aucune policy anon/authenticated — accès service role uniquement | ✅ PERMANENT |
 
 ## En clair : où regarder pour savoir "qui a le droit de faire quoi" aujourd'hui
 

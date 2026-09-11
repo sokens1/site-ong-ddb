@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
+import { FileText, Eye, Download } from 'lucide-react';
 import Missions from './Missions';
 
 // Animation Variants
@@ -39,130 +40,41 @@ const AnimatedSection: React.FC<{ children: React.ReactNode; className?: string 
 };
 
 const About: React.FC = () => {
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
-  const historyImages = [
-    '/images/image-presentation-2.jpg',
-    '/images/image-presentation-1.jpg',
-    '/images/image-presentation-3.jpg',
-    '/images/image-presentation-4.jpg'
-  ];
-
-  const prevSlide = () => {
-    const isFirstSlide = currentIndex === 0;
-    const newIndex = isFirstSlide ? historyImages.length - 1 : currentIndex - 1;
-    setCurrentIndex(newIndex);
-  };
-
-  const nextSlide = () => {
-    const isLastSlide = currentIndex === historyImages.length - 1;
-    const newIndex = isLastSlide ? 0 : currentIndex + 1;
-    setCurrentIndex(newIndex);
-  };
-
-  const goToSlide = (slideIndex: number) => {
-    setCurrentIndex(slideIndex);
-  }
-
-  useEffect(() => {
-    const slideInterval = setInterval(() => {
-      setCurrentIndex(prevIndex =>
-        prevIndex === historyImages.length - 1 ? 0 : prevIndex + 1
-      );
-    }, 3000); // Change slide every 3 seconds
-
-    return () => clearInterval(slideInterval); // Cleanup interval on component unmount
-  }, [historyImages.length]);
 
   return (
-    <section id="about" className="py-20 bg-white">
-      <div className="container mx-auto px-4">
-        <AnimatedSection className="text-center mb-16">
-          <motion.h2 variants={itemVariants} className="text-3xl md:text-4xl font-bold text-green-800 mb-4">
-            L'ONG Développement Durable et Bien-Être
-          </motion.h2>
-          <motion.div variants={itemVariants} className="w-24 h-1 bg-green-600 mx-auto"></motion.div>
-        </AnimatedSection>
-
-        <div className="flex flex-col lg:flex-row gap-12 mb-20">
-          <AnimatedSection className="lg:w-1/2">
-            <motion.h3 variants={itemVariants} className="text-2xl font-bold text-green-800 mb-6">Notre histoire</motion.h3>
-            <motion.p variants={itemVariants} className="text-gray-700 mb-6">
-              Fondée le 23 septembre 2017 à Libreville, notre ONG a obtenu son récépissé officiel N°0059/MIATCLDCI/SG/DGELP/DFAC du 1er février 2019. Depuis, nous n'avons cessé de grandir et d'étendre notre impact à travers le Gabon.
-            </motion.p>
-            <motion.div variants={itemVariants} className="bg-gray-100 p-6 rounded-lg">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-800 mr-4">
-                  <i className="fas fa-quote-left"></i>
-                </div>
-                <p className="italic text-gray-700">
-                  "La protection de notre environnement n'est pas une option, c'est une nécessité pour assurer le bien-être des générations futures."
-                </p>
-              </div>
-              <div className="flex items-center justify-end gap-3 mt-2">
-                <p className="text-right font-bold text-green-800">
-                  Franck Ondeno, Président
-                </p>
-                <img
-                  src="/images/image-president.JPG"
-                  alt="Franck Ondeno, Président"
-                  className="w-14 h-14 rounded-full object-cover object-top border-2 border-green-600 shadow-md flex-shrink-0"
-                />
-              </div>
-            </motion.div>
-          </AnimatedSection>
-
-
-          <motion.div variants={itemVariants} className="lg:w-1/2 relative group">
-            <div style={{ backgroundImage: `url(${historyImages[currentIndex]})` }} className='w-full h-[400px] rounded-2xl bg-center bg-cover duration-500'></div>
-            {/* Left Arrow */}
-            <div className='hidden group-hover:block absolute top-[50%] -translate-x-0 translate-y-[-50%] left-5 text-2xl rounded-full p-2 bg-black/20 text-white cursor-pointer'>
-              <i className='fas fa-chevron-left' onClick={prevSlide}></i>
-            </div>
-            {/* Right Arrow */}
-            <div className='hidden group-hover:block absolute top-[50%] -translate-x-0 translate-y-[-50%] right-5 text-2xl rounded-full p-2 bg-black/20 text-white cursor-pointer'>
-              <i className='fas fa-chevron-right' onClick={nextSlide}></i>
-            </div>
-            <div className='flex top-4 justify-center py-2'>
-              {historyImages.map((_, slideIndex) => (
-                <div key={slideIndex} onClick={() => goToSlide(slideIndex)} className='text-2xl cursor-pointer'>
-                  <i className={`fas fa-circle mx-1 ${currentIndex === slideIndex ? 'text-green-600' : 'text-gray-300'}`} style={{ fontSize: '12px' }}></i>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Nos missions — nouvelle section */}
-        <div className="-mx-4 mb-4">
+    <section id="about" className="bg-white">
+      <div className="container mx-auto px-4 py-20">
+        {/* Nos missions */}
+        <div className="-mx-4">
           <Missions />
         </div>
+      </div>
 
-        <AnimatedSection className="mb-20">
-          <motion.h3 variants={itemVariants} className="text-2xl font-bold text-green-800 mb-8 text-center">Documents statutaires</motion.h3>
-          <div className="max-w-2xl mx-auto">
+      {/* Documents statutaires — plein cadre, même vert que la section Actualités */}
+      <AnimatedSection className="bg-ddb-900 py-20">
+        <div className="container mx-auto px-4">
+          <div className="relative mx-auto max-w-3xl sm:px-10">
+            {/* Cadre */}
             <motion.div
               variants={itemVariants}
-              className="bg-white p-8 rounded-lg shadow-md border border-gray-100 hover:shadow-xl transition-all duration-300"
+              className="relative rounded-[2rem] border-2 border-white/15 bg-ddb-950 px-6 py-16 text-center sm:px-14"
             >
-              <div className="flex items-center mb-6">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-800 mr-6">
-                  <i className="fas fa-file-alt text-2xl"></i>
-                </div>
-                <div>
-                  <h4 className="text-2xl font-bold text-green-800">Statuts et Règlement intérieur</h4>
-                  <p className="text-gray-600">Documents officiels de l'ONG</p>
-                </div>
-              </div>
-              <p className="text-gray-700 mb-6 text-lg">
-                Consultez les documents officiels qui définissent les objectifs, la structure organisationnelle et les règles de fonctionnement de notre ONG Développement Durable et Bien-Être.
+              <h3 className="font-heading text-3xl font-extrabold text-white sm:text-4xl">
+                Statuts et Règlement intérieur
+              </h3>
+              <p className="mx-auto mt-4 max-w-lg text-white/60">
+                Consultez les documents officiels qui définissent les
+                objectifs, la structure organisationnelle et les règles de
+                fonctionnement de notre ONG Développement Durable et
+                Bien-Être.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <button
                   onClick={() => setIsDocumentModalOpen(true)}
-                  className="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors duration-300 flex items-center justify-center text-lg font-medium"
+                  className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 font-heading font-bold text-ddb-950 transition-all duration-300 hover:-translate-y-0.5"
                 >
-                  <i className="fas fa-eye mr-3"></i>
+                  <Eye className="h-4 w-4" />
                   Visualiser le document
                 </button>
                 <button
@@ -172,17 +84,51 @@ const About: React.FC = () => {
                     link.download = 'statuts-et-reglement-ong.pdf';
                     link.click();
                   }}
-                  className="flex-1 bg-gray-600 text-white py-3 px-6 rounded-lg hover:bg-gray-700 transition-colors duration-300 flex items-center justify-center text-lg font-medium"
+                  className="inline-flex items-center gap-2 rounded-full border-2 border-white/30 px-6 py-3 font-heading font-bold text-white transition-colors duration-300 hover:border-white hover:bg-white/10"
                 >
-                  <i className="fas fa-download mr-3"></i>
+                  <Download className="h-4 w-4" />
                   Télécharger
                 </button>
               </div>
             </motion.div>
-          </div>
-        </AnimatedSection>
 
-      </div>
+            {/* Fiches document flottantes, aux coins opposés */}
+            <motion.div
+              initial={{ opacity: 0, y: -10, rotate: 6 }}
+              whileInView={{ opacity: 1, rotate: 3 }}
+              viewport={{ once: true }}
+              animate={{ y: [0, -8, 0] }}
+              transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
+              className="absolute -top-4 right-2 w-40 rounded-2xl bg-black p-4 shadow-2xl ring-1 ring-white/10 sm:-top-6 sm:right-6 sm:w-48"
+            >
+              <div className="flex items-center justify-between">
+                <FileText className="h-5 w-5 text-ddb-400" />
+                <span className="text-[9px] font-bold uppercase tracking-widest text-white/40">PDF</span>
+              </div>
+              <p className="mt-3 text-sm font-bold text-white">Statuts ONG</p>
+              <p className="mt-0.5 text-[11px] text-white/40">01/02/2019</p>
+              <div className="mt-4 h-10 rounded-lg bg-gradient-to-r from-ddb-600 via-ddb-400 to-transparent opacity-60 blur-md" />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10, rotate: -6 }}
+              whileInView={{ opacity: 1, rotate: -3 }}
+              viewport={{ once: true }}
+              animate={{ y: [0, 8, 0] }}
+              transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
+              className="absolute -bottom-4 left-2 w-40 rounded-2xl bg-black p-4 shadow-2xl ring-1 ring-white/10 sm:-bottom-6 sm:left-6 sm:w-48"
+            >
+              <div className="flex items-center justify-between">
+                <FileText className="h-5 w-5 text-ddb-400" />
+                <span className="text-[9px] font-bold uppercase tracking-widest text-white/40">PDF</span>
+              </div>
+              <p className="mt-3 text-sm font-bold text-white">Règlement intérieur</p>
+              <p className="mt-0.5 text-[11px] text-white/40">01/02/2019</p>
+              <div className="mt-4 h-10 rounded-lg bg-gradient-to-r from-ddb-500 via-ddb-300 to-transparent opacity-60 blur-md" />
+            </motion.div>
+          </div>
+        </div>
+      </AnimatedSection>
 
       {/* Modal pour visualiser le document */}
       {isDocumentModalOpen && (

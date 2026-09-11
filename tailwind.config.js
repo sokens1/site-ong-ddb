@@ -20,8 +20,8 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Lato', 'system-ui', 'sans-serif'],
-        heading: ['Sora', 'Montserrat', 'system-ui', 'sans-serif'],
+        sans: ['Work Sans', 'system-ui', 'sans-serif'],
+        heading: ['Poppins', 'system-ui', 'sans-serif'],
       },
       keyframes: {
         'float-slow': {

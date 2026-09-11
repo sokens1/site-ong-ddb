@@ -2,12 +2,21 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { ArrowLeft } from 'lucide-react';
+import Turnstile from '../components/Turnstile';
+
+const LOGIN_ERROR_MESSAGES: Record<string, string> = {
+  invalid_credentials: 'Email ou mot de passe incorrect.',
+  missing_fields: 'Merci de renseigner l\'email et le mot de passe.',
+  server_error: 'Erreur serveur. Réessayez dans un instant.',
+};
 
 const AdminLogin: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaNonce, setCaptchaNonce] = useState(0);
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -16,23 +25,40 @@ const AdminLogin: React.FC = () => {
     setError('');
 
     try {
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      // Toute la vérification (identifiants + anti brute-force) passe par
+      // cette edge function : impossible à contourner depuis le navigateur,
+      // contrairement à un simple compteur côté client.
+      const { data, error: fnError } = await supabase.functions.invoke('admin-login', {
+        body: { email, password, token: captchaToken },
       });
 
-      if (signInError) {
-        setError(signInError.message);
+      if (fnError || !data?.ok) {
+        const reason: string = data?.reason || 'server_error';
+        if (reason === 'locked') {
+          const mins = Math.ceil((data?.retryAfterSeconds ?? 0) / 60);
+          setError(`Trop de tentatives échouées. Réessayez dans ${mins} minute${mins > 1 ? 's' : ''}.`);
+        } else {
+          setError(LOGIN_ERROR_MESSAGES[reason] || 'Une erreur est survenue.');
+        }
+        setCaptchaNonce(n => n + 1);
         setLoading(false);
         return;
       }
 
-      if (data.user) {
-        // Vérifier si l'utilisateur est admin (vous pouvez créer une table admin_users ou utiliser les metadata)
-        navigate('/admin');
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      });
+      if (sessionError) {
+        setError('Erreur lors de l\'ouverture de session.');
+        setLoading(false);
+        return;
       }
+
+      navigate('/admin');
     } catch (err: any) {
       setError(err.message || 'Une erreur est survenue');
+      setCaptchaNonce(n => n + 1);
       setLoading(false);
     }
   };
@@ -125,6 +151,8 @@ const AdminLogin: React.FC = () => {
                 placeholder="••••••••"
               />
             </div>
+
+            <Turnstile onToken={setCaptchaToken} resetSignal={captchaNonce} />
 
             <button
               type="submit"

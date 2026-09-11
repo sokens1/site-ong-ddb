@@ -78,7 +78,7 @@ const Team: React.FC = () => {
   return (
     <section id="team" className="bg-white py-20 text-ddb-950 sm:py-24">
       <div className="container mx-auto max-w-6xl px-4">
-        <div className="lg:grid lg:grid-cols-[340px_1fr] lg:gap-14">
+        <div className="lg:grid lg:grid-cols-[460px_1fr] lg:gap-14">
           {/* ── Colonne gauche : titre + sous-titre ── */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -175,17 +175,23 @@ const Team: React.FC = () => {
               </motion.div>
             </div>
 
-            {/* Navigation, en bas */}
-            <div className="mt-10 flex items-center justify-end gap-3">
+            {/* Navigation, en bas — mêmes icônes sur mobile et desktop.
+                Style inline (pas une classe Tailwind) pour le positionnement/z-index :
+                ça ne dépend d'aucune génération JIT et passe donc toujours au-dessus
+                du bouton flottant "Retour en haut" (fixed, z-index:1000). */}
+            <div
+              className="mt-10 flex items-center justify-end gap-3"
+              style={{ position: 'relative', zIndex: 2000 }}
+            >
               <button
                 onClick={() => {
                   setHovering(true);
                   prev();
                 }}
                 aria-label="Précédent"
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-ddb-950/15 text-ddb-950 transition-colors hover:border-ddb-700 hover:bg-ddb-50 hover:text-ddb-700"
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-ddb-950 text-white shadow-lg transition-colors hover:bg-ddb-700"
               >
-                <ChevronLeft className="h-5 w-5" />
+                <ChevronLeft className="h-6 w-6" />
               </button>
               <button
                 onClick={() => {
@@ -193,9 +199,9 @@ const Team: React.FC = () => {
                   next();
                 }}
                 aria-label="Suivant"
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-ddb-950/15 text-ddb-950 transition-colors hover:border-ddb-700 hover:bg-ddb-50 hover:text-ddb-700"
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-ddb-950 text-white shadow-lg transition-colors hover:bg-ddb-700"
               >
-                <ChevronRight className="h-5 w-5" />
+                <ChevronRight className="h-6 w-6" />
               </button>
             </div>
           </div>
