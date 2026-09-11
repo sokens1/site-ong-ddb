@@ -148,7 +148,45 @@ détail de la cause d'échec au client.
 
 ---
 
-## 8. Process d'audit récurrent
+## 8. En-têtes HTTP de sécurité
+
+| # | Point | Statut ici |
+|---|---|---|
+| 8.1 | `Content-Security-Policy` présente, avec un allowlist explicite (pas de `unsafe-eval`, `unsafe-inline` seulement sur `style-src` si des libs l'exigent) | ✅ (`vercel.json`) |
+| 8.2 | `X-Frame-Options: SAMEORIGIN` (ou `DENY`) — anti clickjacking | ✅ |
+| 8.3 | `X-Content-Type-Options: nosniff` — anti MIME-sniffing | ✅ |
+| 8.4 | `Referrer-Policy: strict-origin-when-cross-origin` — évite de fuiter l'URL complète (avec tokens en query string) vers des sites tiers | ✅ |
+| 8.5 | `Permissions-Policy` restreint les API navigateur non utilisées (caméra/micro/géoloc/paiement), autorise explicitement celles dont le site a besoin (`camera=(self)` si scan QR) | ✅ |
+| 8.6 | `Strict-Transport-Security` (HSTS) — généralement déjà géré par l'hébergeur (Vercel l'ajoute par défaut) | ➖ déjà fourni par Vercel |
+
+**Recette générique (site statique/SPA sur Vercel, pas de serveur Node)** :
+ajouter un bloc `headers` dans `vercel.json` (routes `/(.*)`) — c'est la seule
+option sans backend pour injecter des en-têtes sur toutes les réponses.
+
+**Construire la CSP sans rien casser** : avant d'écrire la moindre valeur,
+lister *tous* les domaines externes réellement appelés par le front :
+```bash
+grep -rhoE "https?://[a-zA-Z0-9.-]+" src index.html | sort -u
+```
+Puis classer chacun par directive selon comment il est utilisé dans le code
+(`<script src>` → `script-src`, `fetch()/WebSocket` → `connect-src`,
+`<img>` → `img-src`, `<iframe>` → `frame-src`, feuille de style →
+`style-src`/`font-src`). Un lien `<a href="https://...">` simple (réseaux
+sociaux, wa.me, mailto) n'a besoin d'aucune directive — CSP ne bloque pas la
+navigation, seulement les sous-ressources chargées automatiquement.
+Exclure les domaines qui n'apparaissent que côté Edge Functions/serveur
+(Deno, APIs tierces appelées depuis le backend) : la CSP du site ne les
+concerne pas, seul ce qui tourne **dans le navigateur** compte.
+
+Toujours re-tester après déploiement les flux qui touchent une ressource
+externe (widget anti-bot, lecteurs vidéo embarqués, scan QR caméra,
+génération de PDF/QR avec fallback API) — une CSP trop stricte casse
+silencieusement ces features sans erreur visible pour l'utilisateur final,
+seulement dans la console.
+
+---
+
+## 9. Process d'audit récurrent
 
 Réutiliser **`database/AUDIT.sql`** (read-only, sans danger) sur n'importe
 quel projet Supabase :
@@ -171,3 +209,6 @@ avant/après un pic de trafic attendu (lancement, événement).
 - **2026-09-11** — création initiale, à partir de l'audit complet du site
   ONG DDB (RLS, egress, anti brute-force, Turnstile, validation email,
   capacité événements, purge storage).
+- **2026-09-11** — ajout §8 En-têtes HTTP de sécurité, suite à un audit
+  externe (Hexaro) pointant CSP/X-Frame-Options/X-Content-Type-Options/
+  Referrer-Policy/Permissions-Policy absents. Corrigé via `vercel.json`.

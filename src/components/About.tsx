@@ -99,7 +99,7 @@ const About: React.FC = () => {
               viewport={{ once: true }}
               animate={{ y: [0, -8, 0] }}
               transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute -top-4 right-2 w-40 rounded-2xl bg-black p-4 shadow-2xl ring-1 ring-white/10 sm:-top-6 sm:right-6 sm:w-48"
+              className="absolute -top-4 right-2 w-40 rounded-2xl bg-ddb-950 p-4 shadow-2xl ring-1 ring-ddb-400/20 sm:-top-6 sm:right-6 sm:w-48"
             >
               <div className="flex items-center justify-between">
                 <FileText className="h-5 w-5 text-ddb-400" />
@@ -116,7 +116,7 @@ const About: React.FC = () => {
               viewport={{ once: true }}
               animate={{ y: [0, 8, 0] }}
               transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
-              className="absolute -bottom-4 left-2 w-40 rounded-2xl bg-black p-4 shadow-2xl ring-1 ring-white/10 sm:-bottom-6 sm:left-6 sm:w-48"
+              className="absolute -bottom-4 left-2 w-40 rounded-2xl bg-ddb-950 p-4 shadow-2xl ring-1 ring-ddb-400/20 sm:-bottom-6 sm:left-6 sm:w-48"
             >
               <div className="flex items-center justify-between">
                 <FileText className="h-5 w-5 text-ddb-400" />
