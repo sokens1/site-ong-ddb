@@ -19,11 +19,13 @@ const Partners: React.FC = () => {
   const duplicatedPartners = [...partners, ...partners, ...partners];
 
   return (
-    <section id="partners" className="py-16 bg-white overflow-hidden border-t border-gray-100">
+    <section id="partners" className="py-16 bg-ddb-50 overflow-hidden border-t border-ddb-100">
       <div className="container mx-auto px-4 mb-10">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-green-800 mb-2">Nos Partenaires</h2>
-          <div className="w-16 h-1 bg-green-600 mx-auto"></div>
+          <h2 className="font-heading text-4xl font-extrabold tracking-tight text-ddb-950 sm:text-5xl mb-4">
+            Nos Partenaires
+          </h2>
+          <div className="w-16 h-1 bg-ddb-600 rounded-full mx-auto"></div>
         </div>
       </div>
 
@@ -45,7 +47,7 @@ const Partners: React.FC = () => {
           {duplicatedPartners.map((partner, index) => (
             <div
               key={index}
-              className="w-32 h-32 flex-shrink-0 flex items-center justify-center transition-all duration-300 hover:scale-110"
+              className="w-24 h-24 flex-shrink-0 flex items-center justify-center transition-all duration-300 hover:scale-110"
             >
               <img
                 src={partner.value}

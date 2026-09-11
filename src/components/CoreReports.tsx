@@ -1,9 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
+import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import ReportCard from './ReportCard';
+import { ArrowRight, FileText, Leaf } from 'lucide-react';
 import { fetchReports } from '../data/reports';
-import { ArrowRight } from 'lucide-react';
 
 interface Report {
   id: number;
@@ -15,158 +14,157 @@ interface Report {
   category: string;
 }
 
-const containerVariants = {
+// Éventail des documents : décalage horizontal, rotation, z-index,
+// position "sortie" (ty) et réglages de la boucle sortie / rentrée.
+const FAN = [
+  { ml: '-ml-20 sm:-ml-28', rot: '-rotate-[14deg]', zi: 10, ty: 6, dur: 3.4, delay: 0 },
+  { ml: 'ml-0', rot: 'rotate-0', zi: 16, ty: -14, dur: 3.8, delay: 0.9 },
+  { ml: 'ml-20 sm:ml-28', rot: 'rotate-[14deg]', zi: 10, ty: 6, dur: 3.6, delay: 1.8 },
+];
+
+const container: Variants = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.15, delayChildren: 0.2 },
-  },
+  visible: { opacity: 1, transition: { staggerChildren: 0.15, delayChildren: 0.1 } },
 };
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5 },
-  },
+const item: Variants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } },
 };
 
 const CoreReports: React.FC = () => {
-  const [reportsData, setReportsData] = useState<Report[]>([]);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const animationRef = useRef(null);
-  const isInView = useInView(animationRef, { once: true, margin: '-150px' });
   const navigate = useNavigate();
+  const [reports, setReports] = useState<Report[]>([]);
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    let scrollTimeout: NodeJS.Timeout;
-    const handleScroll = () => {
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
-        const scrollLeft = container.scrollLeft;
-        const cardWidth = container.children[0]?.clientWidth || 0;
-        const gap = 24;
-        setActiveIndex(Math.round(scrollLeft / (cardWidth + gap)));
-      }, 100);
-    };
-    container.addEventListener('scroll', handleScroll);
-    return () => { container.removeEventListener('scroll', handleScroll); clearTimeout(scrollTimeout); };
-  }, []);
-
-  const scroll = (direction: 'left' | 'right') => {
-    if (scrollContainerRef.current) {
-      const scrollAmount = scrollContainerRef.current.clientWidth * 0.8;
-      scrollContainerRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth',
-      });
-    }
-  };
-
-  useEffect(() => {
-    const getReports = async () => {
+    (async () => {
       const data = await fetchReports();
-      // Sort and take top 5
-      const sorted = data.sort((a: Report, b: Report) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setReportsData(sorted.slice(0, 5));
-    };
-    getReports();
+      const sorted = (data as Report[]).sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      );
+      setReports(sorted.slice(0, 3));
+    })();
   }, []);
+
+  const docs = [0, 1, 2].map((i) => {
+    const r = reports[i];
+    return { title: r?.title, href: r?.fileUrl };
+  });
 
   return (
-    <section className="py-16 bg-white" id="reports">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-green-800 mb-4">Nos Rapports</h2>
-          <div className="w-24 h-1 bg-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-500 max-w-2xl mx-auto text-sm">Consultez nos derniers rapports d'activités pour suivre l'impact de nos actions.</p>
-        </div>
-
+    <section id="reports" className="bg-white py-20 sm:py-24">
+      <motion.div
+        variants={container}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: '-100px' }}
+        className="container mx-auto flex flex-col-reverse items-center gap-16 px-4 lg:flex-row lg:justify-between lg:gap-12"
+      >
+        {/* ── Sac écologique + documents (gauche) ── */}
         <motion.div
-           ref={animationRef}
-           variants={containerVariants}
-           initial="hidden"
-           animate={isInView ? 'visible' : 'hidden'}
-           className="relative group"
+          variants={item}
+          className="relative h-[440px] w-full max-w-sm shrink-0 sm:h-[500px] lg:w-1/2"
         >
-          <div ref={scrollContainerRef} className="flex overflow-x-auto snap-x gap-6 pb-8 scrollbar-hide pt-4 px-4 -mx-4" style={{ scrollBehavior: 'smooth' }}>
-            {reportsData.map((report) => (
-              <motion.div
-                key={report.id}
-                variants={itemVariants}
-                className="flex-shrink-0 snap-start w-[85vw] md:w-96"
+          {/* Documents qui sortent / rentrent dans le sac */}
+          {docs.map((doc, i) => {
+            const f = FAN[i];
+            return (
+              <div
+                key={i}
+                className={`absolute left-[54%] top-9 -translate-x-1/2 ${f.rot} ${f.ml}`}
+                style={{ zIndex: f.zi }}
               >
-                <ReportCard report={report} />
-              </motion.div>
-            ))}
-
-            {/* View More Card */}
-            <motion.div
-              variants={itemVariants}
-              className="flex-shrink-0 snap-start w-[85vw] md:w-96 flex items-center justify-center p-4"
-            >
-              <div 
-                onClick={() => navigate('/actions')}
-                className="bg-green-50 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 w-full h-full min-h-[350px] flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-green-200 hover:border-green-400 group cursor-pointer"
-              >
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm text-green-600">
-                  <ArrowRight size={28} />
-                </div>
-                <h3 className="text-xl font-bold text-green-800 mb-2">Tous nos rapports</h3>
-                <p className="text-green-600/80 text-sm">Accédez à l'ensemble de nos rapports annuels et bilans financiers.</p>
+                <motion.a
+                  href={doc.href || '#'}
+                  target={doc.href ? '_blank' : undefined}
+                  rel="noopener noreferrer"
+                  aria-label={doc.title || 'Ouvrir le rapport'}
+                  animate={{ y: [150, f.ty, 150] }}
+                  transition={{
+                    duration: f.dur,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                    delay: f.delay,
+                    repeatDelay: 0.5,
+                  }}
+                  whileHover={{ y: f.ty - 16, scale: 1.03 }}
+                  className="relative block h-56 w-40 overflow-hidden rounded-lg bg-white shadow-2xl shadow-ddb-950/25 ring-1 ring-black/5 sm:h-64 sm:w-44"
+                >
+                  {/* bandeau haut du document */}
+                  <div className="h-1.5 w-full bg-ddb-500" />
+                  <div className="p-3.5">
+                    <FileText className="h-5 w-5 text-ddb-600" />
+                    <p className="mt-2 line-clamp-2 font-heading text-[11px] font-bold leading-snug text-ddb-950 sm:text-xs">
+                      {doc.title || "Rapport d'activité"}
+                    </p>
+                    {/* fausses lignes de texte */}
+                    <div className="mt-3 space-y-1.5">
+                      <span className="block h-1.5 w-full rounded bg-ddb-950/10" />
+                      <span className="block h-1.5 w-[85%] rounded bg-ddb-950/10" />
+                      <span className="block h-1.5 w-[70%] rounded bg-ddb-950/10" />
+                      <span className="block h-1.5 w-[92%] rounded bg-ddb-950/10" />
+                      <span className="block h-1.5 w-[60%] rounded bg-ddb-950/10" />
+                    </div>
+                  </div>
+                  <span className="absolute bottom-2.5 left-3.5 rounded bg-ddb-100 px-1.5 py-0.5 font-heading text-[9px] font-bold text-ddb-700">
+                    PDF
+                  </span>
+                </motion.a>
               </div>
-            </motion.div>
+            );
+          })}
 
+          {/* Le sac */}
+          <div className="absolute bottom-4 left-12 right-8 z-20 h-[190px] sm:left-14 sm:right-9 sm:h-[220px]">
+            {/* Anses */}
+            <div className="absolute -top-11 left-[20%] h-12 w-9 rounded-t-full border-[7px] border-b-0 border-ddb-700 sm:-top-12 sm:h-14 sm:w-11" />
+            <div className="absolute -top-11 right-[20%] h-12 w-9 rounded-t-full border-[7px] border-b-0 border-ddb-700 sm:-top-12 sm:h-14 sm:w-11" />
+
+            {/* Corps du sac */}
+            <div className="absolute inset-0 overflow-hidden rounded-b-[2rem] rounded-t-lg bg-gradient-to-b from-ddb-500 to-ddb-700 shadow-2xl shadow-ddb-950/30">
+              {/* rabat / ouverture */}
+              <div className="absolute inset-x-0 top-0 h-6 bg-ddb-800/50" />
+              <div className="absolute inset-x-0 top-6 h-px bg-white/20" />
+              {/* coutures verticales */}
+              <div className="absolute bottom-6 left-1/3 top-10 w-px bg-white/15" />
+              <div className="absolute bottom-6 right-1/3 top-10 w-px bg-white/15" />
+              {/* emblème */}
+              <div className="absolute bottom-8 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5 text-white/90">
+                <Leaf className="h-9 w-9" />
+                <span className="font-heading text-[10px] font-bold uppercase tracking-[0.2em]">
+                  ONG&nbsp;DDB
+                </span>
+              </div>
+            </div>
           </div>
-          {/* Flèches de navigation */}
-          {reportsData.length > 0 && (
-            <>
-              <button
-                onClick={() => scroll('left')}
-                className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm rounded-full p-3 text-green-800 hover:bg-white shadow-lg transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 disabled:opacity-0 z-10"
-              >
-                <i className="fas fa-chevron-left"></i>
-              </button>
-              <button
-                onClick={() => scroll('right')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm rounded-full p-3 text-green-800 hover:bg-white shadow-lg transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 disabled:opacity-0 z-10"
-              >
-                <i className="fas fa-chevron-right"></i>
-              </button>
-            </>
-          )}
         </motion.div>
 
-        {isMobile && reportsData.length > 0 && (
-          <div className="flex justify-center gap-2 mt-4 mb-4">
-            {[...reportsData, { id: 'more' }].map((_, index) => (
-              <button
-                key={index}
-                onClick={() => {
-                  const container = scrollContainerRef.current;
-                  if (container?.children[index]) {
-                    const card = container.children[index] as HTMLElement;
-                    container.scrollTo({ left: card.offsetLeft, behavior: 'smooth' });
-                  }
-                }}
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${activeIndex === index ? 'bg-green-600 w-5' : 'bg-green-200'}`}
-                aria-label={`Aller à l'élément ${index + 1}`}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+        {/* ── Texte (droite) ── */}
+        <div className="flex max-w-xl flex-col items-center text-center lg:items-start lg:text-left">
+          <motion.h2
+            variants={item}
+            className="font-heading text-4xl font-extrabold leading-[1.1] tracking-tight text-ddb-950 sm:text-5xl lg:text-6xl"
+          >
+            Transparence et
+            <span className="text-ddb-600"> impact mesuré</span>
+          </motion.h2>
+
+          <motion.p variants={item} className="mt-6 max-w-md text-lg text-ddb-950/60">
+            Consultez nos rapports d'activité pour suivre concrètement l'impact
+            de nos actions sur le terrain, année après année.
+          </motion.p>
+
+          <motion.div variants={item} className="mt-8">
+            <button
+              onClick={() => navigate('/actions')}
+              className="group inline-flex items-center gap-2 rounded-full bg-ddb-700 px-8 py-3.5 font-heading font-bold text-white shadow-lg shadow-ddb-950/20 transition-all duration-300 hover:-translate-y-0.5 hover:bg-ddb-800"
+            >
+              Consulter tous les rapports
+              <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
+            </button>
+          </motion.div>
+        </div>
+      </motion.div>
     </section>
   );
 };

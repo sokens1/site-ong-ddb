@@ -1,180 +1,205 @@
-import React, { useState, useEffect, useRef, Key } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { motion, useInView } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-interface TeamMember {
-  id: Key | null | undefined;
+interface Member {
+  id: string | number;
   name: string;
   image: string;
   position: string;
-  description: string;
+  description?: string;
 }
-
-const itemVariants = {
-  hidden: { opacity: 0, scale: 0.95 },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    transition: { duration: 0.4, ease: "easeOut" },
-  },
-};
-
-const TeamCard: React.FC<{ member: TeamMember; index: number; isInView: boolean }> = ({ member, index, isInView }) => {
-  return (
-    <motion.div
-      variants={itemVariants}
-      initial="hidden"
-      animate={isInView ? "visible" : "hidden"}
-      transition={{ delay: index * 0.05 }}
-      className="flex-shrink-0 w-[240px] md:w-[280px] h-[320px] md:h-[380px] snap-start group"
-    >
-      <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-sm bg-white border border-gray-100 transition-all duration-300 group-hover:shadow-lg">
-        {/* Full Image */}
-        <img 
-          src={member.image} 
-          alt={member.name} 
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
-        />
-        
-        {/* Very Bottom Gradient */}
-        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
-        
-        {/* Info Content - Very bottom left */}
-        <div className="absolute inset-x-0 bottom-0 p-4 text-left flex flex-col justify-end">
-          <h3 className="text-base font-bold text-white mb-0.5 drop-shadow-sm leading-tight">
-            {member.name}
-          </h3>
-          <p className="text-green-400 font-bold text-[8px] uppercase tracking-wider">
-            {member.position}
-          </p>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
 
 const Team: React.FC = () => {
   const navigate = useNavigate();
-  const [team, setTeam] = useState<TeamMember[]>([]);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const sectionRef = useRef(null);
-  const isInView = useInView(sectionRef, { once: true, margin: '-100px' });
+  const [members, setMembers] = useState<Member[]>([]);
+  const n = members.length;
+
+  // Position "virtuelle" non bornée : le ruban est triplé (3 x membres) et on
+  // recentre discrètement (sans animation) dès qu'on sort de la copie du
+  // milieu -> défilement infini, jamais de vide en fin de liste.
+  const [pos, setPos] = useState(0);
+  const [skipAnim, setSkipAnim] = useState(false);
+  const [hovering, setHovering] = useState(false);
 
   useEffect(() => {
-    const fetchTeam = async () => {
+    (async () => {
       try {
         const { data, error } = await supabase
           .from('team_members')
-          .select('*')
+          .select('id, name, image, position, description')
           .order('id', { ascending: true });
-        if (!error && data) setTeam(data);
+        if (!error && data) setMembers(data as Member[]);
       } catch (err) {
         console.error('Error fetching team:', err);
       }
-    };
-    fetchTeam();
+    })();
   }, []);
 
   useEffect(() => {
-    const container = scrollRef.current;
-    if (!container) return;
+    if (n > 0) setPos(n);
+  }, [n]);
 
-    const handleScroll = () => {
-      const scrollLeft = container.scrollLeft;
-      const cardWidth = container.children[0]?.clientWidth || 0;
-      const gap = 24;
-      setActiveIndex(Math.round(scrollLeft / (cardWidth + gap)));
-    };
+  const next = () => setPos((p) => p + 1);
+  const prev = () => setPos((p) => p - 1);
 
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, []);
+  // Défilement automatique, en pause au survol
+  useEffect(() => {
+    if (n < 2 || hovering) return;
+    const t = setInterval(next, 4500);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [n, hovering, pos]);
 
-  const scrollTo = (index: number) => {
-    if (scrollRef.current) {
-      const cardWidth = scrollRef.current.children[0]?.clientWidth || 0;
-      const gap = 24;
-      scrollRef.current.scrollTo({
-        left: index * (cardWidth + gap),
-        behavior: 'smooth'
-      });
+  // Recentrage silencieux quand on sort de la copie du milieu du ruban
+  useEffect(() => {
+    if (n === 0) return;
+    if (pos >= 2 * n || pos < n) {
+      const id = setTimeout(() => {
+        setSkipAnim(true);
+        setPos(n + (((pos % n) + n) % n));
+        requestAnimationFrame(() => requestAnimationFrame(() => setSkipAnim(false)));
+      }, 720);
+      return () => clearTimeout(id);
     }
-  };
+  }, [pos, n]);
 
-  const scrollSide = (direction: 'left' | 'right') => {
-    const nextIndex = direction === 'left' ? Math.max(0, activeIndex - 1) : Math.min(team.length - 1, activeIndex + 1);
-    scrollTo(nextIndex);
-  };
+  if (n === 0) return null;
+
+  const strip = [...members, ...members, ...members];
+
+  // Largeur de carte fixe -> le décalage se traduit par un vrai défilement
+  const CARD_W = 176;
+  const GAP = 20;
+  const STEP = CARD_W + GAP;
 
   return (
-    <section id="team" ref={sectionRef} className="py-16 bg-gray-50 overflow-hidden">
-      <div className="container mx-auto px-4 mb-10 text-center">
-        <motion.h2 variants={itemVariants} initial="hidden" animate={isInView ? "visible" : "hidden"} className="text-3xl md:text-4xl font-bold text-green-800 mb-3">
-          Notre Bureau Directeur
-        </motion.h2>
-        <div className="w-16 h-1 bg-green-600 rounded-full mx-auto mb-4"></div>
-      </div>
-
-      <div className="container mx-auto px-4 relative group/carousel">
-        {/* Navigation Arrows */}
-        <button
-          onClick={() => scrollSide('left')}
-          aria-label="Précédent"
-          className="absolute -left-2 md:-left-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-green-700 hover:bg-green-600 hover:text-white transition-all z-20 opacity-0 group-hover/carousel:opacity-100 active:scale-95"
-        >
-          <ChevronLeft size={20} aria-hidden="true" />
-        </button>
-        <button
-          onClick={() => scrollSide('right')}
-          aria-label="Suivant"
-          className="absolute -right-2 md:-right-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-green-700 hover:bg-green-600 hover:text-white transition-all z-20 opacity-0 group-hover/carousel:opacity-100 active:scale-95"
-        >
-          <ChevronRight size={20} aria-hidden="true" />
-        </button>
-
-        {/* Carousel Container */}
-        <div 
-          ref={scrollRef}
-          className="flex gap-6 overflow-x-auto pb-6 scrollbar-hide snap-x pt-2 px-2"
-          style={{ scrollBehavior: 'smooth' }}
-        >
-          {team.map((member, index) => (
-            <TeamCard key={member.id as any} member={member} index={index} isInView={isInView} />
-          ))}
-        </div>
-
-        {/* Pagination Dots (Suspension points) */}
-        <div className="flex justify-center gap-2 mt-2 py-4">
-          {team.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => scrollTo(index)}
-              className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${activeIndex === index ? 'bg-green-600 w-4' : 'bg-gray-300'}`}
-              aria-label={`Aller au membre ${index + 1}`}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Admin Login CTA - Resized/Shrunk as requested */}
-      <div className="container mx-auto px-4 mt-8 flex justify-center">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ delay: 0.3 }}
-          className="bg-white border border-green-50 rounded-2xl p-6 shadow-sm text-center max-w-sm w-full"
-        >
-          <p className="text-gray-500 text-xs mb-4 font-medium uppercase tracking-wider">Accès Direction</p>
-          <button 
-            onClick={() => navigate('/admin/login')}
-            className="w-full inline-flex items-center justify-center gap-2 bg-green-700 hover:bg-green-800 text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-sm active:scale-95 text-sm"
+    <section id="team" className="bg-white py-20 text-ddb-950 sm:py-24">
+      <div className="container mx-auto max-w-6xl px-4">
+        <div className="lg:grid lg:grid-cols-[340px_1fr] lg:gap-14">
+          {/* ── Colonne gauche : titre + sous-titre ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="mb-10 lg:mb-0"
           >
-            <i className="fas fa-sign-in-alt text-xs"></i> Espace Membre
-          </button>
-        </motion.div>
+            <h2 className="font-heading text-4xl font-extrabold tracking-tight sm:text-5xl">
+              Notre Bureau Directeur
+            </h2>
+            <p className="mt-3 text-ddb-950/60">
+              Des décennies d'expérience combinées, au service d'une même
+              mission : agir pour l'environnement au Gabon.
+            </p>
+            <button
+              onClick={() => navigate('/join')}
+              className="mt-6 inline-flex rounded-full bg-ddb-700 px-8 py-3.5 font-heading font-bold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-ddb-800"
+            >
+              Rejoignez-nous
+            </button>
+          </motion.div>
+
+          {/* ── Colonne droite : carrousel ── */}
+          <div>
+            {/* Bande de portraits — défilement autonome, nom + fonction sous chaque photo */}
+            <div
+              className="overflow-hidden"
+              onMouseEnter={() => setHovering(true)}
+              onMouseLeave={() => setHovering(false)}
+            >
+              <motion.div
+                className="flex"
+                style={{ gap: GAP }}
+                animate={{ x: -pos * STEP }}
+                transition={{ duration: skipAnim ? 0 : 0.7, ease: [0.22, 1, 0.36, 1] }}
+              >
+                {strip.map((m, k) => {
+                  const dist = Math.abs(k - pos);
+                  const on = dist === 0;
+                  return (
+                    <div key={`${m.id}-${k}`} style={{ width: CARD_W }} className="shrink-0">
+                      <button
+                        onClick={() => setPos(k)}
+                        aria-label={m.name}
+                        className={`relative block aspect-[3/4] w-full overflow-hidden rounded-xl bg-ddb-50 ring-1 ring-black/5 ${
+                          on ? 'ring-2 ring-ddb-400' : ''
+                        }`}
+                      >
+                        <img
+                          src={m.image}
+                          alt={m.name}
+                          className="h-full w-full object-cover transition-all duration-500"
+                          style={{
+                            filter: on ? 'none' : 'grayscale(1)',
+                            opacity: on ? 1 : Math.max(0.18, 1 - dist * 0.2),
+                          }}
+                        />
+                        {!on && (
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute inset-0"
+                            style={{
+                              backgroundImage:
+                                'radial-gradient(#16a34a 1px, transparent 1.5px)',
+                              backgroundSize: `${6 + dist * 2}px ${6 + dist * 2}px`,
+                              opacity: Math.min(0.85, 0.25 + dist * 0.16),
+                              mixBlendMode: 'multiply',
+                            }}
+                          />
+                        )}
+                      </button>
+
+                      {/* Nom + fonction, sous la photo (jamais tronqués) */}
+                      <div className="mt-3">
+                        <p
+                          className={`font-heading text-xs font-bold leading-snug sm:text-sm ${
+                            on ? 'text-ddb-950' : 'text-ddb-950/25'
+                          }`}
+                        >
+                          {m.name}
+                        </p>
+                        <p
+                          className={`mt-0.5 text-[10px] font-semibold uppercase leading-snug tracking-wide sm:text-[11px] ${
+                            on ? 'text-ddb-600' : 'text-ddb-950/15'
+                          }`}
+                        >
+                          {m.position}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </motion.div>
+            </div>
+
+            {/* Navigation, en bas */}
+            <div className="mt-10 flex items-center justify-end gap-3">
+              <button
+                onClick={() => {
+                  setHovering(true);
+                  prev();
+                }}
+                aria-label="Précédent"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-ddb-950/15 text-ddb-950 transition-colors hover:border-ddb-700 hover:bg-ddb-50 hover:text-ddb-700"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => {
+                  setHovering(true);
+                  next();
+                }}
+                aria-label="Suivant"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-ddb-950/15 text-ddb-950 transition-colors hover:border-ddb-700 hover:bg-ddb-50 hover:text-ddb-700"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );

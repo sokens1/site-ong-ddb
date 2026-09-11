@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { Facebook, Instagram, Twitter, Phone, Mail } from 'lucide-react';
 import Turnstile, { verifySubmission, VERIFY_MESSAGES } from './Turnstile';
 
 const Footer: React.FC = () => {
@@ -54,147 +55,135 @@ const Footer: React.FC = () => {
     }
   };
 
+  const quickLinks = [
+    { label: 'Accueil', to: '/' },
+    { label: 'À propos', to: '/about' },
+    { label: 'Nos rapports', to: '/actions' },
+    { label: 'Actualités', to: '/news' },
+    { label: 'Rejoignez-nous', to: '/join' },
+  ];
+
+  const socials = [
+    { label: 'Facebook', icon: Facebook, href: '#' },
+    { label: 'Instagram', icon: Instagram, href: '#' },
+    { label: 'Twitter (X)', icon: Twitter, href: '#' },
+  ];
 
   return (
-    <footer className="bg-green-900 text-white py-12">
+    <footer className="bg-ddb-950 py-16 text-white">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4 lg:gap-10">
+          {/* Marque */}
           <div>
-            <h3 className="text-xl font-bold mb-4"> ONG DDB </h3>
-            <p className="mb-4">
-              ONG Développement Durable et Bien-Être, engagé à former les leaders jeunesse pour la protection de l'environnement et l'avenir de la planète.
+            <div className="flex items-center gap-3">
+              <img
+                src="/images/logo-ong-DDB.png"
+                alt="ONG DDB"
+                className="h-10 w-10 rounded-full bg-white object-contain p-1"
+              />
+              <span className="font-heading text-lg font-bold">ONG DDB</span>
+            </div>
+            <p className="mt-4 text-sm leading-relaxed text-white/60">
+              ONG Développement Durable et Bien-Être, engagée à former les
+              leaders jeunesse pour la protection de l'environnement et
+              l'avenir de la planète.
             </p>
-            <div className="flex space-x-4">
-              <a href="#" className="text-white hover:text-green-300" aria-label="Facebook">
-                <i className="fab fa-facebook-f" aria-hidden="true"></i>
+            <div className="mt-5 space-y-2 text-sm text-white/60">
+              <a href="tel:+241077650015" className="flex items-center gap-2 hover:text-white">
+                <Phone className="h-4 w-4 shrink-0 text-ddb-300" />
+                +241 077 65 00 15
               </a>
-              <a href="#" className="text-white hover:text-green-300" aria-label="Twitter / X">
-                <i className="fab fa-twitter" aria-hidden="true"></i>
-              </a>
-              <a href="#" className="text-white hover:text-green-300" aria-label="Instagram">
-                <i className="fab fa-instagram" aria-hidden="true"></i>
-              </a>
-              <a href="#" className="text-white hover:text-green-300" aria-label="LinkedIn">
-                <i className="fab fa-linkedin-in" aria-hidden="true"></i>
+              <a href="mailto:ongddb@gmail.com" className="flex items-center gap-2 hover:text-white">
+                <Mail className="h-4 w-4 shrink-0 text-ddb-300" />
+                ongddb@gmail.com
               </a>
             </div>
           </div>
+
+          {/* Liens utiles */}
           <div>
-            <h3 className="text-xl font-bold mb-4">Contact</h3>
-            <address className="not-italic">
-              {/* <p className="mb-2">
-                <i className="fas fa-map-marker-alt mr-2"></i>
-                Kalikak, Libreville-Gabon
-              </p> */}
-              <p className="mb-2">
-                <i className="fas fa-phone-alt mr-2"></i>
-                +241 077 65 00 15
-              </p>
-              <p className="mb-2">
-                <i className="fas fa-phone-alt mr-2"></i>
-                +241 074 26 70 78
-              </p>
-              <p className="mb-2">
-                <i className="fas fa-envelope mr-2"></i>
-                ongddb@gmail.com
-              </p>
-            </address>
-          </div>
-          <div>
-            <h3 className="text-xl font-bold mb-4">Liens rapides</h3>
-            <ul className="space-y-2">
-              <li>
-                <button
-                  onClick={() => navigate('/')}
-                  className="hover:text-green-300 transition text-left"
-                >
-                  Accueil
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => navigate('/about')}
-                  className="hover:text-green-300 transition text-left"
-                >
-                  À propos
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => navigate('/actions')}
-                  className="hover:text-green-300 transition text-left"
-                >
-                  Nos rapports
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => navigate('/news')}
-                  className="hover:text-green-300 transition text-left"
-                >
-                  Actualités
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => navigate('/join')}
-                  className="hover:text-green-300 transition text-left"
-                >
-                  Rejoignez-nous
-                </button>
-              </li>
+            <h3 className="font-heading text-base font-bold">Liens utiles</h3>
+            <ul className="mt-4 space-y-2.5">
+              {quickLinks.map((link) => (
+                <li key={link.to}>
+                  <button
+                    onClick={() => navigate(link.to)}
+                    className="text-sm text-white/60 transition-colors hover:text-white"
+                  >
+                    {link.label}
+                  </button>
+                </li>
+              ))}
             </ul>
           </div>
+
+          {/* Suivez-nous */}
           <div>
-            <h3 className="text-xl font-bold mb-4">Newsletter</h3>
-            <p className="mb-4">Recevez nos actualités directement dans votre boîte email</p>
-            <form onSubmit={handleNewsletterSubmit} className="flex flex-col gap-4">
-              <input
-                type="email"
-                id="newsletter-email"
-                name="email"
-                autoComplete="email"
-                placeholder="Votre email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={isLoading}
-                className="px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-600 text-gray-800 disabled:opacity-50"
-                required
-              />
+            <h3 className="font-heading text-base font-bold">Suivez-nous</h3>
+            <ul className="mt-4 space-y-2.5">
+              {socials.map((s) => (
+                <li key={s.label}>
+                  <a
+                    href={s.href}
+                    aria-label={s.label}
+                    className="flex items-center gap-2.5 text-sm text-white/60 transition-colors hover:text-white"
+                  >
+                    <s.icon className="h-4 w-4 shrink-0" />
+                    {s.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Newsletter */}
+          <div>
+            <h3 className="font-heading text-base font-bold">Newsletter</h3>
+            <p className="mt-4 text-sm text-white/60">
+              Recevez nos actualités directement dans votre boîte email.
+            </p>
+            <form onSubmit={handleNewsletterSubmit} className="mt-4 flex flex-col gap-3">
+              <div className="flex overflow-hidden rounded-lg border border-white/15 bg-white/5 focus-within:border-ddb-400">
+                <input
+                  type="email"
+                  id="newsletter-email"
+                  name="email"
+                  autoComplete="email"
+                  placeholder="Votre email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                  className="w-full bg-transparent px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none disabled:opacity-50"
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="shrink-0 whitespace-nowrap rounded-md bg-white px-4 py-2 text-sm font-bold text-ddb-950 transition-colors hover:bg-ddb-100 disabled:opacity-50 disabled:cursor-not-allowed m-1"
+                >
+                  {isLoading ? '...' : "S'abonner"}
+                </button>
+              </div>
+
               <Turnstile onToken={setCaptchaToken} resetSignal={captchaNonce} />
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="btn btn-primary btn-enhanced text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <span className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Inscription...
-                  </span>
-                ) : (
-                  'S\'abonner'
-                )}
-              </button>
-              
-              {/* Messages de succès/erreur */}
+
               {message && (
-                <div className={`p-3 rounded text-sm ${
-                  message.type === 'success' 
-                    ? 'bg-green-100 text-green-800 border border-green-200' 
-                    : 'bg-red-100 text-red-800 border border-red-200'
-                }`}>
+                <div
+                  className={`rounded-lg p-3 text-xs ${
+                    message.type === 'success'
+                      ? 'border border-ddb-400/30 bg-ddb-400/10 text-ddb-200'
+                      : 'border border-red-400/30 bg-red-400/10 text-red-200'
+                  }`}
+                >
                   {message.text}
                 </div>
               )}
             </form>
           </div>
         </div>
-        <div className="border-t border-green-800 mt-8 pt-8 text-center">
-          <p>&copy; 2023 ONG Développement Durable et Bien-Être. Tous droits réservés.</p>
+
+        <div className="mt-12 border-t border-white/10 pt-6 text-center text-xs text-white/40">
+          <p>&copy; {new Date().getFullYear()} ONG Développement Durable et Bien-Être. Tous droits réservés.</p>
         </div>
       </div>
     </footer>

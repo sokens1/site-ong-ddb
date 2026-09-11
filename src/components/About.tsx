@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
+import Missions from './Missions';
 
 // Animation Variants
 const containerVariants = {
@@ -73,40 +74,6 @@ const About: React.FC = () => {
     return () => clearInterval(slideInterval); // Cleanup interval on component unmount
   }, [historyImages.length]);
 
-  const missions = [
-    {
-      icon: 'fas fa-school',
-      title: 'Éducation environnementale',
-      description: 'Sensibilisation dans les écoles et création de clubs verts pour former les jeunes générations.'
-    },
-    {
-      icon: 'fas fa-recycle',
-      title: 'Vulgarisation écoresponsable',
-      description: 'Promotion des bonnes pratiques environnementales auprès du grand public et des entreprises.'
-    },
-    {
-      icon: 'fas fa-leaf',
-      title: 'Événements écoresponsables',
-      description: 'Accompagnement des organisateurs pour réduire l\'impact environnemental de leurs événements.'
-    },
-    {
-      icon: 'fas fa-briefcase',
-      title: 'Métiers durables',
-      description: 'Promotion des métiers liés au développement durable et formation professionnelle.'
-    },
-    {
-      icon: 'fas fa-tree',
-      title: 'Protection des écosystèmes',
-      description: 'Lutte contre la dégradation des forêts, mangroves et zones côtières gabonaises.'
-    },
-    {
-      icon: 'fas fa-tint',
-      title: 'Gestion des ressources',
-      description: 'Promotion d\'une gestion durable des ressources naturelles (eau, forêt, pêche).'
-    }
-  ];
-
-
   return (
     <section id="about" className="py-20 bg-white">
       <div className="container mx-auto px-4">
@@ -166,24 +133,10 @@ const About: React.FC = () => {
           </motion.div>
         </div>
 
-        <AnimatedSection className="mb-20">
-          <motion.h3 variants={itemVariants} className="text-2xl font-bold text-green-800 mb-8 text-center">Nos missions</motion.h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {missions.map((mission, index) => (
-              <motion.div
-                key={index}
-                variants={itemVariants}
-                className="mission-card bg-white p-6 rounded-lg shadow-md border border-gray-100 transition-all duration-300 hover:shadow-xl hover:border-green-200"
-              >
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-800 mb-4 transition-all duration-300 hover:bg-green-200 hover:scale-110">
-                  <i className={`${mission.icon} text-2xl`}></i>
-                </div>
-                <h4 className="text-xl font-bold text-green-800 mb-2">{mission.title}</h4>
-                <p className="text-gray-700">{mission.description}</p>
-              </motion.div>
-            ))}
-          </div>
-        </AnimatedSection>
+        {/* Nos missions — nouvelle section */}
+        <div className="-mx-4 mb-4">
+          <Missions />
+        </div>
 
         <AnimatedSection className="mb-20">
           <motion.h3 variants={itemVariants} className="text-2xl font-bold text-green-800 mb-8 text-center">Documents statutaires</motion.h3>
