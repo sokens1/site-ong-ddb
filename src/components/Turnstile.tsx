@@ -100,15 +100,17 @@ export default function Turnstile({ onToken, resetSignal = 0, className }: Props
  * Vérifie côté serveur : token Turnstile + format email + domaine jetable.
  * Renvoie { ok: true } ou { ok: false, reason }.
  */
+export type SubmissionKind = 'newsletter' | 'membership' | 'partnership' | 'donation' | 'event_registration';
+
 export async function verifySubmission(
-  params: { token: string; email: string },
-): Promise<{ ok: boolean; reason?: string }> {
+  params: { token: string; email: string; kind: SubmissionKind },
+): Promise<{ ok: boolean; reason?: string; retryAfterSeconds?: number }> {
   try {
     const { data, error } = await supabase.functions.invoke('verify-submission', { body: params });
     // Fonction injoignable : on ne bloque pas le visiteur. La contrainte
     // CHECK email en base (migration 040) reste le garde-fou.
     if (error || !data) return { ok: true };
-    return data as { ok: boolean; reason?: string };
+    return data as { ok: boolean; reason?: string; retryAfterSeconds?: number };
   } catch {
     return { ok: true };
   }
@@ -118,6 +120,7 @@ export const VERIFY_MESSAGES: Record<string, string> = {
   captcha: 'Vérification anti-robot échouée. Rechargez la page et réessayez.',
   email_format: 'Cette adresse email n\'est pas valide.',
   email_disposable: 'Merci d\'utiliser une adresse email permanente (pas une adresse jetable).',
+  rate_limited: 'Trop de tentatives. Merci de réessayer dans quelques minutes.',
   network: 'Vérification indisponible. Réessayez dans un instant.',
   server_error: 'Une erreur est survenue pendant la vérification.',
 };

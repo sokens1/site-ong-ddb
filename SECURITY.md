@@ -113,6 +113,7 @@ détail de la cause d'échec au client.
 | 3.5 | Le token anti-bot est à usage unique — le widget doit se réinitialiser après un échec d'envoi, sinon le visiteur reste bloqué au 2e essai | ✅ (bug trouvé, `resetSignal`) |
 | 3.6 | Un formulaire à fort enjeu de conversion (don, inscription) **ne bloque jamais** un vrai visiteur à cause d'un souci technique du captcha (navigateur avec tracking prevention strict, extension, etc.) — l'anti-bot doit être consultatif par défaut, activable en strict via une variable d'env si abus constaté | ✅ (`TURNSTILE_ENFORCE`) |
 | 3.7 | Contrainte d'unicité (email par event, email newsletter…) pour éviter les doublons/spam de masse | ✅ (`024`) |
+| 3.9 | Rate limiting **par IP et par email, tous formulaires publics confondus** — une contrainte d'unicité (§3.7) empêche seulement le doublon exact, pas un script qui varie l'email à chaque envoi | ✅ (`042`, table `submission_log`, même principe que le verrou login §2) |
 | 3.8 | Limite de capacité appliquée **en base** avec verrou anti race-condition (`SELECT ... FOR UPDATE`), pas seulement affichée côté UI | ✅ (`039`, trigger `event_capacity`) |
 
 **Piège classique (§3.5)** : un token Turnstile/reCAPTCHA consommé une fois

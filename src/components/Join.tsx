@@ -74,7 +74,7 @@ const MemberForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     setIsSubmitting(true);
     setCaptchaError(null);
 
-    const check = await verifySubmission({ token: captchaToken, email: formData.email });
+    const check = await verifySubmission({ token: captchaToken, email: formData.email, kind: 'membership' });
     if (!check.ok) {
       setCaptchaError(VERIFY_MESSAGES[check.reason ?? 'server_error'] || 'Vérification échouée.');
       setCaptchaNonce(n => n + 1);
@@ -281,7 +281,7 @@ const PartnerForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     e.preventDefault();
     setIsSubmitting(true);
     setCaptchaError(null);
-    const check = await verifySubmission({ token: captchaToken, email: formData.email });
+    const check = await verifySubmission({ token: captchaToken, email: formData.email, kind: 'partnership' });
     if (!check.ok) {
       setCaptchaError(VERIFY_MESSAGES[check.reason ?? 'server_error'] || 'Vérification échouée.');
       setCaptchaNonce(n => n + 1);
@@ -415,7 +415,7 @@ const DonationForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     if (!formData.consent) return;
     setIsSubmitting(true);
     setCaptchaError(null);
-    const check = await verifySubmission({ token: captchaToken, email: formData.email });
+    const check = await verifySubmission({ token: captchaToken, email: formData.email, kind: 'donation' });
     if (!check.ok) {
       setCaptchaError(VERIFY_MESSAGES[check.reason ?? 'server_error'] || 'Vérification échouée.');
       setCaptchaNonce(n => n + 1);

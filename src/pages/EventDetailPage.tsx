@@ -187,7 +187,7 @@ const EventRegistrationModal: React.FC<{
     const finalEmail = ticketEmail.trim();
 
     // ── Vérif serveur : anti-bot + format email + domaine jetable ──────────
-    const check = await verifySubmission({ token: captchaToken, email: finalEmail });
+    const check = await verifySubmission({ token: captchaToken, email: finalEmail, kind: 'event_registration' });
     if (!check.ok) {
       setError(VERIFY_MESSAGES[check.reason ?? 'server_error'] || 'Vérification échouée.');
       setCaptchaNonce(n => n + 1);

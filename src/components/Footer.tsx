@@ -19,7 +19,7 @@ const Footer: React.FC = () => {
 
     try {
       // Vérif serveur : anti-bot + format email + domaine jetable
-      const check = await verifySubmission({ token: captchaToken, email });
+      const check = await verifySubmission({ token: captchaToken, email, kind: 'newsletter' });
       if (!check.ok) {
         setMessage({ type: 'error', text: VERIFY_MESSAGES[check.reason ?? 'server_error'] || 'Adresse email invalide.' });
         setCaptchaNonce(n => n + 1);
@@ -71,7 +71,7 @@ const Footer: React.FC = () => {
 
   return (
     <footer className="bg-ddb-950 py-16 text-white">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto max-w-6xl px-4">
         <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4 lg:gap-10">
           {/* Marque */}
           <div>

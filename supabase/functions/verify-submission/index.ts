@@ -22,6 +22,15 @@ const DISPOSABLE = new Set([
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
+// Rate limiting : fenêtre glissante, tous formulaires confondus.
+const WINDOW_MINUTES = 10
+const MAX_PER_IP = 8
+const MAX_PER_EMAIL = 3
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+}
+
 async function checkTurnstile(token: string): Promise<{ pass: boolean; codes?: string[] }> {
   const secret = Deno.env.get('TURNSTILE_SECRET_KEY')
   if (!secret) return { pass: true, codes: ['no-secret'] }
@@ -47,22 +56,60 @@ async function checkTurnstile(token: string): Promise<{ pass: boolean; codes?: s
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
-  const json = (body: unknown, status = 200) =>
-    new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+  const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
+  const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
   try {
-    const { token, email } = await req.json().catch(() => ({}))
-
-    // ── 1. Email : format + domaine jetable (toujours bloquant) ──
+    const { token, email, kind } = await req.json().catch(() => ({}))
     const e = String(email ?? '').trim().toLowerCase()
+    const submissionKind = String(kind ?? 'unknown').slice(0, 40)
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || req.headers.get('cf-connecting-ip') || null
+
+    // ── 1. Rate limiting — AVANT tout le reste, tous formulaires confondus ──
+    if (SUPABASE_URL && SERVICE_KEY) {
+      const svcHeaders = { Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY, 'Content-Type': 'application/json' }
+      const since = new Date(Date.now() - WINDOW_MINUTES * 60_000).toISOString()
+
+      const [ipHits, emailHits] = await Promise.all([
+        ip
+          ? fetch(`${SUPABASE_URL}/rest/v1/submission_log?ip=eq.${encodeURIComponent(ip)}&created_at=gte.${since}&select=created_at&order=created_at.desc&limit=${MAX_PER_IP}`,
+            { headers: svcHeaders }).then(r => r.json()).catch(() => [])
+          : Promise.resolve([]),
+        e
+          ? fetch(`${SUPABASE_URL}/rest/v1/submission_log?email=eq.${encodeURIComponent(e)}&created_at=gte.${since}&select=created_at&order=created_at.desc&limit=${MAX_PER_EMAIL}`,
+            { headers: svcHeaders }).then(r => r.json()).catch(() => [])
+          : Promise.resolve([]),
+      ])
+
+      const limited = (Array.isArray(ipHits) && ipHits.length >= MAX_PER_IP)
+        || (Array.isArray(emailHits) && emailHits.length >= MAX_PER_EMAIL)
+
+      // On journalise TOUJOURS la tentative (même bloquée), best-effort.
+      fetch(`${SUPABASE_URL}/rest/v1/submission_log`, {
+        method: 'POST', headers: { ...svcHeaders, Prefer: 'return=minimal' },
+        body: JSON.stringify([{ kind: submissionKind, email: e || null, ip }]),
+      }).catch(() => {})
+
+      if (limited) {
+        const hits = (ipHits.length >= MAX_PER_IP ? ipHits : emailHits)
+        const oldest = new Date(hits[hits.length - 1].created_at).getTime()
+        const retryAfterSeconds = Math.max(0, Math.ceil((oldest + WINDOW_MINUTES * 60_000 - Date.now()) / 1000))
+        console.log(`rate limited: kind=${submissionKind} ip=${ip} email=${e}`)
+        return json({ ok: false, reason: 'rate_limited', retryAfterSeconds })
+      }
+    }
+
+    // ── 2. Email : format + domaine jetable (toujours bloquant) ──
     if (!EMAIL_RE.test(e)) return json({ ok: false, reason: 'email_format' })
     if (DISPOSABLE.has(e.split('@')[1])) return json({ ok: false, reason: 'email_disposable' })
 
-    // ── 2. Turnstile ──
+    // ── 3. Turnstile ──
     // Mode strict seulement si TURNSTILE_ENFORCE=true. Sinon on
     // journalise le résultat mais on ne bloque pas le visiteur
     // (un widget cassé par un navigateur strict ne doit pas
-    // empêcher une vraie inscription).
+    // empêcher une vraie inscription) — le rate limiting ci-dessus
+    // est le vrai frein contre l'abus en masse.
     const ts = await checkTurnstile(token ?? '')
     const enforce = (Deno.env.get('TURNSTILE_ENFORCE') ?? '').toLowerCase() === 'true'
     if (!ts.pass) {
