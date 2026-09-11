@@ -104,7 +104,7 @@ const MemberForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       // Notif admin : n'aboutit que si un staff est connecté (RLS notifications).
       try {
         const { data: admins } = await supabase.from('user_profiles').select('id').in('role', ['admin', 'charge_communication']);
-        if (admins) await supabase.from('notifications').insert(admins.map(p => ({ user_id: p.id, type: 'new_submission', title: 'Nouvelle candidature membre', message: `${formData.fullname} a soumis une candidature.`, link: `/admin/submissions`, read: false })));
+        if (admins) await supabase.from('notifications').insert(admins.map(p => ({ user_id: p.id, type: 'new_submission', title: 'Nouvelle candidature membre', message: `${formData.fullname} a soumis une candidature.`, link: `/espace-ddb/submissions`, read: false })));
       } catch { /* silent */ }
       try { await supabase.functions.invoke('send-submission-ack', { body: { email: formData.email, fullname: formData.fullname } }); } catch { /* silent */ }
       try { await supabase.functions.invoke('notify-new-submission', { body: { candidateName: formData.fullname, candidateEmail: formData.email, interest: formData.interest } }); } catch { /* silent */ }
@@ -300,7 +300,7 @@ const PartnerForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     if (!error) {
       try {
         const { data: admins } = await supabase.from('user_profiles').select('id').in('role', ['admin', 'charge_communication']);
-        if (admins) await supabase.from('notifications').insert(admins.map(p => ({ user_id: p.id, type: 'new_submission', title: 'Nouvelle demande de partenariat', message: `${formData.fullname} propose un partenariat.`, link: `/admin/submissions`, read: false })));
+        if (admins) await supabase.from('notifications').insert(admins.map(p => ({ user_id: p.id, type: 'new_submission', title: 'Nouvelle demande de partenariat', message: `${formData.fullname} propose un partenariat.`, link: `/espace-ddb/submissions`, read: false })));
       } catch { /* silent */ }
       try { await supabase.functions.invoke('notify-new-submission', { body: { candidateName: formData.fullname, candidateEmail: formData.email, interest: `Partenariat — ${formData.organization}` } }); } catch { /* silent */ }
       setShowModal(true);

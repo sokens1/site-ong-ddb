@@ -315,7 +315,7 @@ const EventsAdmin: React.FC = () => {
               key={event.id}
               event={event}
               onEdit={(id) => setWizard({ isOpen: true, eventId: id })}
-              onManage={(id) => navigate(`/admin/events/edit/${id}`)}
+              onManage={(id) => navigate(`/espace-ddb/events/edit/${id}`)}
               onDelete={handleDelete}
             />
           ))}

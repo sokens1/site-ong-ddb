@@ -31,7 +31,7 @@ const AuthCallback: React.FC = () => {
 
                     // Redirect to login after 2 seconds
                     setTimeout(() => {
-                        navigate('/admin/login');
+                        navigate('/espace-ddb/connexion');
                     }, 2000);
                 } else if (type === 'signup' || type === 'email_confirmation') {
                     // Handle email confirmation without tokens (might be handled by Supabase)
@@ -39,7 +39,7 @@ const AuthCallback: React.FC = () => {
                     setMessage('Email confirmé avec succès ! Vous pouvez maintenant vous connecter.');
 
                     setTimeout(() => {
-                        navigate('/admin/login');
+                        navigate('/espace-ddb/connexion');
                     }, 2000);
                 } else {
                     // No tokens found, check if there's an error
@@ -52,7 +52,7 @@ const AuthCallback: React.FC = () => {
                     setStatus('success');
                     setMessage('Redirection vers la connexion...');
                     setTimeout(() => {
-                        navigate('/admin/login');
+                        navigate('/espace-ddb/connexion');
                     }, 1000);
                 }
             } catch (err: any) {
@@ -98,7 +98,7 @@ const AuthCallback: React.FC = () => {
                         <h1 className="text-xl font-bold text-red-600 mb-2">Erreur</h1>
                         <p className="text-gray-600 mb-4">{message}</p>
                         <button
-                            onClick={() => navigate('/admin/login')}
+                            onClick={() => navigate('/espace-ddb/connexion')}
                             className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition"
                         >
                             Aller à la connexion

@@ -80,7 +80,7 @@ serve(async (req: Request) => {
             <p><b>Email:</b> ${candidateEmail}</p>
             <p><b>Domaine:</b> ${interest || 'Non spécifié'}</p>
             <br>
-            <a href="${APP_URL}/admin/submissions" style="padding: 10px 20px; background: #166534; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+            <a href="${APP_URL}/espace-ddb/submissions" style="padding: 10px 20px; background: #166534; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
               Voir sur l'administration
             </a>
           </div>

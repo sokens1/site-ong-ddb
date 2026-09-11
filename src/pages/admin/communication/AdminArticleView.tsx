@@ -52,7 +52,7 @@ const AdminArticleView: React.FC = () => {
     }, [id]);
 
     const handleBack = () => {
-        navigate('/admin/news');
+        navigate('/espace-ddb/news');
     };
 
     if (loading) {

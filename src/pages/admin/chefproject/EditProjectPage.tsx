@@ -150,7 +150,7 @@ const EditProjectPage: React.FC = () => {
     }, []);
 
     const handleBack = () => {
-        navigate('/admin/projects');
+        navigate('/espace-ddb/projects');
     };
 
     const handleSubmitProject = async (e?: React.FormEvent) => {
@@ -186,7 +186,7 @@ const EditProjectPage: React.FC = () => {
                                 type: 'project_created',
                                 title: 'Nouveau Projet Créé',
                                 message: `${actorName} (${actorRole}) a créé le projet : ${payload.title}`,
-                                link: `/admin/projects/${newProject.id}`
+                                link: `/espace-ddb/projects/${newProject.id}`
                             });
                         }
                     }
@@ -201,11 +201,11 @@ const EditProjectPage: React.FC = () => {
                             type: 'project_assigned',
                             title: 'Nouveau projet assigné',
                             message: `Vous avez été assigné au projet : ${payload.title}`,
-                            link: `/admin/projects/${newProject.id}`
+                            link: `/espace-ddb/projects/${newProject.id}`
                         });
                     }
 
-                    navigate(`/admin/projects/edit/${newProject.id}`);
+                    navigate(`/espace-ddb/projects/edit/${newProject.id}`);
                     setCurrentStep(3);
                     alert('Projet créé avec succès. Vous pouvez maintenant ajouter des livrables.');
                 }

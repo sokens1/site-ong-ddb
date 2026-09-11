@@ -86,7 +86,7 @@ const CreateNewsPage: React.FC = () => {
     }
   }, [id, isEditing, data]);
 
-  const handleBack = () => { navigate('/admin/news'); };
+  const handleBack = () => { navigate('/espace-ddb/news'); };
 
   const handleSaveDraft = async () => {
     try {
@@ -110,7 +110,7 @@ const CreateNewsPage: React.FC = () => {
       } else {
         await create(dataToSubmit);
       }
-      navigate('/admin/news');
+      navigate('/espace-ddb/news');
     } catch (err) {
       alert('Erreur lors de l\'enregistrement du brouillon');
       console.error('Error saving draft:', err);
@@ -162,7 +162,7 @@ const CreateNewsPage: React.FC = () => {
           }
         }
       }
-      navigate('/admin/news');
+      navigate('/espace-ddb/news');
     } catch (err) {
       alert('Erreur lors de la publication');
       console.error('Error publishing:', err);
@@ -172,7 +172,7 @@ const CreateNewsPage: React.FC = () => {
   };
 
   const handleCancel = () => {
-    if (window.confirm('Êtes-vous sûr de vouloir annuler ?')) navigate('/admin/news');
+    if (window.confirm('Êtes-vous sûr de vouloir annuler ?')) navigate('/espace-ddb/news');
   };
 
   return (
@@ -289,7 +289,7 @@ const CreateNewsPage: React.FC = () => {
                   .map((news) => (
                     <button
                       key={news.id}
-                      onClick={() => navigate(`/admin/news/edit/${news.id}`)}
+                      onClick={() => navigate(`/espace-ddb/news/edit/${news.id}`)}
                       className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors group flex gap-3"
                     >
                       {news.image && (

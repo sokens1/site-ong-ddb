@@ -535,7 +535,7 @@ const CreateEventPage: React.FC = () => {
     setRegistrationsLoading(false);
   };
 
-  const handleBack = () => navigate('/admin/events');
+  const handleBack = () => navigate('/espace-ddb/events');
 
   const handleDeleteRegistration = (regId: number) => {
     setConfirmModal({
@@ -637,7 +637,7 @@ const CreateEventPage: React.FC = () => {
       <EventWizardModal
         isOpen
         onClose={handleBack}
-        onSaved={() => navigate('/admin/events')}
+        onSaved={() => navigate('/espace-ddb/events')}
       />
     );
   }

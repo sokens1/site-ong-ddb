@@ -79,15 +79,15 @@ const ProjectsAdmin: React.FC = () => {
     }, [projects, searchQuery]);
 
     const handleAddProject = () => {
-        navigate('/admin/projects/create');
+        navigate('/espace-ddb/projects/create');
     };
 
     const handleViewProject = (project: Project) => {
-        navigate(`/admin/projects/${project.id}`);
+        navigate(`/espace-ddb/projects/${project.id}`);
     };
 
     const handleEditProject = (project: Project) => {
-        navigate(`/admin/projects/edit/${project.id}`);
+        navigate(`/espace-ddb/projects/edit/${project.id}`);
     };
 
     const handleDeleteProject = (project: Project) => {

@@ -198,7 +198,7 @@ const UsersAdmin: React.FC = () => {
               full_name: formData.full_name,
               role: formData.role,
             },
-            emailRedirectTo: window.location.origin + '/admin/auth/callback',
+            emailRedirectTo: window.location.origin + '/espace-ddb/auth/callback',
           },
         });
 

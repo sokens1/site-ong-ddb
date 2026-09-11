@@ -55,7 +55,7 @@ const AdminLogin: React.FC = () => {
         return;
       }
 
-      navigate('/admin');
+      navigate('/espace-ddb');
     } catch (err: any) {
       setError(err.message || 'Une erreur est survenue');
       setCaptchaNonce(n => n + 1);

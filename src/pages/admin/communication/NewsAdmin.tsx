@@ -54,10 +54,10 @@ const NewsAdmin: React.FC = () => {
     });
 
     // --- Blog handlers ---
-    const handleAddNews = () => navigate('/admin/news/create');
+    const handleAddNews = () => navigate('/espace-ddb/news/create');
     const handleEditNews = (item: News) => {
-        if (canEdit('news')) navigate(`/admin/news/edit/${item.id}`);
-        else navigate(`/admin/news/view/${item.id}`);
+        if (canEdit('news')) navigate(`/espace-ddb/news/edit/${item.id}`);
+        else navigate(`/espace-ddb/news/view/${item.id}`);
     };
     const handleDeleteNews = (item: News) => {
         setConfirmModal({
@@ -73,8 +73,8 @@ const NewsAdmin: React.FC = () => {
     };
 
     // --- Video handlers ---
-    const handleAddVideo = () => navigate('/admin/videos/create');
-    const handleEditVideo = (item: VideoItem) => navigate(`/admin/videos/edit/${item.id}`);
+    const handleAddVideo = () => navigate('/espace-ddb/videos/create');
+    const handleEditVideo = (item: VideoItem) => navigate(`/espace-ddb/videos/edit/${item.id}`);
     const handleDeleteVideo = (item: VideoItem) => {
         setConfirmModal({
             isOpen: true,

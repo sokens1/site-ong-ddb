@@ -189,7 +189,7 @@ const DocumentsAdmin: React.FC = () => {
                             type: 'document_published',
                             title: 'Nouveau Document',
                             message: `${actorName} (${actorRole}) a publié un nouveau document : ${formData.title}`,
-                            link: '/admin/documents'
+                            link: '/espace-ddb/documents'
                         });
                     }
                 }

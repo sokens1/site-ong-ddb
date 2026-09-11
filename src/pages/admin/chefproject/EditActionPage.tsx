@@ -43,7 +43,7 @@ const EditActionPage: React.FC = () => {
     }, [isEditing, action]);
 
     const handleBack = () => {
-        navigate('/admin/actions');
+        navigate('/espace-ddb/actions');
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -60,7 +60,7 @@ const EditActionPage: React.FC = () => {
             } else {
                 await create(payload);
                 alert('Action créée avec succès');
-                navigate('/admin/actions');
+                navigate('/espace-ddb/actions');
             }
         } catch (err: any) {
             alert(`Erreur: ${err.message || 'Erreur lors de l\'enregistrement'}`);

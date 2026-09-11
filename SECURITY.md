@@ -50,6 +50,23 @@ faire / ➖ non applicable) et une recette générique réutilisable ailleurs.
 | 1.4 | Un `INSERT` public autorisé (`anon`) n'implique PAS un `SELECT` public — vérifier que le code ne fait pas `.insert().select()` derrière une policy SELECT restreinte | ✅ (bug trouvé et corrigé, voir §7) |
 | 1.5 | Table RLS activée mais **sans aucune policy** = verrou total involontaire — à distinguer d'un verrou voulu | à vérifier périodiquement (bloc 13 de `AUDIT.sql`) |
 
+### 1.6 Routes admin/login prévisibles
+
+| # | Point | Statut ici |
+|---|---|---|
+| 1.6.a | Les routes d'admin/login évitent les noms de dictionnaire (`/admin`, `/login`, `/wp-admin`, `/dashboard`) que les scanners automatisés essaient en premier | ✅ (`/espace-ddb`, `/espace-ddb/connexion`) |
+| 1.6.b | Ce renommage est de l'obscurité, **pas une protection en soi** — le vrai frein reste le rate limiting côté serveur (§2). Sans lui, renommer la route ne fait que retarder un attaquant qui lit le bundle JS (les routes y sont en clair, une SPA ne peut pas les cacher complètement) | ✅ rate limiting fait en parallèle |
+| 1.6.c | Le contenu protégé (layout + Outlet) ne s'affiche **jamais** avant que la vérification de session soit terminée — sinon flash visible de l'interface admin avant la redirection vers le login | ✅ (état `authChecked`, écran de chargement le temps du check) |
+
+**Piège classique (§1.6.c)** : un composant de layout protégé (`<Outlet/>` ou
+équivalent) qui se monte immédiatement avec `user = null` pendant qu'un
+`useEffect` vérifie la session en asynchrone, et ne redirige qu'une fois la
+promesse résolue. Entre les deux, React a déjà rendu le contenu protégé au
+moins une frame — visible à l'œil nu sur un rechargement direct de l'URL
+protégée. **Fix** : un état `authChecked` (faux au départ), ne rendre le
+contenu réel (ou l'`<Outlet/>`) que lorsque `authChecked && user`, un loader
+sinon.
+
 **Comment auditer** : `database/AUDIT.sql`, blocs 1, 2, 12, 13. Générique,
 réutilisable tel quel sur n'importe quel projet Supabase (adapter juste les
 noms de table dans les blocs 15/16/18/19 si besoin).
@@ -212,3 +229,8 @@ avant/après un pic de trafic attendu (lancement, événement).
 - **2026-09-11** — ajout §8 En-têtes HTTP de sécurité, suite à un audit
   externe (Hexaro) pointant CSP/X-Frame-Options/X-Content-Type-Options/
   Referrer-Policy/Permissions-Policy absents. Corrigé via `vercel.json`.
+- **2026-09-11** — ajout §1.6 : renommage `/admin` → `/espace-ddb`,
+  `/admin/login` → `/espace-ddb/connexion` (réduit le bruit des scanners
+  automatisés — pas une protection à elle seule). Corrigé le flash du
+  dashboard admin visible avant la redirection vers le login (garde
+  `authChecked` avant de rendre l'`<Outlet/>`).

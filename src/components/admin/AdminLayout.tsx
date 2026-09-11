@@ -39,23 +39,24 @@ const ROLE_MENU_ACCESS: Record<UserRole, string[]> = {
 };
 
 const ALL_MENU_ITEMS = [
-  { id: 'dashboard', path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'projects', path: '/admin/projects', label: 'Projets', icon: FolderKanban },
-  { id: 'reports', path: '/admin/reports', label: 'Rapports', icon: FileText },
-  { id: 'documents', path: '/admin/documents', label: 'Documents', icon: File },
-  { id: 'team', path: '/admin/team', label: 'Équipe', icon: Users },
-  { id: 'news', path: '/admin/news', label: 'Actualités', icon: Newspaper },
-  { id: 'submissions', path: '/admin/submissions', label: 'Candidatures', icon: Mail },
-  { id: 'donations', path: '/admin/donations', label: 'Dons', icon: Gift },
-  { id: 'events', path: '/admin/events', label: 'Événements', icon: CalendarDays },
-  { id: 'faq', path: '/admin/faq', label: 'FAQ', icon: HelpCircle },
-  { id: 'newsletter', path: '/admin/newsletter', label: 'Newsletter', icon: Mail },
-  { id: 'users', path: '/admin/users', label: 'Utilisateurs', icon: UserCog },
-  { id: 'security', path: '/admin/security', label: 'Sécurité', icon: ShieldAlert },
+  { id: 'dashboard', path: '/espace-ddb', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'projects', path: '/espace-ddb/projects', label: 'Projets', icon: FolderKanban },
+  { id: 'reports', path: '/espace-ddb/reports', label: 'Rapports', icon: FileText },
+  { id: 'documents', path: '/espace-ddb/documents', label: 'Documents', icon: File },
+  { id: 'team', path: '/espace-ddb/team', label: 'Équipe', icon: Users },
+  { id: 'news', path: '/espace-ddb/news', label: 'Actualités', icon: Newspaper },
+  { id: 'submissions', path: '/espace-ddb/submissions', label: 'Candidatures', icon: Mail },
+  { id: 'donations', path: '/espace-ddb/donations', label: 'Dons', icon: Gift },
+  { id: 'events', path: '/espace-ddb/events', label: 'Événements', icon: CalendarDays },
+  { id: 'faq', path: '/espace-ddb/faq', label: 'FAQ', icon: HelpCircle },
+  { id: 'newsletter', path: '/espace-ddb/newsletter', label: 'Newsletter', icon: Mail },
+  { id: 'users', path: '/espace-ddb/users', label: 'Utilisateurs', icon: UserCog },
+  { id: 'security', path: '/espace-ddb/security', label: 'Sécurité', icon: ShieldAlert },
 ];
 
 const AdminLayout: React.FC = () => {
   const [user, setUser] = useState<any>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -81,7 +82,7 @@ const AdminLayout: React.FC = () => {
     checkUser();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) {
-        navigate('/admin/login');
+        navigate('/espace-ddb/connexion');
       } else {
         setUser(session.user);
       }
@@ -132,12 +133,12 @@ const AdminLayout: React.FC = () => {
 
   // Route Protection Logic
   useEffect(() => {
-    if (role && location.pathname.startsWith('/admin')) {
+    if (role && location.pathname.startsWith('/espace-ddb')) {
       const currentPathId = ALL_MENU_ITEMS.find(item => location.pathname === item.path || location.pathname.startsWith(item.path + '/'))?.id;
       if (currentPathId) {
         const allowedIds = ROLE_MENU_ACCESS[role];
         if (allowedIds && !allowedIds.includes(currentPathId)) {
-          navigate('/admin'); // Redirect to dashboard if unauthorized
+          navigate('/espace-ddb'); // Redirect to dashboard if unauthorized
         }
       }
     }
@@ -157,16 +158,17 @@ const AdminLayout: React.FC = () => {
   const checkUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      navigate('/admin/login');
+      navigate('/espace-ddb/connexion');
     } else {
       setUser(session.user);
       fetchProfile(session.user.id);
     }
+    setAuthChecked(true);
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate('/admin/login');
+    navigate('/espace-ddb/connexion');
   };
 
   const handleUpdateEmail = async (e: React.FormEvent) => {
@@ -231,6 +233,19 @@ const AdminLayout: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Tant que la session n'a pas été vérifiée (ou si elle est absente — on est
+  // en train de rediriger vers /espace-ddb/connexion), on n'affiche jamais le
+  // contenu admin. Avant ce garde-fou, l'Outlet (donc le dashboard) se
+  // montait immédiatement avec user=null, le temps que checkUser() résolve
+  // -> flash visible du tableau de bord avant la redirection.
+  if (!authChecked || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex overflow-x-hidden">
       {/* Mobile Backdrop Overlay */}
@@ -267,7 +282,7 @@ const AdminLayout: React.FC = () => {
 
             // Events accordion
             if (item.id === 'events') {
-              const isEventsActive = location.pathname.startsWith('/admin/events') || location.pathname.startsWith('/admin/scan');
+              const isEventsActive = location.pathname.startsWith('/espace-ddb/events') || location.pathname.startsWith('/espace-ddb/scan');
               return (
                 <div key={item.id}>
                   <button
@@ -285,20 +300,20 @@ const AdminLayout: React.FC = () => {
                   {eventsMenuOpen && (
                     <div className="ml-4 mt-1 space-y-1 border-l-2 border-green-600/40 pl-3">
                       <Link
-                        to="/admin/events"
+                        to="/espace-ddb/events"
                         onClick={() => { if (window.innerWidth < 1024) setSidebarOpen(false); }}
                         className={`flex items-center px-3 py-2 rounded-lg transition-all text-sm font-medium ${
-                          location.pathname.startsWith('/admin/events') ? 'bg-green-700 text-white' : 'text-green-100 hover:bg-green-700/50 hover:text-white'
+                          location.pathname.startsWith('/espace-ddb/events') ? 'bg-green-700 text-white' : 'text-green-100 hover:bg-green-700/50 hover:text-white'
                         }`}
                       >
                         <CalendarDays size={16} className="mr-2.5" />
                         Événements
                       </Link>
                       <Link
-                        to="/admin/scan"
+                        to="/espace-ddb/scan"
                         onClick={() => { if (window.innerWidth < 1024) setSidebarOpen(false); }}
                         className={`flex items-center px-3 py-2 rounded-lg transition-all text-sm font-medium ${
-                          location.pathname === '/admin/scan' ? 'bg-green-700 text-white' : 'text-green-100 hover:bg-green-700/50 hover:text-white'
+                          location.pathname === '/espace-ddb/scan' ? 'bg-green-700 text-white' : 'text-green-100 hover:bg-green-700/50 hover:text-white'
                         }`}
                       >
                         <ScanLine size={16} className="mr-2.5" />
@@ -351,8 +366,8 @@ const AdminLayout: React.FC = () => {
               <Menu size={24} aria-hidden="true" />
             </button>
             <h2 className="text-lg font-semibold text-gray-700 hidden md:block">
-              {location.pathname === '/admin/scan' ? 'Scan des billets' :
-               location.pathname.startsWith('/admin/events') ? 'Événements' :
+              {location.pathname === '/espace-ddb/scan' ? 'Scan des billets' :
+               location.pathname.startsWith('/espace-ddb/events') ? 'Événements' :
                menuItems.find(item => location.pathname === item.path)?.label || 'Administration'}
             </h2>
           </div>

@@ -25,11 +25,11 @@ const VideosAdmin: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
 
     const handleAdd = () => {
-        navigate('/admin/videos/create');
+        navigate('/espace-ddb/videos/create');
     };
 
     const handleEdit = (item: Video) => {
-        navigate(`/admin/videos/edit/${item.id}`);
+        navigate(`/espace-ddb/videos/edit/${item.id}`);
     };
 
     const handleDelete = async (item: Video) => {

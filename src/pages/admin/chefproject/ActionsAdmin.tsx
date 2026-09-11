@@ -19,11 +19,11 @@ const ActionsAdmin: React.FC = () => {
     const { data, loading, error, delete: deleteAction } = useCrud<Action>({ tableName: 'actions' });
 
     const handleAdd = () => {
-        navigate('/admin/actions/create');
+        navigate('/espace-ddb/actions/create');
     };
 
     const handleEdit = (item: Action) => {
-        navigate(`/admin/actions/edit/${item.id}`);
+        navigate(`/espace-ddb/actions/edit/${item.id}`);
     };
 
     const handleDelete = async (item: Action) => {

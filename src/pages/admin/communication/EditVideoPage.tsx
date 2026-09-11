@@ -58,7 +58,7 @@ const EditVideoPage: React.FC = () => {
     }, [isEditing, video]);
 
     const handleBack = () => {
-        navigate('/admin/videos');
+        navigate('/espace-ddb/videos');
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -95,7 +95,7 @@ const EditVideoPage: React.FC = () => {
                     }
                 }
                 alert('Vidéo créée avec succès');
-                navigate('/admin/videos');
+                navigate('/espace-ddb/videos');
             }
         } catch (err: any) {
             alert(`Erreur: ${err.message || 'Erreur lors de l\'enregistrement'}`);

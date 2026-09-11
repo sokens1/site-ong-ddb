@@ -186,11 +186,11 @@ function App() {
         } />
 
         {/* Auth callback route - must be before protected routes */}
-        <Route path="/admin/auth/callback" element={<AuthCallback />} />
+        <Route path="/espace-ddb/auth/callback" element={<AuthCallback />} />
 
         {/* Admin routes */}
-        <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/admin" element={<AdminLayout />}>
+        <Route path="/espace-ddb/connexion" element={<AdminLogin />} />
+        <Route path="/espace-ddb" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="actions" element={<ActionsAdmin />} />
           <Route path="actions/create" element={<EditActionPage />} />

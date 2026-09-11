@@ -110,7 +110,7 @@ const TeamAdmin: React.FC = () => {
                 type: 'member_added',
                 title: 'Nouveau Membre d\'Équipe',
                 message: `${actorName} (${actorRole}) a ajouté un nouveau membre : ${formData.name}`,
-                link: '/admin/team'
+                link: '/espace-ddb/team'
               });
             }
           }

@@ -77,7 +77,7 @@ const ProjectDetailsPage: React.FC = () => {
     };
 
     const handleBack = () => {
-        navigate('/admin/projects');
+        navigate('/espace-ddb/projects');
     };
 
     // Fetch partner name
@@ -139,7 +139,7 @@ const ProjectDetailsPage: React.FC = () => {
 
                     <div className="flex items-center gap-3">
                         <button
-                            onClick={() => navigate(`/admin/projects/edit/${project.id}`)}
+                            onClick={() => navigate(`/espace-ddb/projects/edit/${project.id}`)}
                             className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-medium"
                         >
                             Modifier le projet
@@ -360,7 +360,7 @@ const ProjectDetailsPage: React.FC = () => {
                             <h2 className="text-lg font-bold text-gray-800 mb-4">Livrables</h2>
                             <div className="grid grid-cols-1 gap-3">
                                 <button
-                                    onClick={() => navigate(`/admin/projects/edit/${project.id}`)}
+                                    onClick={() => navigate(`/espace-ddb/projects/edit/${project.id}`)}
                                     className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors"
                                 >
                                     Modifier le projet
