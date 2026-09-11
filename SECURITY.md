@@ -92,6 +92,7 @@ insert public ; si l'id est nécessaire côté client, le générer côté clien
 | 2.4 | Table de compteur de tentatives : RLS activée, **aucune policy** (ni lecture ni écriture depuis le navigateur, même connecté) — sinon un attaquant peut lire qui a déjà tenté, ou purger ses propres échecs | ✅ |
 | 2.5 | Alerte (log `security_events` ou équivalent) au-delà d'un seuil, pas seulement un blocage silencieux | ✅ |
 | 2.6 | Vérifier qu'aucun email public (footer, page contact) n'est aussi l'identifiant d'un compte à privilèges sans mot de passe fort dédié | ⚠️ à confirmer par le client |
+| 2.7 | MFA/TOTP sur les comptes admin — seul levier qui tient même si le mot de passe fuite (phishing, réutilisation…) ; Supabase Auth le supporte nativement, gratuit | ⚠️ **reporté, à faire** — décidé avec le client : reste à trancher si obligatoire pour tous les rôles admin ou seulement `admin` |
 
 **Recette générique** : une Edge Function (ou route serveur) qui (1) compte
 les échecs récents en base via une clé qui contourne RLS, (2) refuse
