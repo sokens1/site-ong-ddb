@@ -1,5 +1,6 @@
 // @ts-ignore
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
+import { checkRateLimit, getClientIp } from "../_shared/rateLimit.ts"
 
 declare const Deno: any;
 
@@ -121,6 +122,17 @@ serve(async (req: Request) => {
     }
 
     try {
+        // Sans ça, n'importe qui peut envoyer un email avec une pièce
+        // jointe PDF arbitraire à n'importe quelle adresse via notre compte
+        // Gmail — relais de spam/phishing potentiel. Rate limit par IP.
+        const allowed = await checkRateLimit('send-event-certificate', getClientIp(req))
+        if (!allowed) {
+            return new Response(JSON.stringify({ error: 'rate_limited' }), {
+                status: 429,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
+        }
+
         const bodyText = await req.text()
         if (!bodyText) throw new Error('Empty request body')
 

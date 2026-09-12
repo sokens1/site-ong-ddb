@@ -1,5 +1,6 @@
 // @ts-ignore
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
+import { checkRateLimit, getClientIp } from "../_shared/rateLimit.ts"
 
 declare const Deno: any;
 
@@ -18,6 +19,17 @@ serve(async (req: Request) => {
     }
 
     try {
+        // Sans ça, n'importe qui peut envoyer un email avec une pièce jointe
+        // arbitraire (le PDF) à n'importe quelle adresse via notre compte
+        // Brevo — relais de spam/phishing potentiel. Rate limit par IP.
+        const allowed = await checkRateLimit('send-event-confirmation', getClientIp(req))
+        if (!allowed) {
+            return new Response(JSON.stringify({ error: 'rate_limited' }), {
+                status: 429,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
+        }
+
         const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY')
         const SENDER_EMAIL = Deno.env.get('SENDER_EMAIL') || 'sokensdigital@gmail.com'
         const SENDER_NAME = Deno.env.get('SENDER_NAME') || 'ONG DDB'

@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 // @ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7'
+import { checkRateLimit, getClientIp } from "../_shared/rateLimit.ts"
 
 declare const Deno: any;
 
@@ -22,6 +23,17 @@ serve(async (req: Request) => {
     }
 
     try {
+        // Destinataires fixes (les admins), mais le contenu du message est
+        // 100% fourni par l'appelant — sans limite, ça reste un vecteur de
+        // spam interne / faux signalements en boucle.
+        const allowed = await checkRateLimit('notify-new-submission', getClientIp(req))
+        if (!allowed) {
+            return new Response(JSON.stringify({ error: 'rate_limited' }), {
+                status: 429,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
+        }
+
         const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY')
         const SENDER_EMAIL = Deno.env.get('SENDER_EMAIL') || 'sokensdigital@gmail.com'
         const SENDER_NAME = Deno.env.get('SENDER_NAME') || 'ONG DDB'

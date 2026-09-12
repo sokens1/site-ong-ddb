@@ -147,6 +147,7 @@ détail de la cause d'échec au client.
 | 5.2 | CORS : `Access-Control-Allow-Origin` large (`*`) acceptable seulement si la fonction ne fait rien de sensible sans vérification interne (elle ne doit pas faire confiance à l'origine de la requête) | ✅ pattern du projet |
 | 5.3 | Erreurs renvoyées au client : génériques, sans stack trace ni détail de schéma DB | ✅ sur les fonctions d'auth ; ⚠️ à vérifier au cas par cas sur les autres |
 | 5.4 | Logging serveur (`console.log`) suffisant pour diagnostiquer sans avoir à redéployer à chaque fois qu'on cherche un bug | ✅ (`verify-submission`, `admin-login`) |
+| 5.5 | **Auditer TOUTES les Edge Functions une par une**, pas seulement celles qu'on vient d'écrire — une fonction créée il y a des mois sans `verifyAdminRequest` reste appelable par n'importe qui avec la clé anon, indéfiniment | ✅ audit complet fait (12/09) : 4 fonctions d'envoi d'email (`send-event-confirmation`, `send-event-certificate`, `send-submission-ack`, `notify-new-submission`) n'avaient AUCUNE protection — relais de spam/phishing potentiel (email + pièce jointe arbitraire vers n'importe quelle adresse via notre compte Brevo/Gmail). Corrigé avec un rate limit par IP (`_shared/rateLimit.ts`, réutilise la table `submission_log` de la migration 042) — ces fonctions doivent rester appelables par un visiteur non connecté (déclenchées juste après une action publique), donc pas de `verifyAdminRequest` possible, seulement un plafond de fréquence |
 
 ---
 
