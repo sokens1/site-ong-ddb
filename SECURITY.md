@@ -92,6 +92,8 @@ insert public ; si l'id est nécessaire côté client, le générer côté clien
 | 2.4 | Table de compteur de tentatives : RLS activée, **aucune policy** (ni lecture ni écriture depuis le navigateur, même connecté) — sinon un attaquant peut lire qui a déjà tenté, ou purger ses propres échecs | ✅ |
 | 2.5 | Alerte (log `security_events` ou équivalent) au-delà d'un seuil, pas seulement un blocage silencieux | ✅ |
 | 2.6 | Vérifier qu'aucun email public (footer, page contact) n'est aussi l'identifiant d'un compte à privilèges sans mot de passe fort dédié | ⚠️ à confirmer par le client |
+| 2.8 | Aucune création de compte via `supabase.auth.signUp()` public — cet endpoint est appelable par n'importe qui avec la seule clé `anon` (visible dans le bundle), **même si aucune page du site n'expose de formulaire d'inscription**. Les comptes staff doivent être créés via une Edge Function service role + vérification du rôle appelant | ✅ (`admin-create-user`, remplace `signUp()` dans `UsersAdmin.tsx`) |
+| 2.9 | "Allow new users to sign up" désactivé dans Supabase Auth Settings dès que plus aucun flux légitime n'en dépend | ⚠️ **à faire par le client** dans le Dashboard, une fois `admin-create-user` déployée |
 | 2.7 | MFA/TOTP sur les comptes admin — seul levier qui tient même si le mot de passe fuite (phishing, réutilisation…) ; Supabase Auth le supporte nativement, gratuit | ⚠️ **reporté, à faire** — décidé avec le client : reste à trancher si obligatoire pour tous les rôles admin ou seulement `admin` |
 
 **Recette générique** : une Edge Function (ou route serveur) qui (1) compte
@@ -232,6 +234,11 @@ avant/après un pic de trafic attendu (lancement, événement).
 - **2026-09-11** — ajout §8 En-têtes HTTP de sécurité, suite à un audit
   externe (Hexaro) pointant CSP/X-Frame-Options/X-Content-Type-Options/
   Referrer-Policy/Permissions-Policy absents. Corrigé via `vercel.json`.
+- **2026-09-12** — ajout §2.8/2.9 : comptes suspects trouvés dans
+  Authentication → Users (créés via l'endpoint public `signUp()`, jamais
+  passés par une page du site). Remplacé par une Edge Function
+  `admin-create-user` (service role + `verifyAdminRequest`) ; à
+  désactiver côté Supabase : "Allow new users to sign up".
 - **2026-09-11** — ajout §1.6 : renommage `/admin` → `/espace-ddb`,
   `/admin/login` → `/espace-ddb/connexion` (réduit le bruit des scanners
   automatisés — pas une protection à elle seule). Corrigé le flash du

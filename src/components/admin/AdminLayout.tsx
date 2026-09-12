@@ -65,11 +65,14 @@ const AdminLayout: React.FC = () => {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [discussionOpen, setDiscussionOpen] = useState(false);
   const [eventsMenuOpen, setEventsMenuOpen] = useState(false);
+  const [profileCardOpen, setProfileCardOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { role, userId } = useUserRole();
   const { notifications, unreadCount, markAllAsRead, markAsRead } = useNotifications(userId);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [pendingSubmissions, setPendingSubmissions] = useState(0);
+  const [pendingDonations, setPendingDonations] = useState(0);
 
   // Profile editing state
   const [isEditingEmail, setIsEditingEmail] = useState(false);
@@ -132,6 +135,20 @@ const AdminLayout: React.FC = () => {
       // Quiet fail
     }
   };
+
+  // Petits badges de comptage dans la sidebar (candidatures / dons en attente)
+  useEffect(() => {
+    if (!userId) return;
+    const fetchPendingCounts = async () => {
+      const [subs, dons] = await Promise.all([
+        supabase.from('form_submissions').select('*', { count: 'exact', head: true }).eq('status', 'en_attente'),
+        supabase.from('donations').select('*', { count: 'exact', head: true }).eq('status', 'en_attente'),
+      ]);
+      if (!subs.error) setPendingSubmissions(subs.count || 0);
+      if (!dons.error) setPendingDonations(dons.count || 0);
+    };
+    fetchPendingCounts();
+  }, [userId]);
 
   // Route Protection Logic
   useEffect(() => {
@@ -259,11 +276,11 @@ const AdminLayout: React.FC = () => {
       )}
 
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-green-800 text-white transform transition-all duration-300 ease-in-out flex flex-col ${sidebarOpen ? 'translate-x-0 shadow-2xl lg:shadow-none' : '-translate-x-full'
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-ddb-900 text-white transform transition-all duration-300 ease-in-out flex flex-col ${sidebarOpen ? 'translate-x-0 shadow-2xl lg:shadow-none' : '-translate-x-full'
         }`}>
-        <div className="flex items-center justify-between h-16 px-4 border-b border-green-700 flex-shrink-0">
+        <div className="flex items-center justify-between h-16 px-4 border-b border-white/10 flex-shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-11 h-11 bg-white rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0 p-1">
+            <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 p-1.5">
               <img src="/images/logo-ong-DDB.png" alt="ONG DDB" className="w-full h-full object-contain" />
             </div>
             <h1 className="text-lg font-bold tracking-tight">DDB Admin</h1>
@@ -271,16 +288,20 @@ const AdminLayout: React.FC = () => {
           <button
             onClick={() => setSidebarOpen(false)}
             aria-label="Fermer le menu"
-            className="lg:hidden text-white hover:text-gray-300"
+            className="lg:hidden text-white/60 hover:text-white"
           >
             <X size={20} aria-hidden="true" />
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto mt-4 px-2 space-y-1 pb-4">
+        <nav className="flex-1 overflow-y-auto scrollbar-hide mt-3 px-3 space-y-0.5 pb-3">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
+            const badge =
+              item.id === 'submissions' && pendingSubmissions > 0 ? { n: pendingSubmissions, cls: 'bg-ddb-500 text-white' } :
+              item.id === 'donations' && pendingDonations > 0 ? { n: pendingDonations, cls: 'bg-amber-500 text-white' } :
+              null;
 
             // Events accordion
             if (item.id === 'events') {
@@ -289,38 +310,37 @@ const AdminLayout: React.FC = () => {
                 <div key={item.id}>
                   <button
                     onClick={() => setEventsMenuOpen(!eventsMenuOpen)}
-                    className={`flex items-center w-full px-4 py-2.5 rounded-lg transition-all text-sm font-medium ${
-                      isEventsActive ? 'bg-green-700 text-white shadow-inner' : 'text-green-100 hover:bg-green-700/50 hover:text-white'
+                    className={`flex items-center w-full px-3.5 py-2.5 rounded-xl transition-colors text-sm font-medium ${
+                      isEventsActive ? 'bg-white/10 text-white' : 'text-white/40 hover:bg-white/5 hover:text-white'
                     }`}
                   >
-                    <CalendarDays size={18} className="mr-3" />
-                    Gestion des événements
-                    <span className="ml-auto">
+                    <CalendarDays size={18} className={`mr-3 flex-shrink-0 ${isEventsActive ? 'text-white' : 'text-white/40'}`} />
+                    <span className="text-white">Événementiel</span>
+                    <span className="ml-auto text-white/40">
                       {eventsMenuOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     </span>
                   </button>
                   {eventsMenuOpen && (
-                    <div className="ml-4 mt-1 space-y-1 border-l-2 border-green-600/40 pl-3">
-                      <Link
-                        to="/espace-ddb/events"
-                        onClick={() => { if (window.innerWidth < 1024) setSidebarOpen(false); }}
-                        className={`flex items-center px-3 py-2 rounded-lg transition-all text-sm font-medium ${
-                          location.pathname.startsWith('/espace-ddb/events') ? 'bg-green-700 text-white' : 'text-green-100 hover:bg-green-700/50 hover:text-white'
-                        }`}
-                      >
-                        <CalendarDays size={16} className="mr-2.5" />
-                        Événements
-                      </Link>
-                      <Link
-                        to="/espace-ddb/scan"
-                        onClick={() => { if (window.innerWidth < 1024) setSidebarOpen(false); }}
-                        className={`flex items-center px-3 py-2 rounded-lg transition-all text-sm font-medium ${
-                          location.pathname === '/espace-ddb/scan' ? 'bg-green-700 text-white' : 'text-green-100 hover:bg-green-700/50 hover:text-white'
-                        }`}
-                      >
-                        <ScanLine size={16} className="mr-2.5" />
-                        Scan billets
-                      </Link>
+                    <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-white/10 pl-3">
+                      {[
+                        { to: '/espace-ddb/events', label: 'Événements', icon: CalendarDays, active: location.pathname.startsWith('/espace-ddb/events') },
+                        { to: '/espace-ddb/scan', label: 'Scan billets', icon: ScanLine, active: location.pathname === '/espace-ddb/scan' },
+                      ].map((sub) => (
+                        <Link
+                          key={sub.to}
+                          to={sub.to}
+                          onClick={() => { if (window.innerWidth < 1024) setSidebarOpen(false); }}
+                          className={`flex items-center justify-between px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
+                            sub.active ? 'bg-white/10 text-white' : 'text-white/40 hover:bg-white/5 hover:text-white'
+                          }`}
+                        >
+                          <span className="flex items-center text-white">
+                            <sub.icon size={16} className={`mr-2.5 flex-shrink-0 ${sub.active ? 'text-white' : 'text-white/35'}`} />
+                            {sub.label}
+                          </span>
+                          {sub.active && <ChevronRight size={14} className="text-white/40" />}
+                        </Link>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -332,25 +352,58 @@ const AdminLayout: React.FC = () => {
                 key={item.path}
                 to={item.path}
                 onClick={() => { if (window.innerWidth < 1024) setSidebarOpen(false); }}
-                className={`flex items-center px-4 py-2.5 rounded-lg transition-all text-sm font-medium ${isActive
-                  ? 'bg-green-700 text-white shadow-inner'
-                  : 'text-green-100 hover:bg-green-700/50 hover:text-white'
+                className={`flex items-center px-3.5 py-2.5 rounded-xl transition-colors text-sm font-medium ${isActive
+                  ? 'bg-white/10'
+                  : 'hover:bg-white/5'
                   }`}
               >
-                <Icon size={18} className="mr-3" />
-                {item.label}
+                <Icon size={18} className={`mr-3 flex-shrink-0 ${isActive ? 'text-white' : 'text-white/40'}`} />
+                <span className="text-white">{item.label}</span>
+                {badge && (
+                  <span className={`ml-auto min-w-[20px] rounded-md px-1.5 py-0.5 text-center text-[11px] font-bold leading-tight ${badge.cls}`}>
+                    {badge.n}
+                  </span>
+                )}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-4 border-t border-green-700 bg-green-800/50 backdrop-blur-sm flex-shrink-0">
+        <div className="relative p-3 border-t border-white/10 flex-shrink-0">
+          {profileCardOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setProfileCardOpen(false)} />
+              <div className="absolute bottom-full left-3 right-3 mb-2 z-50 overflow-hidden rounded-2xl border border-white/10 bg-[#0a1f10] shadow-2xl">
+                <button
+                  onClick={() => { setIsProfileOpen(true); setProfileCardOpen(false); }}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-white/80 transition-colors hover:bg-white/5 hover:text-white"
+                >
+                  <UserCog size={16} className="text-white/40" />
+                  Mon profil
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-3 border-t border-white/5 px-4 py-3 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/10"
+                >
+                  <LogOut size={16} />
+                  Déconnexion
+                </button>
+              </div>
+            </>
+          )}
+
           <button
-            onClick={handleLogout}
-            className="flex items-center w-full px-4 py-2 text-red-100 hover:bg-red-500/20 hover:text-red-400 rounded-lg transition text-sm font-medium"
+            onClick={() => setProfileCardOpen((v) => !v)}
+            className="flex w-full items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-white/5"
           >
-            <LogOut size={18} className="mr-3" />
-            Déconnexion
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-bold text-white">
+              {(profile?.full_name?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1 text-left">
+              <p className="truncate text-sm font-bold text-white">{profile?.full_name || user?.email?.split('@')[0]}</p>
+              <p className="truncate text-[11px] uppercase tracking-wide text-white/40">{role?.replace('_', ' ')}</p>
+            </div>
+            <ChevronDown size={16} className={`flex-shrink-0 text-white/40 transition-transform ${profileCardOpen ? 'rotate-180' : ''}`} />
           </button>
         </div>
       </div>

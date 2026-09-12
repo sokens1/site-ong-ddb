@@ -189,42 +189,21 @@ const UsersAdmin: React.FC = () => {
           return;
         }
 
-        // Créer l'utilisateur avec signUp (accessible côté client)
-        const { data: newUser, error: createError } = await supabase.auth.signUp({
-          email: formData.email || '',
-          password: password,
-          options: {
-            data: {
-              full_name: formData.full_name,
-              role: formData.role,
-            },
-            emailRedirectTo: window.location.origin + '/espace-ddb/auth/callback',
+        // Création via l'edge function admin-create-user (service role +
+        // vérification du rôle appelant) — plus jamais via signUp() public,
+        // qui était directement appelable par n'importe qui avec la clé
+        // anon, sans passer par cette page ni être connecté.
+        const { data: result, error: fnError } = await supabase.functions.invoke('admin-create-user', {
+          body: {
+            email: formData.email || '',
+            password: password,
+            full_name: formData.full_name,
+            role: formData.role,
           },
         });
 
-        if (createError) {
-          throw new Error(`Erreur lors de la création: ${createError.message}`);
-        }
-
-        if (!newUser?.user) {
-          throw new Error('Erreur: Utilisateur non créé');
-        }
-
-        // Créer le profil dans la table user_profiles
-        const { error: profileError } = await supabase.from('user_profiles').insert({
-          id: newUser.user.id,
-          email: formData.email,
-          full_name: formData.full_name || null,
-          role: formData.role,
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-
-        if (profileError) {
-          // Si l'insertion du profil échoue, on affiche un avertissement mais on continue
-          console.warn('Erreur lors de la création du profil:', profileError);
-          alert(`Utilisateur créé avec succès, mais erreur lors de la création du profil: ${profileError.message}\n\nVous pouvez créer le profil manuellement.`);
+        if (fnError || !result?.ok) {
+          throw new Error(`Erreur lors de la création: ${result?.error || fnError?.message || 'inconnue'}`);
         }
       }
 
