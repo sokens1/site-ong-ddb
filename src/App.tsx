@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import BackToTop from './components/BackToTop';
+import { SiteContentProvider } from './context/SiteContentContext';
 
 // ── Suspense fallback (outside App to keep a stable reference) ───────────────
 const LoadingFallback = () => (
@@ -88,6 +89,7 @@ const CreateEventPage  = lazy(() => import('./pages/admin/events/CreateEventPage
 const ScanPage         = lazy(() => import('./pages/admin/events/ScanPage'));
 
 const ContributionsAdmin = lazy(() => import('./pages/admin/ContributionsAdmin'));
+const SettingsPage = lazy(() => import('./pages/admin/settings/SettingsPage'));
 
 import { supabase } from './supabaseClient';
 
@@ -116,6 +118,7 @@ function App() {
 
   return (
     <Router>
+      <SiteContentProvider>
       <AppErrorBoundary>
       <Suspense fallback={<LoadingFallback />}>
       <Routes>
@@ -220,6 +223,7 @@ function App() {
           <Route path="documents" element={<DocumentsAdmin />} />
           <Route path="users" element={<UsersAdmin />} />
           <Route path="security" element={<SecurityAdmin />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
 
         {/* Route catch-all pour les pages non trouvées */}
@@ -237,6 +241,7 @@ function App() {
       </Routes>
       </Suspense>
       </AppErrorBoundary>
+      </SiteContentProvider>
     </Router>
   );
 }

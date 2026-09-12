@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { Facebook, Instagram, Twitter, Phone, Mail } from 'lucide-react';
 import Turnstile, { verifySubmission, VERIFY_MESSAGES } from './Turnstile';
+import EditableText from './site-content/EditableText';
+import EditableImage from './site-content/EditableImage';
 
 const Footer: React.FC = () => {
   const navigate = useNavigate();
@@ -76,18 +78,21 @@ const Footer: React.FC = () => {
           {/* Marque */}
           <div>
             <div className="flex items-center gap-3">
-              <img
-                src="/images/logo-ong-DDB.png"
+              <EditableImage
+                k="footer.logo"
+                fallback="/images/logo-ong-DDB.png"
                 alt="ONG DDB"
-                className="h-10 w-10 rounded-full bg-white object-contain p-1"
+                className="h-10 w-10 rounded-full bg-white p-1"
+                imgClassName="h-full w-full object-contain"
               />
               <span className="font-heading text-lg font-bold">ONG DDB</span>
             </div>
-            <p className="mt-4 text-sm leading-relaxed text-white/60">
-              ONG Développement Durable et Bien-Être, engagée à former les
-              leaders jeunesse pour la protection de l'environnement et
-              l'avenir de la planète.
-            </p>
+            <EditableText
+              as="p"
+              k="footer.tagline"
+              fallback="ONG Développement Durable et Bien-Être, engagée à former les leaders jeunesse pour la protection de l'environnement et l'avenir de la planète."
+              className="mt-4 text-sm leading-relaxed text-white/60"
+            />
             <div className="mt-5 space-y-2 text-sm text-white/60">
               <a href="tel:+241077650015" className="flex items-center gap-2 hover:text-white">
                 <Phone className="h-4 w-4 shrink-0 text-ddb-300" />

@@ -3,6 +3,8 @@ import { motion, type Variants } from 'framer-motion';
 import { supabase } from '../supabaseClient';
 import { ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useSiteContent } from '../context/SiteContentContext';
+import EditableText from './site-content/EditableText';
 
 interface EventItem {
   id: number;
@@ -38,6 +40,8 @@ const item: Variants = {
 
 const EventsSection: React.FC = () => {
   const navigate = useNavigate();
+  const { getText } = useSiteContent();
+  const headingOverride = getText('events_home.heading');
   const [events, setEvents] = useState<EventItem[]>([]);
   const [front, setFront] = useState(0);
   const [compact, setCompact] = useState(
@@ -112,25 +116,35 @@ const EventsSection: React.FC = () => {
       >
         {/* Texte */}
         <div className="flex max-w-xl flex-col items-center text-center lg:items-start lg:text-left">
-          <motion.h2
+          <EditableText
+            as={motion.h2}
+            k="events_home.heading"
+            fallback="Prêt à agir avec nous sur le terrain ?"
             variants={item}
             className="font-heading text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl"
           >
-            Prêt à agir avec nous
-            <span className="text-ddb-600"> sur le terrain ?</span>
-          </motion.h2>
+            {headingOverride ?? (
+              <>
+                Prêt à agir avec nous
+                <span className="text-ddb-600"> sur le terrain ?</span>
+              </>
+            )}
+          </EditableText>
 
-          <motion.p variants={item} className="mt-6 max-w-md text-lg text-ddb-950/60">
-            Rejoignez nos ateliers, reboisements et campagnes de sensibilisation
-            organisés partout au Gabon.
-          </motion.p>
+          <EditableText
+            as={motion.p}
+            k="events_home.subheading"
+            fallback="Rejoignez nos ateliers, reboisements et campagnes de sensibilisation organisés partout au Gabon."
+            variants={item}
+            className="mt-6 max-w-md text-lg text-ddb-950/60"
+          />
 
           <motion.div variants={item} className="mt-8">
             <button
               onClick={() => navigate('/events')}
               className="group inline-flex items-center gap-2 rounded-full bg-ddb-700 px-8 py-3.5 font-heading font-bold text-white shadow-lg shadow-ddb-950/20 transition-all duration-300 hover:-translate-y-0.5 hover:bg-ddb-800"
             >
-              Voir tous les événements
+              <EditableText k="events_home.cta" fallback="Voir tous les événements" as="span" multiline={false} />
               <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
             </button>
           </motion.div>

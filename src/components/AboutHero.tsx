@@ -1,6 +1,8 @@
 import React from 'react';
 import { motion, type Variants } from 'framer-motion';
 import { Quote } from 'lucide-react';
+import EditableText from './site-content/EditableText';
+import EditableImage from './site-content/EditableImage';
 
 const container: Variants = {
   hidden: { opacity: 0 },
@@ -40,19 +42,22 @@ const AboutHero: React.FC = () => {
           animate="visible"
           className="max-w-lg"
         >
-          <motion.h1
+          <EditableText
+            as={motion.h1}
+            k="about.title"
+            fallback="Notre histoire"
+            multiline={false}
             variants={item}
             className="font-heading text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl"
-          >
-            Notre histoire
-          </motion.h1>
+          />
 
-          <motion.p variants={item} className="mt-5 text-lg text-white/70">
-            Fondée le 23 septembre 2017 à Libreville, notre ONG a obtenu son
-            récépissé officiel N°0059/MIATCLDCI/SG/DGELP/DFAC du 1er février
-            2019. Depuis, nous n'avons cessé de grandir et d'étendre notre
-            impact à travers le Gabon.
-          </motion.p>
+          <EditableText
+            as={motion.p}
+            k="about.text"
+            fallback="Fondée le 23 septembre 2017 à Libreville, notre ONG a obtenu son récépissé officiel N°0059/MIATCLDCI/SG/DGELP/DFAC du 1er février 2019. Depuis, nous n'avons cessé de grandir et d'étendre notre impact à travers le Gabon."
+            variants={item}
+            className="mt-5 text-lg text-white/70"
+          />
 
           <motion.div
             variants={item}
@@ -60,20 +65,27 @@ const AboutHero: React.FC = () => {
           >
             <div className="flex items-start gap-3">
               <Quote className="h-6 w-6 shrink-0 text-ddb-300" />
-              <p className="italic text-white/90">
-                « La protection de notre environnement n'est pas une option,
-                c'est une nécessité pour assurer le bien-être des générations
-                futures. »
-              </p>
+              <EditableText
+                as="p"
+                k="about.quote"
+                fallback="« La protection de notre environnement n'est pas une option, c'est une nécessité pour assurer le bien-être des générations futures. »"
+                className="italic text-white/90"
+              />
             </div>
             <div className="mt-4 flex items-center justify-end gap-3">
-              <p className="font-heading font-bold text-white">
-                Franck Ondeno, Président
-              </p>
-              <img
-                src="/images/image-president.JPG"
+              <EditableText
+                as="p"
+                k="about.quote_author"
+                fallback="Franck Ondeno, Président"
+                multiline={false}
+                className="font-heading font-bold text-white"
+              />
+              <EditableImage
+                k="about.president_image"
+                fallback="/images/image-president.JPG"
                 alt="Franck Ondeno, Président"
-                className="h-12 w-12 shrink-0 rounded-full border-2 border-white/30 object-cover object-top shadow-md"
+                className="h-12 w-12 shrink-0 rounded-full border-2 border-white/30 shadow-md"
+                imgClassName="h-full w-full rounded-full object-cover object-top"
               />
             </div>
           </motion.div>
@@ -81,7 +93,7 @@ const AboutHero: React.FC = () => {
 
         {/* Puzzle de photos */}
         <div className="mx-auto grid w-full max-w-md grid-cols-2 gap-2" style={{ perspective: 1200 }}>
-          {PIECES.map((p) => (
+          {PIECES.map((p, i) => (
             <motion.div
               key={p.src}
               className={`aspect-square overflow-hidden shadow-xl shadow-ddb-950/20 ${p.outer}`}
@@ -98,7 +110,12 @@ const AboutHero: React.FC = () => {
                 ease: 'easeInOut',
               }}
             >
-              <img src={p.src} alt="" className="h-full w-full object-cover" />
+              <EditableImage
+                k={`about.puzzle_${i + 1}`}
+                fallback={p.src}
+                className="h-full w-full"
+                imgClassName="h-full w-full object-cover"
+              />
             </motion.div>
           ))}
         </div>

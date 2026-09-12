@@ -3,6 +3,8 @@ import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, FileText, Leaf } from 'lucide-react';
 import { fetchReports } from '../data/reports';
+import { useSiteContent } from '../context/SiteContentContext';
+import EditableText from './site-content/EditableText';
 
 interface Report {
   id: number;
@@ -34,6 +36,8 @@ const item: Variants = {
 
 const CoreReports: React.FC = () => {
   const navigate = useNavigate();
+  const { getText } = useSiteContent();
+  const headingOverride = getText('reports_home.heading');
   const [reports, setReports] = useState<Report[]>([]);
 
   useEffect(() => {
@@ -141,25 +145,35 @@ const CoreReports: React.FC = () => {
 
         {/* ── Texte (droite) ── */}
         <div className="flex max-w-xl flex-col items-center text-center lg:ml-6 lg:items-start lg:text-left">
-          <motion.h2
+          <EditableText
+            as={motion.h2}
+            k="reports_home.heading"
+            fallback="Transparence et impact mesuré"
             variants={item}
             className="font-heading text-4xl font-extrabold leading-[1.1] tracking-tight text-ddb-950 sm:text-5xl lg:text-6xl"
           >
-            Transparence et
-            <span className="text-ddb-600"> impact mesuré</span>
-          </motion.h2>
+            {headingOverride ?? (
+              <>
+                Transparence et
+                <span className="text-ddb-600"> impact mesuré</span>
+              </>
+            )}
+          </EditableText>
 
-          <motion.p variants={item} className="mt-6 max-w-md text-lg text-ddb-950/60">
-            Consultez nos rapports d'activité pour suivre concrètement l'impact
-            de nos actions sur le terrain, année après année.
-          </motion.p>
+          <EditableText
+            as={motion.p}
+            k="reports_home.subheading"
+            fallback="Consultez nos rapports d'activité pour suivre concrètement l'impact de nos actions sur le terrain, année après année."
+            variants={item}
+            className="mt-6 max-w-md text-lg text-ddb-950/60"
+          />
 
           <motion.div variants={item} className="mt-8">
             <button
               onClick={() => navigate('/actions')}
               className="group inline-flex items-center gap-2 rounded-full bg-ddb-700 px-8 py-3.5 font-heading font-bold text-white shadow-lg shadow-ddb-950/20 transition-all duration-300 hover:-translate-y-0.5 hover:bg-ddb-800"
             >
-              Consulter tous les rapports
+              <EditableText k="reports_home.cta" fallback="Consulter tous les rapports" as="span" multiline={false} />
               <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
             </button>
           </motion.div>

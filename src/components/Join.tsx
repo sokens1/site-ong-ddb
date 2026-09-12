@@ -19,9 +19,14 @@ import {
   Package,
   HandHeart,
   Briefcase,
+  Pencil,
+  Plus,
+  X,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import Turnstile, { verifySubmission, VERIFY_MESSAGES } from './Turnstile';
+import EditableText from './site-content/EditableText';
+import { useSiteContent } from '../context/SiteContentContext';
 
 const WhatsAppIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg viewBox="0 0 24 24" className={className} fill="currentColor">
@@ -643,17 +648,86 @@ const DonationForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   );
 };
 
+// ===== FAQ — édition (modale ajout/modif, uniquement en mode édition) =====
+type FaqDraft = { id?: number; question: string; answer: string };
+
+const FaqEditorModal: React.FC<{ draft: FaqDraft; onClose: () => void; onSaved: () => void }> = ({ draft, onClose, onSaved }) => {
+  const [question, setQuestion] = useState(draft.question);
+  const [answer, setAnswer] = useState(draft.answer);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!question.trim() || !answer.trim()) return;
+    setSaving(true);
+    if (draft.id) {
+      await supabase.from('faq').update({ question, answer }).eq('id', draft.id);
+    } else {
+      await supabase.from('faq').insert([{ question, answer }]);
+    }
+    setSaving(false);
+    onSaved();
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-sm font-bold text-ddb-700">{draft.id ? 'Modifier la question' : 'Ajouter une question'}</p>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+        </div>
+        <label className={labelCls}>Question</label>
+        <input
+          autoFocus
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          className={`${inputCls} mb-4`}
+        />
+        <label className={labelCls}>Réponse</label>
+        <textarea
+          rows={4}
+          value={answer}
+          onChange={(e) => setAnswer(e.target.value)}
+          className={`${inputCls} resize-none`}
+        />
+        <div className="mt-5 flex justify-end gap-2">
+          <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-100">Annuler</button>
+          <button
+            onClick={handleSave}
+            disabled={saving || !question.trim() || !answer.trim()}
+            className="rounded-lg bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700 disabled:opacity-50"
+          >
+            {saving ? 'Enregistrement...' : 'Enregistrer'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ===== MAIN JOIN COMPONENT =====
 const Join: React.FC = () => {
+  const { editMode } = useSiteContent();
   const [activeForm, setActiveForm] = useState<FormType>('none');
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
   const [faqItems, setFaqItems] = useState<any[]>([]);
   const [contributionTypes, setContributionTypes] = useState<any[]>([]);
+  const [faqDraft, setFaqDraft] = useState<FaqDraft | null>(null);
+
+  const refreshFaq = () => {
+    supabase.from('faq').select('*').order('id', { ascending: true }).then(({ data }) => { if (data) setFaqItems(data); });
+  };
 
   useEffect(() => {
-    supabase.from('faq').select('*').then(({ data }) => { if (data) setFaqItems(data); });
+    refreshFaq();
     supabase.from('contribution_types').select('*').then(({ data }) => { if (data) setContributionTypes(data); });
   }, []);
+
+  const handleDeleteFaq = async (id: number) => {
+    if (!window.confirm('Supprimer cette question ?')) return;
+    await supabase.from('faq').delete().eq('id', id);
+    refreshFaq();
+  };
 
   const selectionCards = [
     {
@@ -682,13 +756,21 @@ const Join: React.FC = () => {
     <section id="join" className="-mt-24 bg-ddb-50 pb-24 pt-32 sm:pt-36">
       <div className="container mx-auto max-w-6xl px-4">
         <AnimatedSection>
-          <motion.h1 variants={itemVariants} className="font-heading text-4xl font-extrabold tracking-tight text-ddb-950 sm:text-5xl lg:text-6xl">
-            Rejoignez-nous
-          </motion.h1>
-          <motion.p variants={itemVariants} className="mt-4 max-w-xl text-lg text-ddb-950/60">
-            Membre, partenaire ou donateur : chaque contribution compte pour
-            faire avancer nos missions de développement durable.
-          </motion.p>
+          <EditableText
+            as={motion.h1}
+            k="join_page.title"
+            fallback="Rejoignez-nous"
+            multiline={false}
+            variants={itemVariants}
+            className="font-heading text-4xl font-extrabold tracking-tight text-ddb-950 sm:text-5xl lg:text-6xl"
+          />
+          <EditableText
+            as={motion.p}
+            k="join_page.subtitle"
+            fallback="Membre, partenaire ou donateur : chaque contribution compte pour faire avancer nos missions de développement durable."
+            variants={itemVariants}
+            className="mt-4 max-w-xl text-lg text-ddb-950/60"
+          />
         </AnimatedSection>
 
         <div className="mt-14 flex flex-col gap-10 lg:flex-row lg:items-start">
@@ -712,16 +794,46 @@ const Join: React.FC = () => {
             </AnimatedSection>
 
             <AnimatedSection className="rounded-3xl border border-ddb-950/5 bg-white p-6 shadow-sm">
-              <motion.h4 variants={itemVariants} className="mb-4 font-heading text-lg font-bold text-ddb-950">
-                Questions fréquentes
-              </motion.h4>
+              <div className="mb-4 flex items-center justify-between">
+                <motion.h4 variants={itemVariants} className="font-heading text-lg font-bold text-ddb-950">
+                  Questions fréquentes
+                </motion.h4>
+                {editMode && (
+                  <button
+                    onClick={() => setFaqDraft({ question: '', answer: '' })}
+                    className="inline-flex items-center gap-1 rounded-lg bg-ddb-50 px-2.5 py-1.5 text-xs font-bold text-ddb-700 hover:bg-ddb-100"
+                  >
+                    <Plus size={13} /> Ajouter
+                  </button>
+                )}
+              </div>
               <motion.div variants={containerVariants} className="divide-y divide-ddb-950/5">
                 {faqItems.map((item, index) => (
                   <motion.div key={item.id} variants={itemVariants} className="py-3 first:pt-0 last:pb-0">
-                    <button onClick={() => setOpenFAQ(openFAQ === index ? null : index)} className="flex w-full items-center justify-between gap-3 text-left font-semibold text-ddb-950">
-                      <span className="text-sm">{item.question}</span>
-                      <ChevronDown size={16} className={`shrink-0 text-ddb-950/40 transition-transform ${openFAQ === index ? 'rotate-180' : ''}`} />
-                    </button>
+                    <div className="flex w-full items-center justify-between gap-3">
+                      <button onClick={() => setOpenFAQ(openFAQ === index ? null : index)} className="flex flex-1 items-center justify-between gap-3 text-left font-semibold text-ddb-950">
+                        <span className="text-sm">{item.question}</span>
+                        <ChevronDown size={16} className={`shrink-0 text-ddb-950/40 transition-transform ${openFAQ === index ? 'rotate-180' : ''}`} />
+                      </button>
+                      {editMode && (
+                        <div className="flex shrink-0 items-center gap-1">
+                          <button
+                            onClick={() => setFaqDraft({ id: item.id, question: item.question, answer: item.answer })}
+                            className="rounded-md p-1.5 text-ddb-950/30 hover:bg-ddb-50 hover:text-ddb-700"
+                            title="Modifier"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteFaq(item.id)}
+                            className="rounded-md p-1.5 text-ddb-950/30 hover:bg-red-50 hover:text-red-500"
+                            title="Supprimer"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     {openFAQ === index && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-2 overflow-hidden border-l-2 border-ddb-200 pl-4 text-ddb-950/60">
                         <p className="text-sm leading-relaxed">{item.answer}</p>
@@ -729,9 +841,16 @@ const Join: React.FC = () => {
                     )}
                   </motion.div>
                 ))}
+                {faqItems.length === 0 && (
+                  <p className="py-3 text-sm text-ddb-950/40">Aucune question pour le moment.</p>
+                )}
               </motion.div>
             </AnimatedSection>
           </div>
+
+          {faqDraft && (
+            <FaqEditorModal draft={faqDraft} onClose={() => setFaqDraft(null)} onSaved={refreshFaq} />
+          )}
 
           {/* Right column — selection tiles + form */}
           <AnimatedSection className="overflow-hidden rounded-3xl border border-ddb-950/5 bg-white p-6 shadow-xl sm:p-8 lg:w-3/5">

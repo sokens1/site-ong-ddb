@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Search, Calendar, MapPin, Users, ArrowRight } from 'lucide-react';
+import EditableText from '../components/site-content/EditableText';
 
 interface Event {
   id: number;
@@ -93,14 +94,19 @@ const EventsPage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <h1 className="font-heading text-4xl font-extrabold tracking-tight text-ddb-950 sm:text-5xl lg:text-6xl">
-              Nos Événements
-            </h1>
-            <p className="mt-4 max-w-xl text-lg text-ddb-950/60">
-              Participez à nos activités sur le terrain, rejoignez nos
-              ateliers locaux, et contribuez à nos missions pour
-              l'environnement.
-            </p>
+            <EditableText
+              as="h1"
+              k="events_page.title"
+              fallback="Nos Événements"
+              multiline={false}
+              className="font-heading text-4xl font-extrabold tracking-tight text-ddb-950 sm:text-5xl lg:text-6xl"
+            />
+            <EditableText
+              as="p"
+              k="events_page.subtitle"
+              fallback="Participez à nos activités sur le terrain, rejoignez nos ateliers locaux, et contribuez à nos missions pour l'environnement."
+              className="mt-4 max-w-xl text-lg text-ddb-950/60"
+            />
           </motion.div>
 
           {/* Illustration décorative — petit collage photo animé */}

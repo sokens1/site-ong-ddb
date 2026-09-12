@@ -12,6 +12,7 @@ import {
   Linkedin,
   Share2,
 } from 'lucide-react';
+import EditableText from '../components/site-content/EditableText';
 
 interface FeedItem {
   type: 'news' | 'video';
@@ -151,13 +152,19 @@ const NewsPage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <h1 className="font-heading text-4xl font-extrabold tracking-tight text-ddb-950 sm:text-5xl lg:text-6xl">
-              Actualités &amp; Médias
-            </h1>
-            <p className="mt-4 max-w-xl text-lg text-ddb-950/60">
-              Nos derniers articles de blog et reportages vidéo sur nos actions
-              de terrain pour l'environnement au Gabon.
-            </p>
+            <EditableText
+              as="h1"
+              k="news_page.title"
+              fallback="Actualités & Médias"
+              multiline={false}
+              className="font-heading text-4xl font-extrabold tracking-tight text-ddb-950 sm:text-5xl lg:text-6xl"
+            />
+            <EditableText
+              as="p"
+              k="news_page.subtitle"
+              fallback="Nos derniers articles de blog et reportages vidéo sur nos actions de terrain pour l'environnement au Gabon."
+              className="mt-4 max-w-xl text-lg text-ddb-950/60"
+            />
           </motion.div>
 
           {/* Illustration décorative — petit collage photo animé */}

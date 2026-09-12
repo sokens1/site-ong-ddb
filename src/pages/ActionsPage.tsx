@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, FileText, Download, Loader2, Eye, ArrowLeft, X } from 'lucide-react';
 import { fetchReports } from '../data/reports';
+import EditableText from '../components/site-content/EditableText';
 
 interface Report {
   id: number;
@@ -139,13 +140,19 @@ const ActionsPage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <h1 className="font-heading text-4xl font-extrabold tracking-tight text-ddb-950 sm:text-5xl lg:text-6xl">
-              Nos Rapports
-            </h1>
-            <p className="mt-4 max-w-xl text-lg text-ddb-950/60">
-              Explorez nos bilans annuels et documents financiers pour suivre
-              l'évolution de nos activités en toute transparence.
-            </p>
+            <EditableText
+              as="h1"
+              k="reports_page.title"
+              fallback="Nos Rapports"
+              multiline={false}
+              className="font-heading text-4xl font-extrabold tracking-tight text-ddb-950 sm:text-5xl lg:text-6xl"
+            />
+            <EditableText
+              as="p"
+              k="reports_page.subtitle"
+              fallback="Explorez nos bilans annuels et documents financiers pour suivre l'évolution de nos activités en toute transparence."
+              className="mt-4 max-w-xl text-lg text-ddb-950/60"
+            />
           </motion.div>
 
           {/* Illustration décorative — petite pile de documents animée */}

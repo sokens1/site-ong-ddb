@@ -7,7 +7,6 @@ import {
   FileText,
   Newspaper,
   Users,
-  HelpCircle,
   Mail,
   LogOut,
   Menu,
@@ -24,6 +23,7 @@ import {
   Bell,
   BellOff,
   KeyRound,
+  Settings,
 } from 'lucide-react';
 import { useNotifications } from '../../hooks/useNotifications';
 import DiscussionSidebar from '../DiscussionSidebar';
@@ -32,11 +32,11 @@ import { useNoIndex } from '../../utils/useNoIndex';
 
 // Define which menu items each role can see
 const ROLE_MENU_ACCESS: Record<UserRole, string[]> = {
-  admin: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'submissions', 'donations', 'events', 'faq', 'newsletter', 'users', 'security'],
-  charge_communication: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'submissions', 'donations', 'events', 'faq', 'newsletter'],
-  chef_projet: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'submissions', 'faq', 'newsletter'],
+  admin: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'submissions', 'donations', 'events', 'newsletter', 'users', 'security', 'settings'],
+  charge_communication: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'submissions', 'donations', 'events', 'newsletter', 'settings'],
+  chef_projet: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'submissions', 'newsletter'],
   partenaire: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news'],
-  membre: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news', 'faq'],
+  membre: ['dashboard', 'projects', 'reports', 'documents', 'team', 'news'],
 };
 
 const ALL_MENU_ITEMS = [
@@ -49,10 +49,10 @@ const ALL_MENU_ITEMS = [
   { id: 'submissions', path: '/espace-ddb/submissions', label: 'Candidatures', icon: Mail },
   { id: 'donations', path: '/espace-ddb/donations', label: 'Dons', icon: Gift },
   { id: 'events', path: '/espace-ddb/events', label: 'Événements', icon: CalendarDays },
-  { id: 'faq', path: '/espace-ddb/faq', label: 'FAQ', icon: HelpCircle },
   { id: 'newsletter', path: '/espace-ddb/newsletter', label: 'Newsletter', icon: Mail },
   { id: 'users', path: '/espace-ddb/users', label: 'Utilisateurs', icon: UserCog },
   { id: 'security', path: '/espace-ddb/security', label: 'Sécurité', icon: ShieldAlert },
+  { id: 'settings', path: '/espace-ddb/settings', label: 'Paramètres', icon: Settings },
 ];
 
 const AdminLayout: React.FC = () => {

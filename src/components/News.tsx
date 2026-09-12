@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, X } from 'lucide-react';
+import EditableText from './site-content/EditableText';
 
 interface FeedItem {
   type: 'news' | 'video';
@@ -149,13 +150,19 @@ const News: React.FC = () => {
           transition={{ duration: 0.5 }}
           className="mb-10 max-w-xl"
         >
-          <h2 className="font-heading text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
-            Actualités
-          </h2>
-          <p className="mt-3 text-white/70">
-            Nos derniers articles et reportages vidéo sur nos actions pour
-            l'environnement au Gabon.
-          </p>
+          <EditableText
+            as="h2"
+            k="news_home.heading"
+            fallback="Actualités"
+            multiline={false}
+            className="font-heading text-4xl font-extrabold tracking-tight text-white sm:text-5xl"
+          />
+          <EditableText
+            as="p"
+            k="news_home.subheading"
+            fallback="Nos derniers articles et reportages vidéo sur nos actions pour l'environnement au Gabon."
+            className="mt-3 text-white/70"
+          />
         </motion.div>
 
         {/* Carrousel plein cadre */}
@@ -210,14 +217,14 @@ const News: React.FC = () => {
                       onClick={() => openItem(item)}
                       className="group inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-ddb-700 px-2 py-2 text-center font-heading text-[11px] font-bold leading-tight text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-ddb-800 sm:flex-none sm:px-6 sm:py-3 sm:text-sm"
                     >
-                      Lire ce blog
+                      <EditableText k="news_home.cta_primary" fallback="Lire ce blog" as="span" multiline={false} />
                       <ArrowRight className="hidden h-4 w-4 transition-transform duration-300 group-hover:translate-x-1 sm:block" />
                     </button>
                     <button
                       onClick={() => navigate('/news')}
                       className="inline-flex flex-1 items-center justify-center whitespace-nowrap rounded-full border-2 border-ddb-200 px-2 py-2 text-center font-heading text-[11px] font-bold leading-tight text-ddb-700 transition-colors duration-300 hover:border-ddb-400 hover:bg-ddb-50 sm:flex-none sm:px-6 sm:py-3 sm:text-sm"
                     >
-                      Voir d'autres
+                      <EditableText k="news_home.cta_secondary" fallback="Voir d'autres" as="span" multiline={false} />
                     </button>
                   </div>
                 </div>

@@ -10,6 +10,7 @@ import {
   Droplets,
   Megaphone,
 } from 'lucide-react';
+import EditableText from './site-content/EditableText';
 
 type Mission = {
   icon: React.ReactNode;
@@ -111,12 +112,19 @@ const MissionCard: React.FC<Mission & { index: number }> = ({
         <div className="mb-4 text-ddb-600 transition-colors duration-300 group-hover:text-white">
           {icon}
         </div>
-        <h3 className="font-heading text-sm font-bold leading-snug tracking-tight text-ddb-900 transition-all duration-300 group-hover:translate-x-1 group-hover:text-white sm:text-lg sm:leading-normal">
-          {title}
-        </h3>
-        <p className="mt-2 text-sm leading-relaxed text-ddb-950/60 transition-colors duration-300 group-hover:text-white/85">
-          {description}
-        </p>
+        <EditableText
+          as="h3"
+          k={`missions.item_${index + 1}_title`}
+          fallback={title}
+          multiline={false}
+          className="font-heading text-sm font-bold leading-snug tracking-tight text-ddb-900 transition-all duration-300 group-hover:translate-x-1 group-hover:text-white sm:text-lg sm:leading-normal"
+        />
+        <EditableText
+          as="p"
+          k={`missions.item_${index + 1}_desc`}
+          fallback={description}
+          className="mt-2 text-sm leading-relaxed text-ddb-950/60 transition-colors duration-300 group-hover:text-white/85"
+        />
       </div>
     </motion.div>
   );
@@ -133,13 +141,19 @@ const Missions: React.FC = () => {
           transition={{ duration: 0.5 }}
           className="mx-auto mb-14 max-w-2xl text-center"
         >
-          <h2 className="font-heading text-4xl font-extrabold tracking-tight text-ddb-950 sm:text-5xl lg:text-6xl">
-            Nos missions
-          </h2>
-          <p className="mt-4 text-ddb-950/60">
-            Huit axes d'action pour préserver l'environnement au Gabon par
-            l'éducation au changement.
-          </p>
+          <EditableText
+            as="h2"
+            k="missions.heading"
+            fallback="Nos missions"
+            multiline={false}
+            className="font-heading text-4xl font-extrabold tracking-tight text-ddb-950 sm:text-5xl lg:text-6xl"
+          />
+          <EditableText
+            as="p"
+            k="missions.subheading"
+            fallback="Huit axes d'action pour préserver l'environnement au Gabon par l'éducation au changement."
+            className="mt-4 text-ddb-950/60"
+          />
         </motion.div>
 
         <div className="grid grid-cols-2 gap-px overflow-hidden rounded-3xl bg-ddb-100 ring-1 ring-ddb-100 lg:grid-cols-4">

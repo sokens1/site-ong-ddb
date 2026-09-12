@@ -2,6 +2,9 @@ import React from 'react';
 import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
+import { useSiteContent } from '../context/SiteContentContext';
+import EditableText from './site-content/EditableText';
+import EditableImage from './site-content/EditableImage';
 
 /* ── Animations ─────────────────────────────────────────────── */
 const container: Variants = {
@@ -65,6 +68,8 @@ const gridCells = [
 
 const Hero: React.FC = () => {
   const navigate = useNavigate();
+  const { getText } = useSiteContent();
+  const titleOverride = getText('hero.title');
 
   return (
     <section
@@ -129,23 +134,29 @@ const Hero: React.FC = () => {
           initial="hidden"
           animate="visible"
         >
-          <motion.h1
+          <EditableText
+            as={motion.h1}
+            k="hero.title"
+            fallback="La préservation de l'environnement par l'éducation au changement"
             variants={item}
             className="font-heading text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl"
           >
-            <span className="whitespace-nowrap">La préservation de</span> l'environnement
-            <br className="hidden sm:block" />
-            <span className="text-ddb-200"> par l'éducation au changement</span>
-          </motion.h1>
+            {titleOverride ?? (
+              <>
+                <span className="whitespace-nowrap">La préservation de</span> l'environnement
+                <br className="hidden sm:block" />
+                <span className="text-ddb-200"> par l'éducation au changement</span>
+              </>
+            )}
+          </EditableText>
 
-          <motion.p
+          <EditableText
+            as={motion.p}
+            k="hero.subtitle"
+            fallback="Nous œuvrons pour l'éducation environnementale, la restauration des écosystèmes, la lutte contre les changements climatiques et la protection de la biodiversité au Gabon."
             variants={item}
             className="mt-6 max-w-xl text-lg text-white/85 sm:text-xl"
-          >
-            Nous œuvrons pour l'éducation environnementale, la restauration des
-            écosystèmes, la lutte contre les changements climatiques et la
-            protection de la biodiversité au Gabon.
-          </motion.p>
+          />
 
           <motion.div
             variants={item}
@@ -155,14 +166,14 @@ const Hero: React.FC = () => {
               onClick={() => navigate('/join')}
               className="group inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-white px-4 py-2.5 font-heading text-xs font-bold text-ddb-700 shadow-lg shadow-ddb-950/20 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-ddb-950/30 sm:gap-2 sm:px-8 sm:py-3.5 sm:text-base"
             >
-              Rejoignez-nous
+              <EditableText k="hero.cta_primary" fallback="Rejoignez-nous" as="span" multiline={false} />
               <ArrowRight className="hidden h-4 w-4 transition-transform duration-300 group-hover:translate-x-1 sm:block" />
             </button>
             <button
               onClick={() => navigate('/actions')}
               className="inline-flex items-center justify-center whitespace-nowrap rounded-full border-2 border-white/40 px-4 py-2.5 font-heading text-xs font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-white hover:bg-white/10 sm:px-8 sm:py-3.5 sm:text-base"
             >
-              Découvrir nos actions
+              <EditableText k="hero.cta_secondary" fallback="Découvrir nos actions" as="span" multiline={false} />
             </button>
           </motion.div>
         </motion.div>
@@ -196,24 +207,23 @@ const Hero: React.FC = () => {
           />
 
           {/* Photos — entrée "carte retournée" (flip 3D) */}
-          {photos.map((photo) => (
+          {photos.map((photo, i) => (
             <motion.div
               key={photo.src}
               variants={frame}
               style={{ transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }}
               className={`absolute rounded-[1.75rem] bg-white p-2.5 shadow-2xl shadow-ddb-950/30 ${photo.pos}`}
             >
-              <motion.img
-                src={photo.src}
+              <EditableImage
+                k={`hero.image_${i + 1}`}
+                fallback={photo.src}
                 alt={photo.alt}
-                loading="eager"
-                className="h-full w-full rounded-3xl object-cover"
-                animate={{ y: [0, -8, 0] }}
-                transition={{
-                  duration: 5.5,
-                  repeat: Infinity,
-                  ease: 'easeInOut',
-                  delay: photo.delay,
+                as={motion.img}
+                imgClassName="h-full w-full rounded-3xl object-cover"
+                className="h-full w-full rounded-3xl"
+                imgProps={{
+                  animate: { y: [0, -8, 0] },
+                  transition: { duration: 5.5, repeat: Infinity, ease: 'easeInOut', delay: photo.delay },
                 }}
               />
             </motion.div>

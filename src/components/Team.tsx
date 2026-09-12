@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import EditableText from './site-content/EditableText';
 
 interface Member {
   id: string | number;
@@ -87,18 +88,24 @@ const Team: React.FC = () => {
             transition={{ duration: 0.5 }}
             className="mb-10 lg:mb-0"
           >
-            <h2 className="font-heading text-4xl font-extrabold tracking-tight sm:text-5xl">
-              Notre Bureau Directeur
-            </h2>
-            <p className="mt-3 text-ddb-950/60">
-              Des décennies d'expérience combinées, au service d'une même
-              mission : agir pour l'environnement au Gabon.
-            </p>
+            <EditableText
+              as="h2"
+              k="team_home.heading"
+              fallback="Notre Bureau Directeur"
+              multiline={false}
+              className="font-heading text-4xl font-extrabold tracking-tight sm:text-5xl"
+            />
+            <EditableText
+              as="p"
+              k="team_home.subheading"
+              fallback="Des décennies d'expérience combinées, au service d'une même mission : agir pour l'environnement au Gabon."
+              className="mt-3 text-ddb-950/60"
+            />
             <button
               onClick={() => navigate('/join')}
               className="mt-6 inline-flex rounded-full bg-ddb-700 px-8 py-3.5 font-heading font-bold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-ddb-800"
             >
-              Rejoignez-nous
+              <EditableText k="team_home.cta" fallback="Rejoignez-nous" as="span" multiline={false} />
             </button>
           </motion.div>
 
