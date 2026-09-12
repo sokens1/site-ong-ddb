@@ -1,7 +1,7 @@
 // @ts-ignore
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
-// @ts-ignore
 import { verifyAdminRequest } from "../_shared/verifyAdmin.ts"
+import { getGmailConfig, getGmailAccessToken, buildRawMessage, htmlToText, sendGmailRaw } from "../_shared/gmail.ts"
 
 declare const Deno: any;
 
@@ -11,7 +11,7 @@ const corsHeaders = {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-console.log("Edge Function 'send-interview-invite' bootstrapped.")
+console.log("Edge Function 'send-interview-invite' bootstrapped (Gmail API).")
 
 serve(async (req: Request) => {
     const { method } = req
@@ -24,15 +24,12 @@ serve(async (req: Request) => {
     if (authError) return authError
 
     try {
-        const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY')
-        const SENDER_EMAIL = Deno.env.get('SENDER_EMAIL') || 'sokensdigital@gmail.com'
-        const SENDER_NAME = Deno.env.get('SENDER_NAME') || 'ONG DDB'
-
-        if (!BREVO_API_KEY) throw new Error('BREVO_API_KEY missing')
-
         const bodyText = await req.text()
         if (!bodyText) throw new Error('Empty body')
         const { email, fullname, date, location, type, notes } = JSON.parse(bodyText)
+        if (!email || !fullname || !date) throw new Error('Champs manquants : email, fullname et date sont requis.')
+
+        const cfg = getGmailConfig()
 
         const hour = new Date().getHours();
         const greeting = hour >= 18 ? 'Bonsoir' : 'Bonjour';
@@ -40,8 +37,6 @@ serve(async (req: Request) => {
         const formattedDate = new Date(date).toLocaleString('fr-FR', {
             day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
         })
-
-        console.log(`Sending interview invite to ${email}...`)
 
         const htmlContent = `
           <div style="font-family: Arial; border: 1px solid #eee; border-radius: 10px; padding: 25px;">
@@ -59,19 +54,27 @@ serve(async (req: Request) => {
           </div>
         `;
 
-        const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-            method: 'POST',
-            headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                sender: { name: SENDER_NAME, email: SENDER_EMAIL },
-                to: [{ email, name: fullname }],
-                subject: '📅 Invitation à un entretien - ONG DDB',
-                htmlContent: htmlContent
-            }),
-        })
+        if (cfg.simulate) {
+            console.log(`[SIMULATION] send-interview-invite → ${email}. Configurez GMAIL_CLIENT_ID/GMAIL_CLIENT_SECRET/GMAIL_REFRESH_TOKEN/SMTP_USER pour un envoi réel.`)
+            return new Response(JSON.stringify({ success: true, simulated: true }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
+        }
 
-        const result = await res.text()
-        return new Response(result, { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        const accessToken = await getGmailAccessToken(cfg)
+        const plainText = htmlToText(htmlContent)
+        const raw = buildRawMessage({
+            from: cfg.senderEmail, fromName: cfg.senderName,
+            to: email, toName: fullname,
+            subject: '📅 Invitation à un entretien - ONG DDB',
+            html: htmlContent, text: plainText,
+        })
+        const result = await sendGmailRaw(accessToken, raw)
+
+        return new Response(JSON.stringify({ success: result.ok, messageId: result.id, error: result.error }), {
+            status: result.ok ? 200 : 502,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
     } catch (error: any) {
         console.error(`Error: ${error.message}`)
         return new Response(JSON.stringify({ error: error.message }), {

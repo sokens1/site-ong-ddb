@@ -1,6 +1,7 @@
 // @ts-ignore
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { checkRateLimit, getClientIp } from "../_shared/rateLimit.ts"
+import { getGmailConfig, getGmailAccessToken, buildRawMessageWithAttachment, htmlToText, sendGmailRaw } from "../_shared/gmail.ts"
 
 declare const Deno: any;
 
@@ -10,7 +11,7 @@ const corsHeaders = {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-console.log("Edge Function 'send-event-confirmation' bootstrapped.")
+console.log("Edge Function 'send-event-confirmation' bootstrapped (Gmail API).")
 
 serve(async (req: Request) => {
     const { method } = req
@@ -20,8 +21,8 @@ serve(async (req: Request) => {
 
     try {
         // Sans ça, n'importe qui peut envoyer un email avec une pièce jointe
-        // arbitraire (le PDF) à n'importe quelle adresse via notre compte
-        // Brevo — relais de spam/phishing potentiel. Rate limit par IP.
+        // arbitraire (le PDF) à n'importe quelle adresse via notre compte —
+        // relais de spam/phishing potentiel. Rate limit par IP.
         const allowed = await checkRateLimit('send-event-confirmation', getClientIp(req))
         if (!allowed) {
             return new Response(JSON.stringify({ error: 'rate_limited' }), {
@@ -30,38 +31,24 @@ serve(async (req: Request) => {
             })
         }
 
-        const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY')
-        const SENDER_EMAIL = Deno.env.get('SENDER_EMAIL') || 'sokensdigital@gmail.com'
-        const SENDER_NAME = Deno.env.get('SENDER_NAME') || 'ONG DDB'
-
-        if (!BREVO_API_KEY) {
-            throw new Error('BREVO_API_KEY is not configured. Please set it in Supabase secrets.')
-        }
-
         const bodyText = await req.text()
         if (!bodyText) throw new Error('Empty request body')
 
-        const { email, fullname, eventTitle, eventDate, eventLocation, pdfBase64, pdfName } = JSON.parse(bodyText)
+        const { email, fullname, eventTitle, eventDate, pdfBase64, pdfName } = JSON.parse(bodyText)
 
         if (!email || !fullname || !eventTitle || !eventDate) {
             throw new Error('Missing required fields for event ticket')
         }
 
-        console.log(`Sending event ticket email to ${email} for event "${eventTitle}"...`)
+        const cfg = getGmailConfig()
 
-        // Format Date
         const dateObj = new Date(eventDate);
         const formattedDate = dateObj.toLocaleDateString('fr-FR', {
             weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
             hour: '2-digit', minute: '2-digit'
         });
 
-        // QR Code URL
-        const qrData = encodeURIComponent(`ONG DDB\nParticipant: ${fullname}\nEvenement: ${eventTitle}\nDate: ${formattedDate}`);
-        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${qrData}&color=0f5132&bgcolor=ffffff`;
-
-        // ── Beautiful Email HTML ─────────────────────────────────────────────
-        const finalHtmlContent = `
+        const htmlContent = `
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -73,7 +60,7 @@ serve(async (req: Request) => {
   <div style="max-width:600px;margin:0 auto;padding:24px;border-radius:12px;background-color:#f9fafb;border:1px solid #e5e7eb;">
     <p style="font-size:16px;color:#1f2937;line-height:1.6;margin:0;">
       Bonjour ${fullname} 👋,<br><br>
-      Votre inscription à l'événement <strong>${eventTitle}</strong> a été enregistrée avec succès. Votre billet d'entrée officiel est joint à cet e-mail en pièce jointe (PDF).
+      Votre inscription à l'événement <strong>${eventTitle}</strong> (${formattedDate}) a été enregistrée avec succès. Votre billet d'entrée officiel est joint à cet e-mail en pièce jointe (PDF).
     </p>
     <hr style="margin:20px 0;border:none;border-top:1px solid #e5e7eb;">
     <p style="font-size:12px;color:#6b7280;margin:0;text-align:center;">
@@ -83,67 +70,34 @@ serve(async (req: Request) => {
 </body>
 </html>`;
 
-        // ── Brevo Payload ────────────────────────────────────────────────────
-        const payload: any = {
-            sender: { name: SENDER_NAME, email: SENDER_EMAIL },
-            to: [{ email: email, name: fullname }],
+        if (cfg.simulate) {
+            console.log(`[SIMULATION] send-event-confirmation → ${email} pour "${eventTitle}". Configurez GMAIL_CLIENT_ID/GMAIL_CLIENT_SECRET/GMAIL_REFRESH_TOKEN/SMTP_USER pour un envoi réel.`)
+            return new Response(JSON.stringify({ success: true, simulated: true, emailSent: false }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
+        }
+
+        if (!pdfBase64 || pdfBase64.length < 100) {
+            throw new Error('Billet PDF manquant ou invalide (pdfBase64).')
+        }
+
+        const accessToken = await getGmailAccessToken(cfg)
+        const plainText = htmlToText(htmlContent)
+        const raw = buildRawMessageWithAttachment({
+            from: cfg.senderEmail, fromName: cfg.senderName,
+            to: email, toName: fullname,
             subject: `🎟️ Votre billet — ${eventTitle}`,
-            htmlContent: finalHtmlContent,
-        };
-
-        // Attach the PDF if provided (generated client-side)
-        if (pdfBase64 && pdfBase64.length > 100) {
-            payload.attachment = [{
-                content: pdfBase64,
-                name: pdfName || `Billet_${eventTitle.replace(/[^a-z0-9]/gi, '_')}.pdf`,
-            }];
-            console.log(`PDF attachment included (${pdfBase64.length} chars base64).`);
-        } else {
-            console.log('No PDF attachment (pdfBase64 not provided or too short).');
-        }
-
-        let emailSent = false;
-        let messageId = null;
-        let emailError = null;
-        const MAX_RETRIES = 3;
-
-        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-            try {
-                console.log(`Brevo attempt ${attempt}/${MAX_RETRIES}...`);
-                const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-                    method: 'POST',
-                    headers: {
-                        'api-key': BREVO_API_KEY,
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify(payload),
-                });
-
-                if (!res.ok) {
-                    const errorText = await res.text();
-                    emailError = `Brevo error (attempt ${attempt}): ${errorText}`;
-                    console.error(emailError);
-                    if (attempt < MAX_RETRIES) await new Promise(r => setTimeout(r, 1000 * attempt));
-                } else {
-                    const data = await res.json();
-                    messageId = data.messageId;
-                    emailSent = true;
-                    console.log(`✅ Email sent on attempt ${attempt}. messageId: ${messageId}`);
-                    break;
-                }
-            } catch (err: any) {
-                emailError = `Network error (attempt ${attempt}): ${err.message}`;
-                console.error(emailError);
-                if (attempt < MAX_RETRIES) await new Promise(r => setTimeout(r, 1000 * attempt));
-            }
-        }
+            html: htmlContent, text: plainText,
+            attachmentBase64: pdfBase64,
+            attachmentName: pdfName || `Billet_${eventTitle.replace(/[^a-z0-9]/gi, '_')}.pdf`,
+        })
+        const result = await sendGmailRaw(accessToken, raw)
 
         return new Response(JSON.stringify({
             success: true,
-            emailSent,
-            emailError,
-            messageId,
+            emailSent: result.ok,
+            emailError: result.error || null,
+            messageId: result.id || null,
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });

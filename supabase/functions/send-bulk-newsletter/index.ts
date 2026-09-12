@@ -1,7 +1,7 @@
 // @ts-ignore
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
-// @ts-ignore
 import { verifyAdminRequest } from "../_shared/verifyAdmin.ts"
+import { getGmailConfig, getGmailAccessToken, buildRawMessage, htmlToText, sendGmailRaw } from "../_shared/gmail.ts"
 
 declare const Deno: any;
 
@@ -11,7 +11,10 @@ const corsHeaders = {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-console.log("Edge Function 'send-bulk-newsletter' bootstrapped.")
+console.log("Edge Function 'send-bulk-newsletter' bootstrapped (Gmail API).")
+
+const CHUNK_SIZE = 30
+const DELAY_BETWEEN_CHUNKS_MS = 400
 
 serve(async (req: Request) => {
     const { method } = req
@@ -21,29 +24,23 @@ serve(async (req: Request) => {
 
     // Réservé aux comptes admin/charge_communication — sans ce contrôle, n'importe
     // qui avec la clé "anon" publique pouvait déclencher un envoi de newsletter
-    // arbitraire à toute la liste d'abonnés via notre compte Brevo.
+    // arbitraire à toute la liste d'abonnés.
     const authError = await verifyAdminRequest(req, ['admin', 'charge_communication'], corsHeaders, 'send-bulk-newsletter')
     if (authError) return authError
 
     try {
-        const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY')
-        const SENDER_EMAIL = Deno.env.get('SENDER_EMAIL') || 'sokensdigital@gmail.com'
-        const SENDER_NAME = Deno.env.get('SENDER_NAME') || 'ONG DDB'
-
-        if (!BREVO_API_KEY) throw new Error('BREVO_API_KEY missing')
-
         const bodyText = await req.text()
         if (!bodyText) throw new Error('Empty request body')
 
         const { subject, htmlContent, targetEmails, attachmentUrl } = JSON.parse(bodyText)
 
-        if (!targetEmails || !Array.isArray(targetEmails) || targetEmails.length === 0) {
-            throw new Error('targetEmails is required and must be a non-empty array')
+        if (!subject || !htmlContent || !Array.isArray(targetEmails) || targetEmails.length === 0) {
+            throw new Error('subject, htmlContent et targetEmails (non vide) sont requis.')
         }
 
-        console.log(`Sending bulk newsletter to ${targetEmails.length} subscribers...`)
+        const cfg = getGmailConfig()
 
-        let finalHtmlContent = `
+        const finalHtmlContent = `
           <!DOCTYPE html>
           <html>
             <head>
@@ -62,20 +59,14 @@ serve(async (req: Request) => {
             </head>
             <body>
               <div class="email-container">
-                <div class="email-subject">
-                  Objet : ${subject}
-                </div>
-                <div class="email-body">
-                  ${htmlContent}
-                </div>
-                
+                <div class="email-subject">Objet : ${subject}</div>
+                <div class="email-body">${htmlContent}</div>
                 ${attachmentUrl ? `
                 <div class="attachment-block">
                   <p style="margin-bottom: 10px; font-size: 14px; font-weight: bold;">📎 Pièce jointe :</p>
                   <a href="${attachmentUrl}" class="attachment-button">Consulter le document</a>
                 </div>
                 ` : ''}
-
                 <div class="footer">
                   <p style="margin: 0;">Cet e-mail vous est envoyé par l'ONG DDB.</p>
                   <p style="margin: 5px 0 0 0;">Pour vous désabonner, veuillez vous rendre sur notre site internet.</p>
@@ -85,49 +76,34 @@ serve(async (req: Request) => {
           </html>
         `;
 
-        // Split emails into chunks of 50 for BCC to avoid API limits and hide recipients
-        const chunkSize = 50;
-        const chunks = [];
-        for (let i = 0; i < targetEmails.length; i += chunkSize) {
-            chunks.push(targetEmails.slice(i, i + chunkSize));
+        if (cfg.simulate) {
+            console.log(`[SIMULATION] send-bulk-newsletter → ${targetEmails.length} destinataire(s). Configurez GMAIL_CLIENT_ID/GMAIL_CLIENT_SECRET/GMAIL_REFRESH_TOKEN/SMTP_USER pour un envoi réel.`)
+            return new Response(JSON.stringify({ success: true, simulated: true, sent: targetEmails.length }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
         }
 
-        const results = [];
+        const accessToken = await getGmailAccessToken(cfg)
+        const plainText = htmlToText(finalHtmlContent)
 
-        for (const chunk of chunks) {
-            const bccList = chunk.map(email => ({ email }));
+        let totalSent = 0
+        const errors: string[] = []
 
-            const payload = {
-                sender: { name: SENDER_NAME, email: SENDER_EMAIL },
-                to: [{ email: SENDER_EMAIL, name: "Abonnés ONG DDB" }], // Send to self as primary
-                bcc: bccList, // Real targets are hidden in BCC
-                subject: subject,
-                htmlContent: finalHtmlContent
-            };
+        for (let i = 0; i < targetEmails.length; i += CHUNK_SIZE) {
+            const chunk = targetEmails.slice(i, i + CHUNK_SIZE)
+            const raw = buildRawMessage({ from: cfg.senderEmail, fromName: cfg.senderName, bcc: chunk, subject, html: finalHtmlContent, text: plainText })
+            const result = await sendGmailRaw(accessToken, raw)
+            if (!result.ok) errors.push(`Lot ${i / CHUNK_SIZE + 1}: ${result.error}`)
+            else totalSent += chunk.length
 
-            const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-                method: 'POST',
-                headers: {
-                    'api-key': BREVO_API_KEY,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (!res.ok) {
-                const errorText = await res.text();
-                console.error('Brevo API error:', errorText);
-                throw new Error(`Brevo API error: ${errorText}`);
+            if (i + CHUNK_SIZE < targetEmails.length) {
+                await new Promise((r) => setTimeout(r, DELAY_BETWEEN_CHUNKS_MS))
             }
-
-            const data = await res.json();
-            results.push(data);
         }
 
-        console.log("Newsletter sent successfully in " + chunks.length + " chunk(s).");
+        console.log(`Newsletter envoyée : ${totalSent}/${targetEmails.length}, ${errors.length} erreur(s).`)
 
-        return new Response(JSON.stringify({ success: true, results }), {
+        return new Response(JSON.stringify({ success: errors.length === 0, sent: totalSent, errors }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
     } catch (error: any) {

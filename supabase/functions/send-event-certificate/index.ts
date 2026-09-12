@@ -1,6 +1,7 @@
 // @ts-ignore
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { checkRateLimit, getClientIp } from "../_shared/rateLimit.ts"
+import { getGmailConfig, getGmailAccessToken, buildRawMessageWithAttachment, htmlToText, sendGmailRaw } from "../_shared/gmail.ts"
 
 declare const Deno: any;
 
@@ -12,109 +13,6 @@ const corsHeaders = {
 
 console.log("Edge Function 'send-event-certificate' bootstrapped (Gmail API).")
 
-// ────────────────────────────────────────────────────────────────────────────
-// Envoi des certificats via l'API Gmail (OAuth2) — même système que
-// send-event-email (composeur mail participants/volontaires), pour garder
-// un seul canal d'envoi et un alignement SPF/DKIM/DMARC cohérent.
-// Un envoi individuel par certificat (pas de BCC groupé) car chaque PDF est
-// personnalisé au nom du participant.
-//
-// Variables d'environnement requises (Supabase secrets) :
-//   GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN, SMTP_USER
-//   EMAIL_FROM_NAME (optionnel, "ONG DDB" par défaut)
-// Si l'une manque, le service simule l'envoi (succès sans email réel envoyé).
-// ────────────────────────────────────────────────────────────────────────────
-
-async function getAccessToken(clientId: string, clientSecret: string, refreshToken: string): Promise<string> {
-    const res = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-            client_id: clientId,
-            client_secret: clientSecret,
-            refresh_token: refreshToken,
-            grant_type: 'refresh_token',
-        }),
-    });
-    if (!res.ok) {
-        throw new Error(`Échec du rafraîchissement du token Gmail: ${await res.text()}`);
-    }
-    const data = await res.json();
-    return data.access_token;
-}
-
-function base64url(input: string): string {
-    return btoa(unescape(encodeURIComponent(input)))
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
-}
-
-function encodeSubject(subject: string): string {
-    return `=?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`;
-}
-
-function htmlToText(html: string): string {
-    return html
-        .replace(/<br\s*\/?>/gi, '\n')
-        .replace(/<\/(p|div|h[1-6])>/gi, '\n\n')
-        .replace(/<[^>]+>/g, '')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/\n{3,}/g, '\n\n')
-        .trim();
-}
-
-/** Construit un message MIME multipart/mixed (texte + HTML + pièce jointe PDF), encodé en base64url. */
-function buildRawMessageWithAttachment(opts: {
-    from: string; fromName: string; to: string; toName: string;
-    subject: string; html: string; text: string;
-    attachmentBase64: string; attachmentName: string;
-}): string {
-    const mixedBoundary = `mix_${crypto.randomUUID().replace(/-/g, '')}`;
-    const altBoundary = `alt_${crypto.randomUUID().replace(/-/g, '')}`;
-
-    const headers = [
-        `From: ${opts.fromName} <${opts.from}>`,
-        `To: ${opts.toName} <${opts.to}>`,
-        `Subject: ${encodeSubject(opts.subject)}`,
-        'MIME-Version: 1.0',
-        `Content-Type: multipart/mixed; boundary="${mixedBoundary}"`,
-    ].join('\r\n');
-
-    // Découpe la pièce jointe en lignes de 76 caractères (convention MIME)
-    const chunkedAttachment = (opts.attachmentBase64.match(/.{1,76}/g) || []).join('\r\n');
-
-    const body = [
-        `--${mixedBoundary}`,
-        `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
-        '',
-        `--${altBoundary}`,
-        'Content-Type: text/plain; charset="UTF-8"',
-        'Content-Transfer-Encoding: 7bit',
-        '',
-        opts.text,
-        '',
-        `--${altBoundary}`,
-        'Content-Type: text/html; charset="UTF-8"',
-        'Content-Transfer-Encoding: 7bit',
-        '',
-        opts.html,
-        '',
-        `--${altBoundary}--`,
-        '',
-        `--${mixedBoundary}`,
-        `Content-Type: application/pdf; name="${opts.attachmentName}"`,
-        `Content-Disposition: attachment; filename="${opts.attachmentName}"`,
-        'Content-Transfer-Encoding: base64',
-        '',
-        chunkedAttachment,
-        '',
-        `--${mixedBoundary}--`,
-    ].join('\r\n');
-
-    return base64url(`${headers}\r\n\r\n${body}`);
-}
-
 serve(async (req: Request) => {
     const { method } = req
     if (method === 'OPTIONS') {
@@ -124,7 +22,7 @@ serve(async (req: Request) => {
     try {
         // Sans ça, n'importe qui peut envoyer un email avec une pièce
         // jointe PDF arbitraire à n'importe quelle adresse via notre compte
-        // Gmail — relais de spam/phishing potentiel. Rate limit par IP.
+        // — relais de spam/phishing potentiel. Rate limit par IP.
         const allowed = await checkRateLimit('send-event-certificate', getClientIp(req))
         if (!allowed) {
             return new Response(JSON.stringify({ error: 'rate_limited' }), {
@@ -142,14 +40,7 @@ serve(async (req: Request) => {
             throw new Error('Missing required fields for event certificate')
         }
 
-        const clientId = Deno.env.get('GMAIL_CLIENT_ID')
-        const clientSecret = Deno.env.get('GMAIL_CLIENT_SECRET')
-        const refreshToken = Deno.env.get('GMAIL_REFRESH_TOKEN')
-        const senderEmail = Deno.env.get('SMTP_USER')
-        const senderName = Deno.env.get('EMAIL_FROM_NAME') || 'ONG DDB'
-
-        const simulate = !clientId || !clientSecret || !refreshToken || !senderEmail
-
+        const cfg = getGmailConfig()
         const attachmentName = pdfName || `Certificat_${eventTitle.replace(/[^a-z0-9]/gi, '_')}.pdf`
 
         const htmlContent = `
@@ -174,7 +65,7 @@ serve(async (req: Request) => {
 </body>
 </html>`;
 
-        if (simulate) {
+        if (cfg.simulate) {
             console.log(`[SIMULATION] send-event-certificate → ${email} pour "${eventTitle}". Configurez GMAIL_CLIENT_ID/GMAIL_CLIENT_SECRET/GMAIL_REFRESH_TOKEN/SMTP_USER pour un envoi réel.`)
             return new Response(JSON.stringify({ success: true, simulated: true, emailSent: false }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -185,41 +76,22 @@ serve(async (req: Request) => {
             throw new Error('Certificat PDF manquant ou invalide (pdfBase64).')
         }
 
-        const accessToken = await getAccessToken(clientId, clientSecret, refreshToken)
+        const accessToken = await getGmailAccessToken(cfg)
         const plainText = htmlToText(htmlContent)
-
         const raw = buildRawMessageWithAttachment({
-            from: senderEmail,
-            fromName: senderName,
-            to: email,
-            toName: fullname,
+            from: cfg.senderEmail, fromName: cfg.senderName,
+            to: email, toName: fullname,
             subject: `🎓 Votre certificat de participation — ${eventTitle}`,
-            html: htmlContent,
-            text: plainText,
-            attachmentBase64: pdfBase64,
-            attachmentName,
+            html: htmlContent, text: plainText,
+            attachmentBase64: pdfBase64, attachmentName,
         })
-
-        const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-            method: 'POST',
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ raw }),
-        })
-
-        if (!res.ok) {
-            const errorText = await res.text()
-            throw new Error(`Gmail API error: ${errorText}`)
-        }
-
-        const data = await res.json()
+        const result = await sendGmailRaw(accessToken, raw)
 
         return new Response(JSON.stringify({
             success: true,
-            emailSent: true,
-            messageId: data.id || null,
+            emailSent: result.ok,
+            messageId: result.id || null,
+            error: result.error || null,
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
