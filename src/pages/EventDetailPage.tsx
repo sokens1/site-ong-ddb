@@ -1232,7 +1232,8 @@ const EventDetailPage: React.FC = () => {
                   </div>
                 )}
 
-                <div className="mt-10 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center sm:justify-end gap-6">
+                <div className="mt-10 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center sm:justify-end gap-3 sm:gap-6">
+                  <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
                   <div className="flex items-center gap-3 w-full sm:w-auto">
                     {/* Share button */}
                     <div className="relative">
@@ -1305,10 +1306,11 @@ const EventDetailPage: React.FC = () => {
                       {isPast ? 'Événement terminé' : isFull ? 'Complet' : "S'inscrire"}
                       {!isPast && !isFull && <Calendar size={16} className="hidden sm:block" />}
                     </button>
+                  </div>
                     {isPast && hasFeedback && (
                       <button
                         onClick={() => setFeedbackOpen(true)}
-                        className="font-bold py-3 px-3 sm:py-3.5 sm:px-6 rounded-xl transition-all text-sm sm:text-base flex justify-center items-center gap-2 border border-white/20 bg-white/5 text-white hover:bg-white/10 active:scale-95 whitespace-nowrap"
+                        className="w-full sm:w-auto font-bold py-3 px-3 sm:py-3.5 sm:px-6 rounded-xl transition-all text-sm sm:text-base flex justify-center items-center gap-2 border border-white/20 bg-white/5 text-white hover:bg-white/10 active:scale-95 whitespace-nowrap"
                       >
                         <MessageSquare size={16} />
                         Donner mon avis

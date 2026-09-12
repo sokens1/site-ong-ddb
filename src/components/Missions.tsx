@@ -75,16 +75,21 @@ const MissionCard: React.FC<Mission & { index: number }> = ({
   index,
 }) => {
   const [hovered, setHovered] = useState(false);
+  // Sur mobile/tactile, mouseenter reste parfois "collé" après un tap (pas de
+  // mouseleave réel), ce qui fait sauter le bloc vert d'une carte à l'autre.
+  // On ne l'active donc que sur les appareils qui ont un vrai survol souris.
+  const canHover = () =>
+    typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
   return (
     <motion.div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={() => canHover() && setHovered(true)}
+      onMouseLeave={() => canHover() && setHovered(false)}
       initial={{ opacity: 0, y: 24 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-80px' }}
       transition={{ duration: 0.5, delay: (index % 4) * 0.08, ease: [0.22, 1, 0.36, 1] }}
-      className="group relative flex flex-col bg-white px-4 py-6 sm:px-8 sm:py-10"
+      className="group relative flex min-w-0 flex-col bg-white px-3 py-6 sm:px-8 sm:py-10"
     >
       {/* Bloc vert qui glisse d'une carte à l'autre au survol */}
       <AnimatePresence>
@@ -106,7 +111,7 @@ const MissionCard: React.FC<Mission & { index: number }> = ({
         <div className="mb-4 text-ddb-600 transition-colors duration-300 group-hover:text-white">
           {icon}
         </div>
-        <h3 className="font-heading text-lg font-bold tracking-tight text-ddb-900 transition-all duration-300 group-hover:translate-x-1 group-hover:text-white">
+        <h3 className="font-heading text-sm font-bold leading-snug tracking-tight text-ddb-900 transition-all duration-300 group-hover:translate-x-1 group-hover:text-white sm:text-lg sm:leading-normal">
           {title}
         </h3>
         <p className="mt-2 text-sm leading-relaxed text-ddb-950/60 transition-colors duration-300 group-hover:text-white/85">

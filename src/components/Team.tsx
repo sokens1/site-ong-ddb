@@ -180,7 +180,7 @@ const Team: React.FC = () => {
                 ça ne dépend d'aucune génération JIT et passe donc toujours au-dessus
                 du bouton flottant "Retour en haut" (fixed, z-index:1000). */}
             <div
-              className="mt-10 flex items-center justify-end gap-3"
+              className="mt-5 flex items-center justify-end gap-3"
               style={{ position: 'relative', zIndex: 2000 }}
             >
               <button
@@ -189,7 +189,7 @@ const Team: React.FC = () => {
                   prev();
                 }}
                 aria-label="Précédent"
-                className="flex h-12 w-12 items-center justify-center rounded-full bg-ddb-950 text-white shadow-lg transition-colors hover:bg-ddb-700"
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-ddb-600 text-white shadow-lg transition-colors hover:bg-ddb-700"
               >
                 <ChevronLeft className="h-6 w-6" />
               </button>
@@ -199,7 +199,7 @@ const Team: React.FC = () => {
                   next();
                 }}
                 aria-label="Suivant"
-                className="flex h-12 w-12 items-center justify-center rounded-full bg-ddb-950 text-white shadow-lg transition-colors hover:bg-ddb-700"
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-ddb-600 text-white shadow-lg transition-colors hover:bg-ddb-700"
               >
                 <ChevronRight className="h-6 w-6" />
               </button>

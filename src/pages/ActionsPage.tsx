@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, FileText, Download, X } from 'lucide-react';
+import { Search, FileText, Download, Loader2, Eye, ArrowLeft, X } from 'lucide-react';
 import { fetchReports } from '../data/reports';
 
 interface Report {
@@ -16,6 +16,16 @@ interface Report {
 // Petites pastilles de couleur décoratives sur les cartes, on tourne dessus
 const BLOB_COLORS = ['bg-ddb-400', 'bg-amber-400', 'bg-ddb-600', 'bg-sky-400'];
 
+// Google Drive ne peut pas être affiché tel quel dans un <iframe> : il faut
+// convertir le lien de partage en lien "/preview".
+const getEmbedUrl = (url: string) => {
+  if (url.includes('drive.google.com')) {
+    const fileId = url.split('/d/')[1]?.split('/')[0];
+    if (fileId) return `https://drive.google.com/file/d/${fileId}/preview`;
+  }
+  return url;
+};
+
 const morphTransition = { type: 'spring' as const, bounce: 0.05, duration: 0.25 };
 
 const ActionsPage: React.FC = () => {
@@ -25,6 +35,44 @@ const ActionsPage: React.FC = () => {
   const [filterYear, setFilterYear] = useState('Toutes');
   const [availableYears, setAvailableYears] = useState<string[]>(['Toutes']);
   const [openId, setOpenId] = useState<number | null>(null);
+  const [showViewer, setShowViewer] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
+
+  const MIME_TO_EXT: Record<string, string> = {
+    'application/pdf': 'pdf',
+    'application/msword': 'doc',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    'application/vnd.ms-excel': 'xls',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+  };
+
+  const handleDownload = async (report: Report) => {
+    setDownloadingId(report.id);
+    try {
+      const res = await fetch(report.fileUrl);
+      const blob = await res.blob();
+      // On privilégie le type MIME réel renvoyé par le serveur : l'extension
+      // devinée depuis l'URL peut capturer un morceau du domaine ou d'une
+      // query string si le fichier n'a pas de suffixe clair juste avant elle.
+      const mimeExt = MIME_TO_EXT[blob.type];
+      const urlExt = report.fileUrl.match(/\.([a-zA-Z0-9]{2,5})(?:[?#]|$)/)?.[1]?.toLowerCase();
+      const ext = mimeExt || urlExt || 'pdf';
+      const typedBlob = blob.type ? blob : new Blob([blob], { type: 'application/pdf' });
+      const blobUrl = URL.createObjectURL(typedBlob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `${report.title}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('Erreur lors du téléchargement du rapport:', err);
+      window.open(report.fileUrl, '_blank');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -69,11 +117,14 @@ const ActionsPage: React.FC = () => {
   useEffect(() => {
     if (!activeReport) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpenId(null);
+      if (e.key === 'Escape') {
+        if (showViewer) setShowViewer(false);
+        else setOpenId(null);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [activeReport]);
+  }, [activeReport, showViewer]);
 
   return (
     // -mt-24 : annule le spacer laissé par la navbar flottante (Header.tsx) sur
@@ -190,7 +241,7 @@ const ActionsPage: React.FC = () => {
               return (
                 <motion.button
                   key={report.id}
-                  onClick={() => setOpenId(report.id)}
+                  onClick={() => { setOpenId(report.id); setShowViewer(false); }}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: Math.min(index * 0.05, 0.4) }}
@@ -242,7 +293,7 @@ const ActionsPage: React.FC = () => {
                   )}
 
                   <span className="mt-3 inline-flex items-center gap-1.5 font-heading text-sm font-bold text-ddb-700">
-                    Voir le document
+                    Visualiser
                   </span>
                 </motion.button>
               );
@@ -251,9 +302,9 @@ const ActionsPage: React.FC = () => {
         )}
       </div>
 
-      {/* ── Dialogue "morphing" : la carte se transforme en document plein écran ── */}
+      {/* ── Dialogue "morphing" : la carte se transforme en fiche document ── */}
       <AnimatePresence>
-        {activeReport && (
+        {activeReport && !showViewer && (
           <>
             <motion.div
               key="backdrop"
@@ -307,17 +358,144 @@ const ActionsPage: React.FC = () => {
                     {activeReport.description}
                   </p>
 
-                  <a
-                    href={activeReport.fileUrl}
-                    download
-                    className="mt-8 inline-flex items-center gap-2 rounded-full bg-ddb-700 px-6 py-3 font-heading font-bold text-white transition-colors hover:bg-ddb-800"
-                  >
-                    <Download className="h-4 w-4" />
-                    Télécharger le document
-                  </a>
+                  <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={() => setShowViewer(true)}
+                      className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-ddb-700 px-6 py-3 font-heading font-bold text-ddb-700 transition-colors hover:bg-ddb-50"
+                    >
+                      <Eye className="h-4 w-4" />
+                      Visualiser
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDownload(activeReport)}
+                      disabled={downloadingId === activeReport.id}
+                      className="inline-flex items-center justify-center gap-2 rounded-full bg-ddb-700 px-6 py-3 font-heading font-bold text-white transition-colors hover:bg-ddb-800 disabled:opacity-60"
+                    >
+                      {downloadingId === activeReport.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4" />
+                      )}
+                      {downloadingId === activeReport.id ? 'Téléchargement…' : 'Télécharger'}
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             </div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Visualiseur de document : sur desktop, texte+image à gauche et document
+          à droite ; sur mobile, seul le document est affiché ── */}
+      <AnimatePresence>
+        {activeReport && showViewer && (
+          <>
+            <motion.div
+              key="viewer-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-50 bg-ddb-950/70 backdrop-blur-sm"
+              onClick={() => setOpenId(null)}
+            />
+            <motion.div
+              key="viewer"
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.97 }}
+              transition={{ type: 'spring', bounce: 0.05, duration: 0.3 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4"
+            >
+              <div
+                className="relative flex h-full w-full flex-col overflow-hidden bg-white shadow-2xl sm:h-[90vh] sm:max-w-2xl sm:rounded-3xl lg:max-w-6xl lg:flex-row"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => setOpenId(null)}
+                  aria-label="Fermer"
+                  className="absolute right-4 top-4 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-black/40 text-white transition-colors hover:bg-black/60"
+                >
+                  <X size={18} />
+                </button>
+
+                {/* ── Colonne texte + image — masquée sur mobile, où seul le document est visible ── */}
+                <div className="hidden shrink-0 flex-col overflow-y-auto border-b border-ddb-950/10 lg:flex lg:w-[38%] lg:border-b-0 lg:border-r">
+                  <button
+                    onClick={() => setShowViewer(false)}
+                    className="mt-4 ml-4 inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold text-ddb-950/50 transition-colors hover:bg-ddb-50 hover:text-ddb-700"
+                  >
+                    <ArrowLeft size={14} /> Retour
+                  </button>
+                  <div className="relative mt-2 h-40 w-full shrink-0 overflow-hidden px-4">
+                    <img
+                      src={activeReport.image}
+                      alt={activeReport.title}
+                      className="h-full w-full rounded-2xl object-cover"
+                    />
+                  </div>
+                  <div className="p-6 sm:p-8">
+                    <span className="font-heading text-xs font-bold uppercase tracking-widest text-ddb-600">
+                      Rapport ·{' '}
+                      {new Date(activeReport.date).toLocaleDateString('fr-FR', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })}
+                    </span>
+                    <h2 className="mt-2 font-heading text-xl font-extrabold leading-tight text-ddb-950 lg:text-2xl">
+                      {activeReport.title}
+                    </h2>
+                    <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-ddb-950/70">
+                      {activeReport.description}
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDownload(activeReport)}
+                      disabled={downloadingId === activeReport.id}
+                      className="mt-6 inline-flex items-center gap-2 rounded-full bg-ddb-700 px-6 py-3 font-heading font-bold text-white transition-colors hover:bg-ddb-800 disabled:opacity-60"
+                    >
+                      {downloadingId === activeReport.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4" />
+                      )}
+                      {downloadingId === activeReport.id ? 'Téléchargement…' : 'Télécharger le document'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* ── Colonne document — seule visible sur mobile ── */}
+                <div className="relative flex flex-1 flex-col bg-ddb-50/60">
+                  <div className="flex items-center justify-between gap-3 border-b border-ddb-950/10 bg-white p-4 pr-14 lg:hidden">
+                    <p className="truncate font-heading text-sm font-bold text-ddb-950">{activeReport.title}</p>
+                    <button
+                      type="button"
+                      onClick={() => handleDownload(activeReport)}
+                      disabled={downloadingId === activeReport.id}
+                      aria-label="Télécharger"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ddb-50 text-ddb-700 transition-colors hover:bg-ddb-100 disabled:opacity-60"
+                    >
+                      {downloadingId === activeReport.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                  <iframe
+                    src={getEmbedUrl(activeReport.fileUrl)}
+                    title={`Document : ${activeReport.title}`}
+                    className="w-full flex-1 border-0"
+                    allow="fullscreen"
+                  />
+                </div>
+              </div>
+            </motion.div>
           </>
         )}
       </AnimatePresence>

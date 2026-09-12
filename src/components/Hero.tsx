@@ -149,18 +149,18 @@ const Hero: React.FC = () => {
 
           <motion.div
             variants={item}
-            className="mt-9 flex flex-row flex-wrap justify-center gap-3 sm:gap-4 lg:justify-start"
+            className="mt-9 flex flex-row flex-nowrap justify-center gap-2 sm:gap-4 lg:justify-start"
           >
             <button
               onClick={() => navigate('/join')}
-              className="group inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 font-heading text-sm font-bold text-ddb-700 shadow-lg shadow-ddb-950/20 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-ddb-950/30 sm:px-8 sm:py-3.5 sm:text-base"
+              className="group inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-white px-4 py-2.5 font-heading text-xs font-bold text-ddb-700 shadow-lg shadow-ddb-950/20 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-ddb-950/30 sm:gap-2 sm:px-8 sm:py-3.5 sm:text-base"
             >
               Rejoignez-nous
-              <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+              <ArrowRight className="hidden h-4 w-4 transition-transform duration-300 group-hover:translate-x-1 sm:block" />
             </button>
             <button
               onClick={() => navigate('/actions')}
-              className="inline-flex items-center justify-center rounded-full border-2 border-white/40 px-6 py-3 font-heading text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-white hover:bg-white/10 sm:px-8 sm:py-3.5 sm:text-base"
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-full border-2 border-white/40 px-4 py-2.5 font-heading text-xs font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-white hover:bg-white/10 sm:px-8 sm:py-3.5 sm:text-base"
             >
               Découvrir nos actions
             </button>

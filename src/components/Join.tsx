@@ -1,8 +1,34 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Users,
+  Handshake,
+  Heart,
+  Check,
+  CheckCircle2,
+  Loader2,
+  Send,
+  UploadCloud,
+  FileText,
+  Trash2,
+  ChevronDown,
+  Coins,
+  Package,
+  HandHeart,
+  Briefcase,
+} from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import Turnstile, { verifySubmission, VERIFY_MESSAGES } from './Turnstile';
+
+const WhatsAppIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg viewBox="0 0 24 24" className={className} fill="currentColor">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+    <path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.554 4.122 1.526 5.853L.05 23.95l6.254-1.638A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.894a9.88 9.88 0 01-5.034-1.374l-.36-.214-3.732.978.995-3.63-.235-.374A9.859 9.859 0 012.107 12c0-5.457 4.436-9.893 9.893-9.893 5.457 0 9.893 4.436 9.893 9.893 0 5.457-4.436 9.894-9.893 9.894z" />
+  </svg>
+);
 
 // Animation Variants
 const containerVariants = {
@@ -28,9 +54,71 @@ const AnimatedSection: React.FC<{ children: React.ReactNode; className?: string 
   );
 };
 
+// ===== Success modal, shared visual language ===============================
+const SuccessModal: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  message: string;
+  children: React.ReactNode;
+}> = ({ icon, title, message, children }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-ddb-950/50 p-4">
+    <motion.div
+      initial={{ scale: 0.9, opacity: 0, y: 10 }}
+      animate={{ scale: 1, opacity: 1, y: 0 }}
+      transition={{ type: 'spring', bounce: 0.05, duration: 0.3 }}
+      className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-2xl"
+    >
+      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-ddb-50 text-ddb-600">
+        {icon}
+      </div>
+      <h3 className="font-heading text-xl font-bold text-ddb-950">{title}</h3>
+      <p className="mt-2 text-sm text-ddb-950/50">{message}</p>
+      <div className="mt-6">{children}</div>
+    </motion.div>
+  </div>
+);
+
+// ===== Form step header ======================================================
+const FormHeader: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  onBack: () => void;
+}> = ({ icon, title, subtitle, onBack }) => (
+  <div className="mb-6 flex items-center gap-3 border-b border-ddb-950/10 pb-5">
+    <button
+      onClick={onBack}
+      title="Retour"
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ddb-950/40 transition-colors hover:bg-ddb-50 hover:text-ddb-700"
+    >
+      <ArrowLeft size={16} />
+    </button>
+    <div className="flex items-center gap-3">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ddb-50 text-ddb-700">
+        {icon}
+      </div>
+      <div>
+        <h3 className="font-heading text-lg font-bold leading-tight text-ddb-950">{title}</h3>
+        <p className="text-xs text-ddb-950/40">{subtitle}</p>
+      </div>
+    </div>
+  </div>
+);
+
+// Shared field classes
+const inputCls =
+  'w-full rounded-xl border border-ddb-950/10 bg-ddb-50/40 px-4 py-2.5 text-sm text-ddb-950 outline-none transition-colors focus:border-ddb-500 focus:bg-white focus:ring-2 focus:ring-ddb-500/20';
+const labelCls = 'mb-1.5 block text-xs font-bold uppercase tracking-wide text-ddb-950/60';
+
 type FormType = 'none' | 'membership' | 'partnership' | 'donation';
 
 // ===== MEMBER FORM =====
+const STEPS = [
+  { n: 1, label: 'Infos', icon: Users },
+  { n: 2, label: 'Profil', icon: Briefcase },
+  { n: 3, label: 'Finaliser', icon: UploadCloud },
+];
+
 const MemberForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState(() => {
@@ -120,144 +208,167 @@ const MemberForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   return (
     <>
-      <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-        <button onClick={onBack} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 transition-colors" title="Retour">
-          <i className="fas fa-arrow-left text-sm"></i>
-        </button>
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center"><i className="fas fa-users text-green-700 text-xs"></i></div>
-          <div>
-            <h3 className="text-lg font-bold text-green-800 leading-tight">Devenir Membre</h3>
-            <p className="text-xs text-gray-400">Rejoignez l'équipe bénévole</p>
-          </div>
-        </div>
-      </div>
+      <FormHeader
+        icon={<Users size={18} />}
+        title="Devenir Membre"
+        subtitle="Rejoignez l'équipe bénévole"
+        onBack={onBack}
+      />
 
-      {/* Steps */}
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-3">
-          {[{ n: 1, l: 'Infos' }, { n: 2, l: 'Profil' }, { n: 3, l: 'Fin' }].map((s, i) => (
+      {/* Stepper */}
+      <div className="mb-7">
+        <div className="flex items-center">
+          {STEPS.map((s, i) => (
             <React.Fragment key={s.n}>
-              <div className={`flex items-center gap-1.5 ${currentStep >= s.n ? 'text-green-600' : 'text-gray-300'}`}>
-                <div className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${currentStep >= s.n ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-400'}`}>{s.n}</div>
-                <span className="text-xs font-medium hidden sm:inline">{s.l}</span>
+              <div className="flex flex-col items-center gap-1.5">
+                <div
+                  className={`flex h-9 w-9 items-center justify-center rounded-full border-2 transition-colors ${
+                    currentStep > s.n
+                      ? 'border-ddb-600 bg-ddb-600 text-white'
+                      : currentStep === s.n
+                        ? 'border-ddb-600 bg-white text-ddb-600'
+                        : 'border-ddb-950/10 bg-white text-ddb-950/25'
+                  }`}
+                >
+                  {currentStep > s.n ? <Check size={15} /> : <s.icon size={15} />}
+                </div>
+                <span className={`text-[10px] font-bold uppercase tracking-wide ${currentStep >= s.n ? 'text-ddb-700' : 'text-ddb-950/25'}`}>
+                  {s.label}
+                </span>
               </div>
-              {i < 2 && <div className={`flex-1 h-0.5 ${currentStep > s.n ? 'bg-green-600' : 'bg-gray-200'}`}></div>}
+              {i < STEPS.length - 1 && (
+                <div className="mx-1.5 mb-4 h-0.5 flex-1 overflow-hidden rounded-full bg-ddb-950/10">
+                  <motion.div
+                    className="h-full rounded-full bg-ddb-600"
+                    initial={false}
+                    animate={{ width: currentStep > s.n ? '100%' : '0%' }}
+                    transition={{ duration: 0.4 }}
+                  />
+                </div>
+              )}
             </React.Fragment>
           ))}
         </div>
-        <div className="w-full bg-gray-100 rounded-full h-1.5">
-          <div className="bg-green-600 h-1.5 rounded-full transition-all duration-500" style={{ width: `${(currentStep / 3) * 100}%` }}></div>
-        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <AnimatePresence mode="wait">
           {currentStep === 1 && (
-            <motion.div key="step1" initial={{ opacity: 0, x: 15 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -15 }} className="space-y-3">
+            <motion.div key="step1" initial={{ opacity: 0, x: 15 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -15 }} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Civilité</label>
-                  <select id="civility" value={formData.civility} onChange={handleInputChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none">
+                  <label className={labelCls}>Civilité</label>
+                  <select id="civility" value={formData.civility} onChange={handleInputChange} className={inputCls}>
                     <option value="">Sélectionnez</option>
                     <option value="M">Monsieur</option><option value="Mme">Madame</option><option value="Mlle">Mademoiselle</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Nom complet *</label>
-                  <input type="text" id="fullname" autoComplete="name" value={formData.fullname} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+                  <label className={labelCls}>Nom complet *</label>
+                  <input type="text" id="fullname" autoComplete="name" value={formData.fullname} onChange={handleInputChange} required className={inputCls} />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Email *</label>
-                <input type="email" id="email" autoComplete="email" value={formData.email} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+                <label className={labelCls}>Email *</label>
+                <input type="email" id="email" autoComplete="email" value={formData.email} onChange={handleInputChange} required className={inputCls} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Téléphone</label>
-                  <input type="tel" id="phone" autoComplete="tel" value={formData.phone} onChange={handleInputChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+                  <label className={labelCls}>Téléphone</label>
+                  <input type="tel" id="phone" autoComplete="tel" value={formData.phone} onChange={handleInputChange} className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Ville</label>
-                  <input type="text" id="city" autoComplete="address-level2" value={formData.city} onChange={handleInputChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+                  <label className={labelCls}>Ville</label>
+                  <input type="text" id="city" autoComplete="address-level2" value={formData.city} onChange={handleInputChange} className={inputCls} />
                 </div>
               </div>
             </motion.div>
           )}
           {currentStep === 2 && (
-            <motion.div key="step2" initial={{ opacity: 0, x: 15 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -15 }} className="space-y-3">
+            <motion.div key="step2" initial={{ opacity: 0, x: 15 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -15 }} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Domaine d'intérêt *</label>
-                <input type="text" id="interest" value={formData.interest} onChange={handleInputChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+                <label className={labelCls}>Domaine d'intérêt *</label>
+                <input type="text" id="interest" value={formData.interest} onChange={handleInputChange} className={inputCls} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Compétences *</label>
-                <textarea id="skills" rows={3} value={formData.skills} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none resize-none"></textarea>
+                <label className={labelCls}>Compétences *</label>
+                <textarea id="skills" rows={3} value={formData.skills} onChange={handleInputChange} required className={`${inputCls} resize-none`}></textarea>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Motivation</label>
-                <textarea id="motivation" rows={3} value={formData.motivation} onChange={handleInputChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none resize-none"></textarea>
+                <label className={labelCls}>Motivation</label>
+                <textarea id="motivation" rows={3} value={formData.motivation} onChange={handleInputChange} className={`${inputCls} resize-none`}></textarea>
               </div>
             </motion.div>
           )}
           {currentStep === 3 && (
-            <motion.div key="step3" initial={{ opacity: 0, x: 15 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -15 }} className="space-y-3">
+            <motion.div key="step3" initial={{ opacity: 0, x: 15 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -15 }} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">CV — <span className="font-normal text-gray-400">PDF, DOC, DOCX. Max 5MB. Optionnel.</span></label>
+                <label className={labelCls}>CV — <span className="font-normal normal-case text-ddb-950/40">PDF, DOC, DOCX. Max 5MB. Optionnel.</span></label>
                 <div
-                  className={`relative border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${isDragOver ? 'border-green-500 bg-green-50' : formData.cv ? 'border-green-400 bg-green-50/50' : 'border-gray-200 hover:border-green-400 hover:bg-gray-50'}`}
+                  className={`relative cursor-pointer rounded-2xl border-2 border-dashed p-5 text-center transition-all ${
+                    isDragOver ? 'border-ddb-500 bg-ddb-50' : formData.cv ? 'border-ddb-400 bg-ddb-50/50' : 'border-ddb-950/10 hover:border-ddb-400 hover:bg-ddb-50/40'
+                  }`}
                   onDragOver={e => { e.preventDefault(); setIsDragOver(true); }} onDragLeave={() => setIsDragOver(false)} onDrop={handleDrop}
                 >
-                  <input type="file" id="cv" onChange={handleFileChange} accept=".pdf,.doc,.docx" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                  <input type="file" id="cv" onChange={handleFileChange} accept=".pdf,.doc,.docx" className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
                   {formData.cv ? (
-                    <div className="space-y-1">
-                      <i className="fas fa-file-pdf text-green-600 text-xl"></i>
-                      <p className="text-xs font-medium text-gray-800">{formData.cv.name}</p>
-                      <p className="text-xs text-gray-400">{formatSize(formData.cv.size)}</p>
-                      {uploadProgress > 0 && uploadProgress < 100 && <div className="w-full bg-gray-200 rounded-full h-1"><div className="bg-green-600 h-1 rounded-full" style={{ width: `${uploadProgress}%` }}></div></div>}
-                      <button type="button" onClick={e => { e.stopPropagation(); removeFile(); }} className="text-red-500 text-xs hover:text-red-700"><i className="fas fa-trash mr-1"></i>Supprimer</button>
+                    <div className="space-y-1.5">
+                      <FileText className="mx-auto h-6 w-6 text-ddb-600" />
+                      <p className="text-xs font-bold text-ddb-950">{formData.cv.name}</p>
+                      <p className="text-xs text-ddb-950/40">{formatSize(formData.cv.size)}</p>
+                      {uploadProgress > 0 && uploadProgress < 100 && (
+                        <div className="h-1 w-full rounded-full bg-ddb-950/10">
+                          <div className="h-1 rounded-full bg-ddb-600" style={{ width: `${uploadProgress}%` }}></div>
+                        </div>
+                      )}
+                      <button type="button" onClick={e => { e.stopPropagation(); removeFile(); }} className="inline-flex items-center gap-1 text-xs font-semibold text-red-500 hover:text-red-700">
+                        <Trash2 size={12} /> Supprimer
+                      </button>
                     </div>
                   ) : (
-                    <div className="space-y-1">
-                      <i className="fas fa-cloud-upload-alt text-gray-300 text-2xl"></i>
-                      <p className="text-xs text-gray-400">Glissez ou cliquez pour sélectionner</p>
+                    <div className="space-y-1.5">
+                      <UploadCloud className="mx-auto h-7 w-7 text-ddb-950/25" />
+                      <p className="text-xs text-ddb-950/40">Glissez ou cliquez pour sélectionner</p>
                     </div>
                   )}
                 </div>
               </div>
               <Turnstile onToken={setCaptchaToken} resetSignal={captchaNonce} className="mt-1" />
-              {captchaError && <p className="text-xs text-red-600">{captchaError}</p>}
+              {captchaError && <p className="text-xs font-medium text-red-500">{captchaError}</p>}
             </motion.div>
           )}
         </AnimatePresence>
 
-        <div className="flex justify-between pt-4 border-t border-gray-100">
+        <div className="flex justify-between border-t border-ddb-950/10 pt-5">
           {currentStep > 1 ? (
-            <button type="button" onClick={prevStep} className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800 font-medium transition-colors">
-              <i className="fas fa-arrow-left text-xs"></i> Précédent
+            <button type="button" onClick={prevStep} className="inline-flex items-center gap-1.5 text-sm font-bold text-ddb-950/50 transition-colors hover:text-ddb-950">
+              <ArrowLeft size={14} /> Précédent
             </button>
           ) : <div />}
           {currentStep < 3 ? (
-            <button type="button" onClick={nextStep} disabled={!isStepValid(currentStep)} className="btn btn-primary btn-enhanced text-white text-sm font-bold py-2 px-5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
-              Suivant <i className="fas fa-arrow-right ml-1 text-xs"></i>
+            <button
+              type="button" onClick={nextStep} disabled={!isStepValid(currentStep)}
+              className="inline-flex items-center gap-1.5 rounded-full bg-ddb-700 px-5 py-2.5 font-heading text-sm font-bold text-white transition-colors hover:bg-ddb-800 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Suivant <ArrowRight size={14} />
             </button>
           ) : (
-            <button type="submit" disabled={!isStepValid(3) || isSubmitting} className="btn btn-primary btn-enhanced pulse-on-hover text-white text-sm font-bold py-2 px-5 rounded-lg disabled:opacity-50">
-              {isSubmitting ? <><i className="fas fa-spinner fa-spin mr-2"></i>Envoi...</> : <><i className="fas fa-paper-plane mr-2"></i>Envoyer</>}
+            <button
+              type="submit" disabled={!isStepValid(3) || isSubmitting}
+              className="inline-flex items-center gap-1.5 rounded-full bg-ddb-700 px-5 py-2.5 font-heading text-sm font-bold text-white transition-colors hover:bg-ddb-800 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {isSubmitting ? <><Loader2 size={14} className="animate-spin" /> Envoi...</> : <><Send size={14} /> Envoyer</>}
             </button>
           )}
         </div>
       </form>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4"><i className="fas fa-check text-green-600 text-2xl"></i></div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Candidature envoyée !</h3>
-            <p className="text-gray-500 mb-6 text-sm">Merci ! Votre candidature a bien été transmise à notre équipe.</p>
-            <button onClick={() => setShowModal(false)} className="btn btn-primary btn-enhanced text-white font-bold py-2 px-8 rounded-xl w-full">Parfait !</button>
-          </motion.div>
-        </div>
+        <SuccessModal icon={<CheckCircle2 size={28} />} title="Candidature envoyée !" message="Merci ! Votre candidature a bien été transmise à notre équipe.">
+          <button onClick={() => setShowModal(false)} className="w-full rounded-full bg-ddb-700 py-3 font-heading font-bold text-white transition-colors hover:bg-ddb-800">
+            Parfait !
+          </button>
+        </SuccessModal>
       )}
     </>
   );
@@ -315,47 +426,41 @@ const PartnerForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   return (
     <>
-      <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-        <button onClick={onBack} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 transition-colors">
-          <i className="fas fa-arrow-left text-sm"></i>
-        </button>
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center"><i className="fas fa-handshake text-green-700 text-xs"></i></div>
-          <div>
-            <h3 className="text-lg font-bold text-green-800 leading-tight">Devenir Partenaire</h3>
-            <p className="text-xs text-gray-400">Proposez un partenariat stratégique</p>
-          </div>
-        </div>
-      </div>
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <FormHeader
+        icon={<Handshake size={18} />}
+        title="Devenir Partenaire"
+        subtitle="Proposez un partenariat stratégique"
+        onBack={onBack}
+      />
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Nom & Prénom *</label>
-            <input type="text" id="fullname" autoComplete="name" value={formData.fullname} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+            <label className={labelCls}>Nom & Prénom *</label>
+            <input type="text" id="fullname" autoComplete="name" value={formData.fullname} onChange={handleInputChange} required className={inputCls} />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Organisation *</label>
-            <input type="text" id="organization" autoComplete="organization" value={formData.organization} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+            <label className={labelCls}>Organisation *</label>
+            <input type="text" id="organization" autoComplete="organization" value={formData.organization} onChange={handleInputChange} required className={inputCls} />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Email *</label>
-            <input type="email" id="email" autoComplete="email" value={formData.email} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+            <label className={labelCls}>Email *</label>
+            <input type="email" id="email" autoComplete="email" value={formData.email} onChange={handleInputChange} required className={inputCls} />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Téléphone *</label>
-            <input type="tel" id="phone" autoComplete="tel" value={formData.phone} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+            <label className={labelCls}>Téléphone *</label>
+            <input type="tel" id="phone" autoComplete="tel" value={formData.phone} onChange={handleInputChange} required className={inputCls} />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Secteur d'activité *</label>
-            <input type="text" id="sector" value={formData.sector} onChange={handleInputChange} required placeholder="Ex: Santé, Éducation…" className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+            <label className={labelCls}>Secteur d'activité *</label>
+            <input type="text" id="sector" value={formData.sector} onChange={handleInputChange} required placeholder="Ex: Santé, Éducation…" className={inputCls} />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Type de partenariat *</label>
-            <select id="partnership_type" value={formData.partnership_type} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none">
+            <label className={labelCls}>Type de partenariat *</label>
+            <select id="partnership_type" value={formData.partnership_type} onChange={handleInputChange} required className={inputCls}>
               <option value="">Sélectionnez</option>
               <option value="technique">Technique</option><option value="financier">Financement</option>
               <option value="logistique">Logistique</option><option value="communication">Communication</option>
@@ -364,31 +469,28 @@ const PartnerForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           </div>
         </div>
         <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1">Description de la proposition *</label>
-          <textarea id="description" rows={4} value={formData.description} onChange={handleInputChange} required placeholder="Décrivez votre proposition de partenariat…" className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none resize-none"></textarea>
+          <label className={labelCls}>Description de la proposition *</label>
+          <textarea id="description" rows={4} value={formData.description} onChange={handleInputChange} required placeholder="Décrivez votre proposition de partenariat…" className={`${inputCls} resize-none`}></textarea>
         </div>
         <div>
           <Turnstile onToken={setCaptchaToken} resetSignal={captchaNonce} />
-          {captchaError && <p className="text-xs text-red-600 mt-1">{captchaError}</p>}
+          {captchaError && <p className="mt-1 text-xs font-medium text-red-500">{captchaError}</p>}
         </div>
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-          <button type="button" onClick={onBack} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 font-medium">
-            <i className="fas fa-arrow-left text-xs"></i> Retour
+        <div className="flex items-center justify-between border-t border-ddb-950/10 pt-5">
+          <button type="button" onClick={onBack} className="inline-flex items-center gap-1.5 text-sm font-bold text-ddb-950/50 hover:text-ddb-950">
+            <ArrowLeft size={14} /> Retour
           </button>
-          <button type="submit" disabled={isSubmitting} className="bg-green-700 hover:bg-green-800 text-white text-sm font-bold py-2 px-5 rounded-lg disabled:opacity-50 transition-colors">
-            {isSubmitting ? <><i className="fas fa-spinner fa-spin mr-2"></i>Envoi…</> : <><i className="fas fa-handshake mr-2"></i>Soumettre</>}
+          <button type="submit" disabled={isSubmitting} className="inline-flex items-center gap-1.5 rounded-full bg-ddb-700 px-5 py-2.5 font-heading text-sm font-bold text-white transition-colors hover:bg-ddb-800 disabled:opacity-40">
+            {isSubmitting ? <><Loader2 size={14} className="animate-spin" /> Envoi…</> : <><Handshake size={14} /> Soumettre</>}
           </button>
         </div>
       </form>
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4"><i className="fas fa-check text-green-600 text-2xl"></i></div>
-            <h3 className="text-xl font-bold mb-2">Proposition reçue !</h3>
-            <p className="text-gray-500 mb-6 text-sm">Notre équipe examinera votre proposition et vous contactera prochainement.</p>
-            <button onClick={() => setShowModal(false)} className="bg-green-700 text-white font-bold py-2 px-8 rounded-xl w-full hover:bg-green-800 transition-colors">Fermer</button>
-          </motion.div>
-        </div>
+        <SuccessModal icon={<CheckCircle2 size={28} />} title="Proposition reçue !" message="Notre équipe examinera votre proposition et vous contactera prochainement.">
+          <button onClick={() => setShowModal(false)} className="w-full rounded-full bg-ddb-700 py-3 font-heading font-bold text-white transition-colors hover:bg-ddb-800">
+            Fermer
+          </button>
+        </SuccessModal>
       )}
     </>
   );
@@ -427,118 +529,115 @@ const DonationForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       donation_type: formData.donation_type, amount: formData.amount || null,
       description: formData.description || null, status: 'en_attente'
     }]);
-    
+
     let msg = `Bonjour ONG DDB ! Je souhaite faire un don.\n\n*Nom :* ${formData.fullname}\n*Email :* ${formData.email}\n`;
     if (formData.phone) msg += `*Téléphone :* ${formData.phone}\n`;
     msg += `*Type de don :* ${formData.donation_type}\n`;
     if (formData.amount) msg += `*Montant :* ${formData.amount} FCFA\n`;
     if (formData.description) msg += `*Détails :* ${formData.description}\n`;
-    
+
     setWhatsappLink(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`);
     setIsSubmitting(false);
     setShowModal(true);
   };
 
+  const donationTypes = [
+    { v: 'financier', l: 'Financier', icon: Coins },
+    { v: 'materiel', l: 'Matériel', icon: Package },
+    { v: 'autre', l: 'Autre', icon: HandHeart },
+  ];
+
   return (
     <>
-      <div className="flex items-center gap-3 mb-5 pb-4 border-b border-gray-100">
-        <button onClick={onBack} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 transition-colors"><i className="fas fa-arrow-left text-sm"></i></button>
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center"><i className="fas fa-heart text-green-600 text-xs"></i></div>
-          <div>
-            <h3 className="text-lg font-bold text-green-700 leading-tight">Faire un Don</h3>
-            <p className="text-xs text-gray-400">Redirection vers WhatsApp après envoi</p>
-          </div>
-        </div>
+      <FormHeader
+        icon={<Heart size={18} />}
+        title="Faire un Don"
+        subtitle="Redirection vers WhatsApp après envoi"
+        onBack={onBack}
+      />
+      <div className="mb-5 flex items-center gap-2.5 rounded-xl border border-ddb-200 bg-ddb-50 p-3">
+        <WhatsAppIcon className="h-5 w-5 shrink-0 text-[#25D366]" />
+        <p className="text-xs text-ddb-800">Vous serez redirigé vers <strong>WhatsApp</strong> pour finaliser votre don avec notre équipe.</p>
       </div>
-      <div className="bg-green-50 border border-green-200 rounded-xl p-3 mb-4 flex items-center gap-2">
-        <i className="fab fa-whatsapp text-green-500 text-lg"></i>
-        <p className="text-xs text-green-700">Vous serez redirigé vers <strong>WhatsApp</strong> pour finaliser votre don avec notre équipe.</p>
-      </div>
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Nom & Prénom *</label>
-            <input type="text" id="fullname" autoComplete="name" value={formData.fullname} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+            <label className={labelCls}>Nom & Prénom *</label>
+            <input type="text" id="fullname" autoComplete="name" value={formData.fullname} onChange={handleInputChange} required className={inputCls} />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Email *</label>
-            <input type="email" id="email" autoComplete="email" value={formData.email} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+            <label className={labelCls}>Email *</label>
+            <input type="email" id="email" autoComplete="email" value={formData.email} onChange={handleInputChange} required className={inputCls} />
           </div>
         </div>
         <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1">Téléphone</label>
-          <input type="tel" id="phone" autoComplete="tel" value={formData.phone} onChange={handleInputChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+          <label className={labelCls}>Téléphone</label>
+          <input type="tel" id="phone" autoComplete="tel" value={formData.phone} onChange={handleInputChange} className={inputCls} />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-2">Type de don *</label>
+          <label className={labelCls}>Type de don *</label>
           <div className="grid grid-cols-3 gap-2">
-            {[{ v: 'financier', l: 'Financier', ic: 'fas fa-coins' }, { v: 'materiel', l: 'Matériel', ic: 'fas fa-box' }, { v: 'autre', l: 'Autre', ic: 'fas fa-hands-helping' }].map(opt => (
-              <label key={opt.v} className={`cursor-pointer border-2 rounded-lg p-2.5 text-center transition-all ${formData.donation_type === opt.v ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'}`}>
+            {donationTypes.map(opt => (
+              <label key={opt.v} className={`cursor-pointer rounded-xl border-2 p-3 text-center transition-all ${formData.donation_type === opt.v ? 'border-ddb-500 bg-ddb-50' : 'border-ddb-950/10 hover:border-ddb-950/20'}`}>
                 <input type="radio" name="dt" value={opt.v} checked={formData.donation_type === opt.v} onChange={() => setFormData(p => ({ ...p, donation_type: opt.v }))} className="sr-only" />
-                <i className={`${opt.ic} text-lg block mb-1 ${formData.donation_type === opt.v ? 'text-green-600' : 'text-gray-300'}`}></i>
-                <span className={`text-xs font-medium ${formData.donation_type === opt.v ? 'text-green-700' : 'text-gray-400'}`}>{opt.l}</span>
+                <opt.icon size={18} className={`mx-auto mb-1 ${formData.donation_type === opt.v ? 'text-ddb-600' : 'text-ddb-950/25'}`} />
+                <span className={`text-xs font-bold ${formData.donation_type === opt.v ? 'text-ddb-700' : 'text-ddb-950/40'}`}>{opt.l}</span>
               </label>
             ))}
           </div>
         </div>
         {formData.donation_type === 'financier' && (
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Montant estimé (FCFA)</label>
-            <input type="text" id="amount" value={formData.amount} onChange={handleInputChange} placeholder="Ex: 50000" className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+            <label className={labelCls}>Montant estimé (FCFA)</label>
+            <input type="text" id="amount" value={formData.amount} onChange={handleInputChange} placeholder="Ex: 50000" className={inputCls} />
           </div>
         )}
         <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1">Description / Détails</label>
-          <textarea id="description" rows={3} value={formData.description} onChange={handleInputChange} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none resize-none"></textarea>
+          <label className={labelCls}>Description / Détails</label>
+          <textarea id="description" rows={3} value={formData.description} onChange={handleInputChange} className={`${inputCls} resize-none`}></textarea>
         </div>
-        <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-          <input type="checkbox" id="consent" checked={formData.consent} onChange={handleInputChange} className="h-4 w-4 accent-green-600" />
-          <label htmlFor="consent" className="text-sm text-gray-700">Je confirme vouloir faire ce don</label>
-        </div>
+        <label htmlFor="consent" className="flex cursor-pointer items-center gap-2.5 rounded-xl bg-ddb-50/60 p-3">
+          <input type="checkbox" id="consent" checked={formData.consent} onChange={handleInputChange} className="h-4 w-4 accent-ddb-600" />
+          <span className="text-sm text-ddb-950/70">Je confirme vouloir faire ce don</span>
+        </label>
         <div>
           <Turnstile onToken={setCaptchaToken} resetSignal={captchaNonce} />
-          {captchaError && <p className="text-xs text-red-600 mt-1">{captchaError}</p>}
+          {captchaError && <p className="mt-1 text-xs font-medium text-red-500">{captchaError}</p>}
         </div>
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-          <button type="button" onClick={onBack} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 font-medium">
-            <i className="fas fa-arrow-left text-xs"></i> Retour
+        <div className="flex items-center justify-between border-t border-ddb-950/10 pt-5">
+          <button type="button" onClick={onBack} className="inline-flex items-center gap-1.5 text-sm font-bold text-ddb-950/50 hover:text-ddb-950">
+            <ArrowLeft size={14} /> Retour
           </button>
-          <button type="submit" disabled={!formData.consent || isSubmitting} className="bg-green-600 hover:bg-green-700 text-white text-sm font-bold py-2 px-5 rounded-lg disabled:opacity-50 transition-colors flex items-center gap-2">
-            {isSubmitting ? <><i className="fas fa-spinner fa-spin"></i> Traitement…</> : <><i className="fas fa-paper-plane text-base"></i> Soumettre</>}
+          <button type="submit" disabled={!formData.consent || isSubmitting} className="inline-flex items-center gap-1.5 rounded-full bg-ddb-700 px-5 py-2.5 font-heading text-sm font-bold text-white transition-colors hover:bg-ddb-800 disabled:opacity-40">
+            {isSubmitting ? <><Loader2 size={14} className="animate-spin" /> Traitement…</> : <><Send size={14} /> Soumettre</>}
           </button>
         </div>
       </form>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center border-t-8 border-green-500">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4"><i className="fas fa-check text-green-600 text-2xl"></i></div>
-            <h3 className="text-xl font-bold mb-2 text-gray-800">Don enregistré !</h3>
-            <p className="text-gray-600 mb-6 text-sm">Merci pour votre générosité. Vous allez être redirigé vers WhatsApp pour finaliser votre don avec notre équipe.</p>
-            <div className="flex flex-col gap-3">
-              <button 
-                onClick={() => {
-                  window.open(whatsappLink, '_blank');
-                  setShowModal(false);
-                  setFormData({ fullname: '', email: '', phone: '', donation_type: 'financier', amount: '', description: '', consent: false });
-                }} 
-                className="bg-green-600 text-white font-bold py-3 px-8 rounded-xl w-full hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-              >
-                <i className="fab fa-whatsapp text-lg"></i> Continuer sur WhatsApp
-              </button>
-              <button 
-                onClick={() => {
-                  setShowModal(false);
-                  setFormData({ fullname: '', email: '', phone: '', donation_type: 'financier', amount: '', description: '', consent: false });
-                }} 
-                className="text-gray-500 font-medium py-2 px-8 rounded-xl w-full hover:bg-gray-100 transition-colors"
-              >
-                Fermer
-              </button>
-            </div>
-          </motion.div>
-        </div>
+        <SuccessModal icon={<CheckCircle2 size={28} />} title="Don enregistré !" message="Merci pour votre générosité. Vous allez être redirigé vers WhatsApp pour finaliser votre don avec notre équipe.">
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => {
+                window.open(whatsappLink, '_blank');
+                setShowModal(false);
+                setFormData({ fullname: '', email: '', phone: '', donation_type: 'financier', amount: '', description: '', consent: false });
+              }}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-[#25D366] py-3 font-heading font-bold text-white transition-colors hover:bg-[#20b858]"
+            >
+              <WhatsAppIcon className="h-4 w-4" /> Continuer sur WhatsApp
+            </button>
+            <button
+              onClick={() => {
+                setShowModal(false);
+                setFormData({ fullname: '', email: '', phone: '', donation_type: 'financier', amount: '', description: '', consent: false });
+              }}
+              className="w-full rounded-full py-2 font-medium text-ddb-950/50 transition-colors hover:bg-ddb-50"
+            >
+              Fermer
+            </button>
+          </div>
+        </SuccessModal>
       )}
     </>
   );
@@ -559,69 +658,73 @@ const Join: React.FC = () => {
   const selectionCards = [
     {
       type: 'membership' as FormType,
-      icon: 'fas fa-users',
+      icon: Users,
       title: 'Devenir Membre',
-      sub: 'Rejoignez notre équipe',
-      accent: 'text-green-700',
-      bg: 'bg-green-50 hover:bg-green-100 border-green-200 hover:border-green-400',
-      iconBg: 'bg-green-100',
+      sub: "Rejoignez notre équipe bénévole et participez à nos actions de terrain.",
     },
     {
       type: 'partnership' as FormType,
-      icon: 'fas fa-handshake',
+      icon: Handshake,
       title: 'Devenir Partenaire',
-      sub: 'Proposez un partenariat',
-      accent: 'text-green-700',
-      bg: 'bg-green-50 hover:bg-green-100 border-green-200 hover:border-green-400',
-      iconBg: 'bg-green-100',
+      sub: 'Proposez un partenariat technique, financier ou logistique.',
     },
     {
       type: 'donation' as FormType,
-      icon: 'fas fa-heart',
+      icon: Heart,
       title: 'Faire un Don',
-      sub: 'Soutenez nos actions',
-      accent: 'text-green-700',
-      bg: 'bg-green-50 hover:bg-green-100 border-green-200 hover:border-green-400',
-      iconBg: 'bg-green-100',
+      sub: 'Soutenez financièrement ou matériellement nos missions.',
     },
   ];
 
   return (
-    <section id="join" className="py-20 bg-gray-50">
-      <div className="container mx-auto px-4">
-        <AnimatedSection className="text-center mb-16">
-          <motion.h2 variants={itemVariants} className="text-3xl md:text-4xl font-bold text-green-800 mb-4">Rejoignez-nous</motion.h2>
-          <motion.div variants={itemVariants} className="w-24 h-1 bg-green-600 mx-auto"></motion.div>
+    // -mt-24 : annule le spacer laissé par la navbar flottante (Header.tsx) sur
+    // les pages non-accueil ; fond vert faible cohérent avec la page Événements.
+    <section id="join" className="-mt-24 bg-ddb-50 pb-24 pt-32 sm:pt-36">
+      <div className="container mx-auto max-w-6xl px-4">
+        <AnimatedSection>
+          <motion.h1 variants={itemVariants} className="font-heading text-4xl font-extrabold tracking-tight text-ddb-950 sm:text-5xl lg:text-6xl">
+            Rejoignez-nous
+          </motion.h1>
+          <motion.p variants={itemVariants} className="mt-4 max-w-xl text-lg text-ddb-950/60">
+            Membre, partenaire ou donateur : chaque contribution compte pour
+            faire avancer nos missions de développement durable.
+          </motion.p>
         </AnimatedSection>
 
-        <div className="flex flex-col lg:flex-row gap-12">
+        <div className="mt-14 flex flex-col gap-10 lg:flex-row lg:items-start">
           {/* Left column — contribution types + FAQ */}
-          <div className="lg:w-1/2 space-y-8">
+          <div className="space-y-8 lg:w-2/5">
             <AnimatedSection>
-              <motion.h3 variants={itemVariants} className="text-2xl font-bold text-green-800 mb-6">Comment contribuer ?</motion.h3>
-              <motion.div variants={containerVariants} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <motion.h3 variants={itemVariants} className="mb-5 font-heading text-xl font-bold text-ddb-950">
+                Comment contribuer ?
+              </motion.h3>
+              <motion.div variants={containerVariants} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {contributionTypes.map((type) => (
-                  <motion.div key={type.id} variants={itemVariants} className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-800 mb-4"><i className={type.icon}></i></div>
-                    <h4 className="text-lg font-bold text-green-800 mb-2">{type.title}</h4>
-                    <p className="text-gray-700">{type.description}</p>
+                  <motion.div key={type.id} variants={itemVariants} className="rounded-2xl border border-ddb-950/5 bg-white p-5 shadow-sm">
+                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-ddb-50 text-ddb-700">
+                      <i className={type.icon}></i>
+                    </div>
+                    <h4 className="font-heading font-bold text-ddb-950">{type.title}</h4>
+                    <p className="mt-1 text-sm text-ddb-950/50">{type.description}</p>
                   </motion.div>
                 ))}
               </motion.div>
             </AnimatedSection>
 
-            <AnimatedSection className="bg-white p-6 rounded-lg shadow-sm">
-              <motion.h4 variants={itemVariants} className="text-lg font-bold text-green-800 mb-4">FAQ</motion.h4>
-              <motion.div variants={containerVariants} className="space-y-4">
+            <AnimatedSection className="rounded-3xl border border-ddb-950/5 bg-white p-6 shadow-sm">
+              <motion.h4 variants={itemVariants} className="mb-4 font-heading text-lg font-bold text-ddb-950">
+                Questions fréquentes
+              </motion.h4>
+              <motion.div variants={containerVariants} className="divide-y divide-ddb-950/5">
                 {faqItems.map((item, index) => (
-                  <motion.div key={item.id} variants={itemVariants}>
-                    <button onClick={() => setOpenFAQ(openFAQ === index ? null : index)} className="w-full flex justify-between items-center text-left font-medium text-green-800">
-                      <span>{item.question}</span>
-                      <i className={`fas fa-chevron-down transition-transform text-sm ${openFAQ === index ? 'rotate-180' : ''}`}></i>
+                  <motion.div key={item.id} variants={itemVariants} className="py-3 first:pt-0 last:pb-0">
+                    <button onClick={() => setOpenFAQ(openFAQ === index ? null : index)} className="flex w-full items-center justify-between gap-3 text-left font-semibold text-ddb-950">
+                      <span className="text-sm">{item.question}</span>
+                      <ChevronDown size={16} className={`shrink-0 text-ddb-950/40 transition-transform ${openFAQ === index ? 'rotate-180' : ''}`} />
                     </button>
                     {openFAQ === index && (
-                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-2 pl-4 text-gray-700 border-l-2 border-green-200 overflow-hidden">
-                        <p className="text-sm">{item.answer}</p>
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-2 overflow-hidden border-l-2 border-ddb-200 pl-4 text-ddb-950/60">
+                        <p className="text-sm leading-relaxed">{item.answer}</p>
                       </motion.div>
                     )}
                   </motion.div>
@@ -630,30 +733,29 @@ const Join: React.FC = () => {
             </AnimatedSection>
           </div>
 
-          {/* Right column — 3 small selection cards + form */}
-          <AnimatedSection className="lg:w-1/2 bg-white p-8 rounded-lg shadow-md overflow-hidden">
-            {/* 3 petites cartes de sélection en ligne */}
+          {/* Right column — selection tiles + form */}
+          <AnimatedSection className="overflow-hidden rounded-3xl border border-ddb-950/5 bg-white p-6 shadow-xl sm:p-8 lg:w-3/5">
             <AnimatePresence mode="wait">
               {activeForm === 'none' && (
                 <motion.div key="selection" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <motion.h3 variants={itemVariants} className="text-2xl font-bold text-green-800 mb-2">Choisissez votre démarche</motion.h3>
-                  <p className="text-sm text-gray-400 mb-6">Sélectionnez l'une des options ci-dessous pour commencer.</p>
-                  
-                  {/* Responsive grid of cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pb-4">
+                  <h3 className="font-heading text-2xl font-bold text-ddb-950">Choisissez votre démarche</h3>
+                  <p className="mt-1 text-sm text-ddb-950/40">Sélectionnez l'une des options ci-dessous pour commencer.</p>
+
+                  <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-3">
                     {selectionCards.map(card => (
                       <button
                         key={card.type}
                         onClick={() => setActiveForm(card.type)}
-                        className={`flex flex-col items-center text-center gap-3 border-2 rounded-2xl p-5 transition-all duration-300 shadow-sm ${card.bg}`}
+                        className="group relative flex flex-col items-start gap-3 rounded-2xl border-2 border-ddb-950/10 p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:border-ddb-400 hover:shadow-lg"
                       >
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${card.iconBg}`}>
-                          <i className={`${card.icon} ${card.accent} text-xl`}></i>
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-ddb-50 text-ddb-700 transition-colors group-hover:bg-ddb-600 group-hover:text-white">
+                          <card.icon size={22} />
                         </div>
-                        <div className="min-w-0">
-                          <p className={`font-bold text-sm leading-tight ${card.accent}`}>{card.title}</p>
-                          <p className="text-[10px] text-gray-400 mt-1 line-clamp-2">{card.sub}</p>
+                        <div>
+                          <p className="font-heading font-bold text-ddb-950">{card.title}</p>
+                          <p className="mt-1 text-xs leading-relaxed text-ddb-950/50">{card.sub}</p>
                         </div>
+                        <ArrowRight size={16} className="absolute right-4 top-4 text-ddb-950/20 transition-all group-hover:translate-x-0.5 group-hover:text-ddb-600" />
                       </button>
                     ))}
                   </div>
