@@ -24,7 +24,14 @@ const EditableImage: React.FC<EditableImageProps> = ({ k, fallback, alt = '', cl
   const src = getImage(k) ?? fallback;
 
   if (!editMode) {
-    return <As src={src} alt={alt} loading="lazy" className={imgClassName || className} {...imgProps} />;
+    // Même structure qu'en mode édition (conteneur + image) pour un rendu
+    // identique : sans ce conteneur, les classes de fond/arrondi/padding
+    // portées par `className` (ex: le rond blanc du logo) disparaissaient.
+    return (
+      <div className={className}>
+        <As src={src} alt={alt} loading="lazy" className={imgClassName || 'h-full w-full object-cover'} {...imgProps} />
+      </div>
+    );
   }
 
   return <EditableImageEditMode k={k} src={src} alt={alt} className={className} imgClassName={imgClassName} setValue={setValue} />;
