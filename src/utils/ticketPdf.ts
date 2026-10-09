@@ -37,6 +37,15 @@ export const getQRCodeDataUri = async (text: string): Promise<string> => {
   }
 };
 
+/** Dimensions naturelles d'une image base64 */
+const getImageDimensions = (base64: string): Promise<{ nw: number; nh: number }> =>
+  new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ nw: img.naturalWidth || 1, nh: img.naturalHeight || 1 });
+    img.onerror = () => resolve({ nw: 1, nh: 1 });
+    img.src = base64;
+  });
+
 export type TicketTemplate = 'classic' | 'modern' | 'invitation';
 
 /** Generate PDF ticket or invitation in the browser using jsPDF */
@@ -51,14 +60,15 @@ export const generateTicketPDF = async (
   invitationText?: string,
   invitationSubtext?: string,
   existingDoc?: jsPDF,
+  logoUrl?: string,
 ): Promise<jsPDF> => {
   if (template === 'invitation') {
-    return generateInvitationTicketPDF(fullname, eventTitle, eventDate, eventLocation, organizerLogos, eventDates, invitationText, invitationSubtext, existingDoc);
+    return generateInvitationTicketPDF(fullname, eventTitle, eventDate, eventLocation, organizerLogos, eventDates, invitationText, invitationSubtext, existingDoc, logoUrl);
   }
   if (template === 'modern') {
-    return generateModernTicketPDF(fullname, eventTitle, eventDate, eventLocation, organizerLogos, eventDates, existingDoc);
+    return generateModernTicketPDF(fullname, eventTitle, eventDate, eventLocation, organizerLogos, eventDates, existingDoc, logoUrl);
   }
-  return generateClassicTicketPDF(fullname, eventTitle, eventDate, eventLocation, organizerLogos, eventDates, existingDoc);
+  return generateClassicTicketPDF(fullname, eventTitle, eventDate, eventLocation, organizerLogos, eventDates, existingDoc, logoUrl);
 };
 
 /**
@@ -74,6 +84,7 @@ export const generateGroupTicketsPDF = async (
   template: TicketTemplate = 'classic',
   invitationText?: string,
   invitationSubtext?: string,
+  logoUrl?: string,
 ): Promise<jsPDF> => {
   const pageFormat = template === 'invitation' ? [210, 135] : [210, 100];
   let doc: jsPDF | undefined;
@@ -81,12 +92,12 @@ export const generateGroupTicketsPDF = async (
     const name = fullnames[i];
     if (i === 0) {
       doc = await generateTicketPDF(
-        name, eventTitle, eventDate, eventLocation, organizerLogos, eventDates, template, invitationText, invitationSubtext
+        name, eventTitle, eventDate, eventLocation, organizerLogos, eventDates, template, invitationText, invitationSubtext, undefined, logoUrl
       );
     } else {
       doc!.addPage(pageFormat as [number, number], 'landscape');
       await generateTicketPDF(
-        name, eventTitle, eventDate, eventLocation, organizerLogos, eventDates, template, invitationText, invitationSubtext, doc
+        name, eventTitle, eventDate, eventLocation, organizerLogos, eventDates, template, invitationText, invitationSubtext, doc, logoUrl
       );
     }
   }
@@ -101,6 +112,7 @@ const generateClassicTicketPDF = async (
   organizerLogos?: string[],
   eventDates?: { date: string; label?: string }[],
   existingDoc?: jsPDF,
+  logoUrl?: string,
 ): Promise<jsPDF> => {
   const doc = existingDoc || new jsPDF({ orientation: 'landscape', unit: 'mm', format: [210, 100] });
 
@@ -127,6 +139,30 @@ const generateClassicTicketPDF = async (
   // Header bar
   doc.setFillColor(20, 83, 45);
   doc.rect(0, 0, 210, 22, 'F');
+
+  // Header logo (gauche du bandeau d'en-tête)
+  if (logoUrl) {
+    try {
+      const logoBase64 = await fetchImageAsBase64(logoUrl);
+      if (logoBase64) {
+        const { nw, nh } = await getImageDimensions(logoBase64);
+        const maxH = 15;
+        const maxW = 42;
+        const ratio = nw / nh;
+        let lw = maxH * ratio;
+        let lh = maxH;
+        if (lw > maxW) {
+          lw = maxW;
+          lh = maxW / ratio;
+        }
+        const lx = 8;
+        const ly = 3.5 + (maxH - lh) / 2;
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(lx - 1.5, ly - 1.5, lw + 3, lh + 3, 1.5, 1.5, 'F');
+        doc.addImage(logoBase64, 'PNG', lx, ly, lw, lh);
+      }
+    } catch { /* silent */ }
+  }
 
   // Header text
   doc.setTextColor(255, 255, 255);
@@ -239,7 +275,6 @@ const generateClassicTicketPDF = async (
   return doc;
 };
 
-/** Ticket "moderne" — bandeau latéral teal, coins arrondis, souche pointillée */
 const generateModernTicketPDF = async (
   fullname: string,
   eventTitle: string,
@@ -248,6 +283,7 @@ const generateModernTicketPDF = async (
   organizerLogos?: string[],
   eventDates?: { date: string; label?: string }[],
   existingDoc?: jsPDF,
+  logoUrl?: string,
 ): Promise<jsPDF> => {
   const doc = existingDoc || new jsPDF({ orientation: 'landscape', unit: 'mm', format: [210, 100] });
 
@@ -309,6 +345,32 @@ const generateModernTicketPDF = async (
   doc.setFontSize(13);
   doc.setTextColor(51, 65, 81);
   doc.text(fullname, 70, 31);
+
+  // Logo événement en haut à droite du corps (avant la zone QR)
+  if (logoUrl) {
+    try {
+      const logoBase64 = await fetchImageAsBase64(logoUrl);
+      if (logoBase64) {
+        const { nw, nh } = await getImageDimensions(logoBase64);
+        const maxH = 18;
+        const maxW = 32;
+        const ratio = nw / nh;
+        let lw = maxH * ratio;
+        let lh = maxH;
+        if (lw > maxW) {
+          lw = maxW;
+          lh = maxW / ratio;
+        }
+        const lx = 154 - lw;
+        const ly = 14 + (maxH - lh) / 2;
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(lx - 2, ly - 2, lw + 4, lh + 4, 2, 2, 'FD');
+        doc.addImage(logoBase64, 'PNG', lx, ly, lw, lh);
+      }
+    } catch { /* silent */ }
+  }
 
   doc.setDrawColor(226, 232, 240);
   doc.setLineWidth(0.3);
@@ -407,6 +469,7 @@ const generateInvitationTicketPDF = async (
   invitationText?: string,
   invitationSubtext?: string,
   existingDoc?: jsPDF,
+  logoUrl?: string,
 ): Promise<jsPDF> => {
   const doc = existingDoc || new jsPDF({ orientation: 'landscape', unit: 'mm', format: [210, 135] });
   const W = 210, H = 135;
@@ -565,6 +628,32 @@ const generateInvitationTicketPDF = async (
   doc.setFont('times', 'bolditalic');
   doc.setFontSize(18);
   doc.text('Soyez les bienvenus', contentCenterX - 10, 114, { align: 'center' });
+
+  // Logo de l'événement (au-dessus du QR Code à droite)
+  if (logoUrl) {
+    try {
+      const logoBase64 = await fetchImageAsBase64(logoUrl);
+      if (logoBase64) {
+        const { nw, nh } = await getImageDimensions(logoBase64);
+        const maxH = 24;
+        const maxW = 36;
+        const ratio = nw / nh;
+        let lw = maxH * ratio;
+        let lh = maxH;
+        if (lw > maxW) {
+          lw = maxW;
+          lh = maxW / ratio;
+        }
+        const lx = qrBoxX + (qrBoxW - lw) / 2;
+        const ly = 12 + (maxH - lh) / 2;
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(218, 165, 32);
+        doc.setLineWidth(0.35);
+        doc.roundedRect(lx - 2, ly - 2, lw + 4, lh + 4, 2.5, 2.5, 'FD');
+        doc.addImage(logoBase64, 'PNG', lx, ly, lw, lh);
+      }
+    } catch { /* silent */ }
+  }
 
   // 5. QR Code d'accès officiel à droite
   const qrBoxX = 162;

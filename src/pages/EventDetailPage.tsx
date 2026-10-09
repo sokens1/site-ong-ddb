@@ -453,7 +453,9 @@ const EventRegistrationModal: React.FC<{
         event.event_dates,
         event.ticket_template || 'classic',
         event.invitation_text,
-        event.invitation_subtext
+        event.invitation_subtext,
+        undefined,
+        event.logo_url,
       );
       doc.save(`Billet_${cleanTitle}.pdf`);
       pdfBase64 = doc.output('datauristring').split('base64,')[1];

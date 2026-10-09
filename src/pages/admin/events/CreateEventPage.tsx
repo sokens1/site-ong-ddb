@@ -209,6 +209,8 @@ const CreateEventPage: React.FC = () => {
         formData.ticket_template || 'classic',
         formData.invitation_text,
         formData.invitation_subtext,
+        undefined,
+        formData.logo_url,
       );
       const cleanTitle = (formData.title || 'evenement').replace(/[^a-z0-9]/gi, '_');
       const cleanName = (reg.fullname || 'participant').replace(/[^a-zA-Z0-9]/g, '_');
@@ -237,6 +239,7 @@ const CreateEventPage: React.FC = () => {
         formData.ticket_template || 'classic',
         formData.invitation_text,
         formData.invitation_subtext,
+        formData.logo_url,
       );
       doc.save(`Billets_${order.placesCount}_places_${cleanTitle}.pdf`);
     } catch (err) {
@@ -270,6 +273,7 @@ const CreateEventPage: React.FC = () => {
         formData.ticket_template || 'classic',
         formData.invitation_text,
         formData.invitation_subtext,
+        formData.logo_url,
       );
       const bundlePdfBase64 = groupDoc.output('datauristring').split('base64,')[1];
       const bundlePdfName = `Billets_${order.placesCount}_places_${cleanTitle}.pdf`;
@@ -406,6 +410,8 @@ const CreateEventPage: React.FC = () => {
         formData.ticket_template || 'classic',
         formData.invitation_text,
         formData.invitation_subtext,
+        undefined,
+        formData.logo_url,
       );
       const pdfBase64 = doc.output('datauristring').split('base64,')[1];
       const cleanTitle = (formData.title || 'evenement').replace(/[^a-z0-9]/gi, '_');
@@ -605,6 +611,8 @@ const CreateEventPage: React.FC = () => {
         formData.ticket_template || 'classic',
         formData.invitation_text,
         formData.invitation_subtext,
+        undefined,
+        formData.logo_url,
       );
       const pdfBase64 = doc.output('datauristring').split('base64,')[1];
       const cleanTitle = (formData.title || 'evenement').replace(/[^a-z0-9]/gi, '_');

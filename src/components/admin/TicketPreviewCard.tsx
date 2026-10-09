@@ -9,6 +9,7 @@ interface TicketPreviewCardProps {
   eventTitle: string;
   eventDate?: string;
   location?: string;
+  logoUrl?: string;
   invitationText?: string;
   invitationSubtext?: string;
 }
@@ -28,6 +29,7 @@ const TicketPreviewCard: React.FC<TicketPreviewCardProps> = ({
   eventTitle,
   eventDate,
   location,
+  logoUrl,
   invitationText,
   invitationSubtext,
 }) => {
@@ -52,8 +54,13 @@ const TicketPreviewCard: React.FC<TicketPreviewCardProps> = ({
         {template === 'classic' ? (
           <div className="rounded-lg overflow-hidden shadow-sm aspect-[2.1/1] flex bg-[#f0fdf4]">
             <div className="flex-1 flex flex-col p-2.5 min-w-0">
-              <div className="bg-[#14532d] text-white text-[8px] font-bold text-center py-1.5 rounded-sm mb-2 tracking-wide">
-                BILLET D'ENTRÉE OFFICIEL
+              <div className="bg-[#14532d] text-white text-[8px] font-bold py-1.5 px-2 rounded-sm mb-2 tracking-wide flex items-center justify-center gap-1.5 relative">
+                {logoUrl && (
+                  <div className="h-3.5 bg-white p-0.5 rounded flex items-center justify-center flex-shrink-0">
+                    <img src={logoUrl} alt="Logo" className="h-full object-contain max-w-[20px]" />
+                  </div>
+                )}
+                <span className="truncate">BILLET D'ENTRÉE OFFICIEL</span>
               </div>
               <p className="text-[9px] font-bold text-gray-800 leading-snug line-clamp-2">{title}</p>
               <div className="mt-auto space-y-0.5">
@@ -77,9 +84,14 @@ const TicketPreviewCard: React.FC<TicketPreviewCardProps> = ({
               </div>
               <p className="text-[6.5px] text-teal-100 line-clamp-2">{date}</p>
             </div>
-            <div className="flex-1 p-2.5 flex flex-col min-w-0 bg-[#f0fdfa]">
+            <div className="flex-1 p-2.5 flex flex-col min-w-0 bg-[#f0fdfa] relative">
+              {logoUrl && (
+                <div className="absolute top-2 right-2 h-4 bg-white border border-gray-200 rounded p-0.5 shadow-xs">
+                  <img src={logoUrl} alt="Logo" className="h-full object-contain max-w-[24px]" />
+                </div>
+              )}
               <p className="text-[7px] font-bold text-gray-700">Participant</p>
-              <p className="text-[8.5px] text-gray-600 truncate">Aminata KOFFI</p>
+              <p className="text-[8.5px] text-gray-600 truncate max-w-[80%]">Aminata KOFFI</p>
               <div className="mt-auto">
                 <p className="text-[6.5px] text-gray-400 line-clamp-2">{title}</p>
               </div>
@@ -139,11 +151,16 @@ const TicketPreviewCard: React.FC<TicketPreviewCardProps> = ({
             </div>
 
             {/* QR Code pour accès officiel */}
-            <div className="w-[20%] flex flex-col items-center justify-center flex-shrink-0 pr-1.5 border-l border-amber-200/60 bg-[#fffdfa]">
-              <div className="w-8 h-8 border border-amber-400 rounded flex items-center justify-center bg-white shadow-xs">
-                <QrCode size={16} className="text-[#881337]" />
+            <div className="w-[20%] flex flex-col items-center justify-center flex-shrink-0 pr-1.5 border-l border-amber-200/60 bg-[#fffdfa] gap-1">
+              {logoUrl && (
+                <div className="h-4 bg-white border border-amber-300 rounded p-0.5 shadow-xs">
+                  <img src={logoUrl} alt="Logo" className="h-full object-contain max-w-[24px]" />
+                </div>
+              )}
+              <div className="w-7 h-7 border border-amber-400 rounded flex items-center justify-center bg-white shadow-xs">
+                <QrCode size={14} className="text-[#881337]" />
               </div>
-              <p className="text-[3.5px] font-bold text-[#881337] mt-0.5 uppercase tracking-tighter">Accès Invité</p>
+              <p className="text-[3.5px] font-bold text-[#881337] uppercase tracking-tighter">Accès Invité</p>
             </div>
           </div>
         )}

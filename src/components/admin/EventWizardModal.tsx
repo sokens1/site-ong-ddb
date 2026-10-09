@@ -738,6 +738,7 @@ const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, ev
                                 eventTitle={formData.title}
                                 eventDate={formData.event_date}
                                 location={formData.location}
+                                logoUrl={formData.logo_url}
                                 invitationText={formData.invitation_text}
                                 invitationSubtext={formData.invitation_subtext}
                               />
