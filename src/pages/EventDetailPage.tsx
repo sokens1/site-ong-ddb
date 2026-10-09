@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, MapPin, Users, X, CheckCircle, ChevronLeft, Star, MessageSquare, ChevronRight, Share2, Copy, Check, Loader2, AlertCircle } from 'lucide-react';
+import { Calendar, MapPin, Users, X, CheckCircle, ChevronLeft, Star, MessageSquare, ChevronRight, Share2, Copy, Check, Loader2, AlertCircle, Clock, User, Plus, Minus, CreditCard, Phone, ArrowRight, ExternalLink, ShieldCheck } from 'lucide-react';
 import PosterGeneratorModal from '../components/events/PosterGeneratorModal';
 import InAppBrowserBanner from '../components/InAppBrowserBanner';
 import { InAppBrowserProvider, useInAppBrowserBanner } from '../context/InAppBrowserContext';
@@ -10,6 +10,7 @@ import { isInAppBrowser } from '../utils/inAppBrowser';
 import { generateTicketPDF } from '../utils/ticketPdf';
 import { generateCertificatePDF } from '../utils/certificatePdf';
 import Turnstile, { verifySubmission, VERIFY_MESSAGES } from '../components/Turnstile';
+import { fetchPaymentSettings, DEFAULT_PAYMENT_SETTINGS, PaymentSettings } from '../utils/paymentSettings';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -58,16 +59,62 @@ interface Event {
 // ─── Registration Modal (Step-by-step) ───────────────────────────────────────
 
 
+// ─── Configuration Paiement Mobile Gabon ────────────────────────────────────
+
+const PAYMENT_CONFIG = {
+  airtel: {
+    id: 'airtel' as const,
+    name: 'Airtel Money',
+    number: '+241 77 65 00 15',
+    rawNumber: '077650015',
+    accountName: 'ONG DDB',
+    prefix: '077 / 074',
+    badgeClass: 'bg-red-50 text-red-700 border-red-200',
+    headerBg: 'bg-gradient-to-r from-red-600 to-rose-700',
+    color: '#E60000',
+  },
+  moov: {
+    id: 'moov' as const,
+    name: 'Moov Money',
+    number: '+241 66 12 34 56',
+    rawNumber: '066123456',
+    accountName: 'ONG DDB',
+    prefix: '066 / 062',
+    badgeClass: 'bg-blue-50 text-blue-700 border-blue-200',
+    headerBg: 'bg-gradient-to-r from-blue-600 to-indigo-700',
+    color: '#005CA9',
+  },
+  whatsappNumber: '241077617776',
+};
+
+// ─── Registration Modal (Gratuit & Payant avec Airtel / Moov) ────────────────
+
 const EventRegistrationModal: React.FC<{
   event: Event;
   onClose: () => void;
   onGeneratePoster: (name: string) => void;
 }> = ({ event, onClose, onGeneratePoster }) => {
   const { reactivate: reactivateInAppBanner } = useInAppBrowserBanner();
+
+  // Détection si l'événement est payant
+  const isPaidEvent = Boolean(
+    (event.price && event.price > 0) ||
+    (event.ticket_tiers && event.ticket_tiers.some(t => t.price && t.price > 0))
+  );
+
+  // Tarifs
+  const paidTiers = (event.ticket_tiers || []).filter(t => t.price && t.price > 0);
+  const allTiers = event.ticket_tiers || [];
+  const defaultTier = paidTiers[0] || allTiers[0];
+  const [selectedTierId, setSelectedTierId] = useState<string>(defaultTier?.id || '');
+  const activeTier = allTiers.find(t => t.id === selectedTierId);
+  const unitPrice = activeTier ? (activeTier.price || 0) : (event.price || 0);
+
+  // Champs personnalisés
   const customFields = (event.form_fields || []).filter((f: any) => f && f.label && f.label.trim() !== '');
   const hasCustomFields = customFields.length > 0;
   
-  // If there are custom fields, only display them. Otherwise show default name and email.
+  // Champs par défaut pour flux gratuit
   const allFields = hasCustomFields
     ? customFields
     : [
@@ -77,10 +124,60 @@ const EventRegistrationModal: React.FC<{
 
   const fieldsPerPage = 4;
   const totalSteps = Math.ceil(allFields.length / fieldsPerPage);
-  const [step, setStep] = useState(0);
+  const [freeStep, setFreeStep] = useState(0);
 
+  // État formulaire gratuit
   const [formData, setFormData] = useState({ fullname: '', email: '' });
   const [customData, setCustomData] = useState<Record<string, any>>({});
+
+  // État formulaire payant (Panier + Participants + Paiement)
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>(DEFAULT_PAYMENT_SETTINGS);
+  const [placesCount, setPlacesCount] = useState<number>(1);
+  const [participantNames, setParticipantNames] = useState<string[]>(['']);
+  const [buyerEmail, setBuyerEmail] = useState<string>('');
+  const [payerPhone, setPayerPhone] = useState<string>('');
+  const [paymentOperator, setPaymentOperator] = useState<'airtel' | 'moov'>('airtel');
+  const [copiedOperator, setCopiedOperator] = useState<'airtel' | 'moov' | null>(null);
+  const [paidFlowStep, setPaidFlowStep] = useState<'details' | 'payment'>('details');
+  const [whatsappLink, setWhatsappLink] = useState<string>('');
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchPaymentSettings().then(res => {
+      if (isMounted) setPaymentSettings(res);
+    });
+    return () => { isMounted = false; };
+  }, []);
+
+  const currentPaymentConfig = {
+    airtel: {
+      id: 'airtel' as const,
+      name: 'Airtel Money',
+      number: paymentSettings.airtelNumber || PAYMENT_CONFIG.airtel.number,
+      rawNumber: paymentSettings.airtelRawNumber || PAYMENT_CONFIG.airtel.rawNumber,
+      accountName: paymentSettings.airtelAccountName || PAYMENT_CONFIG.airtel.accountName,
+      prefix: '077 / 074',
+      badgeClass: 'bg-red-50 text-red-700 border-red-200',
+      headerBg: 'bg-gradient-to-r from-red-600 to-rose-700',
+      color: '#E60000',
+    },
+    moov: {
+      id: 'moov' as const,
+      name: 'Moov Money',
+      number: paymentSettings.moovNumber || PAYMENT_CONFIG.moov.number,
+      rawNumber: paymentSettings.moovRawNumber || PAYMENT_CONFIG.moov.rawNumber,
+      accountName: paymentSettings.moovAccountName || PAYMENT_CONFIG.moov.accountName,
+      prefix: '066 / 062',
+      badgeClass: 'bg-blue-50 text-blue-700 border-blue-200',
+      headerBg: 'bg-gradient-to-r from-blue-600 to-indigo-700',
+      color: '#005CA9',
+    },
+    whatsappNumber: paymentSettings.whatsappNumber || PAYMENT_CONFIG.whatsappNumber,
+  };
+
+  const totalAmount = unitPrice * placesCount;
+
+  // États globaux soumission
   const [registeredName, setRegisteredName] = useState('');
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -103,13 +200,160 @@ const EventRegistrationModal: React.FC<{
     }
   };
 
-  const isLastStep = step === totalSteps - 1;
-  const progress = totalSteps > 0 ? ((step + 1) / totalSteps) * 100 : 100;
+  const handlePlacesChange = (newCount: number) => {
+    const maxSlots = event.max_slots ? Math.min(10, event.max_slots) : 10;
+    const count = Math.max(1, Math.min(maxSlots, newCount));
+    setPlacesCount(count);
+    setParticipantNames(prev => {
+      const next = [...prev];
+      while (next.length < count) next.push('');
+      return next.slice(0, count);
+    });
+  };
 
-  // Get fields for the current page
-  const pageFields = allFields.slice(step * fieldsPerPage, (step + 1) * fieldsPerPage);
+  const handleParticipantChange = (index: number, val: string) => {
+    setParticipantNames(prev => {
+      const next = [...prev];
+      next[index] = val;
+      return next;
+    });
+  };
 
-  const canAdvance = () => {
+  const handleCopyNumber = (rawNum: string, op: 'airtel' | 'moov') => {
+    navigator.clipboard.writeText(rawNum);
+    setCopiedOperator(op);
+    setTimeout(() => setCopiedOperator(null), 2500);
+  };
+
+  // ── Vérification avant étape paiement (Flux payant) ───────────────────────
+  const handleProceedToPayment = () => {
+    setError(null);
+
+    // Vérifier les participants
+    for (let i = 0; i < participantNames.length; i++) {
+      if (!participantNames[i].trim()) {
+        setError(placesCount === 1 
+          ? "Veuillez renseigner le nom complet du participant." 
+          : `Veuillez renseigner le nom complet du participant ${i + 1}.`);
+        return;
+      }
+    }
+
+    // Vérifier l'email du payeur
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail.trim())) {
+      setError("Veuillez renseigner une adresse email valide pour recevoir vos billets.");
+      return;
+    }
+
+    // Vérifier le téléphone du payeur
+    if (!payerPhone.trim()) {
+      setError("Veuillez renseigner votre numéro de téléphone (celui qui effectuera le paiement).");
+      return;
+    }
+
+    // Vérifier champs personnalisés requis
+    for (const field of customFields) {
+      if (field.required) {
+        const val = customData[field.id];
+        if (val === undefined || val === null || (typeof val === 'string' && !val.trim())) {
+          setError(`Veuillez renseigner : ${field.label}`);
+          return;
+        }
+      }
+    }
+
+    setPaidFlowStep('payment');
+  };
+
+  // ── Soumission payante : Enregistrement en attente + Redirection WhatsApp ───
+  // Note : L'envoi du billet par email se fait après validation par l'administrateur en back-office.
+  const handlePaidSubmit = async () => {
+    setIsSubmitting(true);
+    setError(null);
+
+    const check = await verifySubmission({ token: captchaToken, email: buyerEmail.trim(), kind: 'event_registration' });
+    if (!check.ok) {
+      setError(VERIFY_MESSAGES[check.reason ?? 'server_error'] || 'Vérification de sécurité échouée.');
+      setCaptchaNonce(n => n + 1);
+      setIsSubmitting(false);
+      return;
+    }
+
+    const finalBuyerEmail = buyerEmail.trim();
+    const finalPayerPhone = payerPhone.trim();
+    const cleanParticipants = participantNames.map((n, i) => n.trim() || `Participant ${i + 1}`);
+    const orderRef = `CMD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+    try {
+      // 1. Enregistrer chaque participant dans la base de données avec statut "pending"
+      for (let i = 0; i < cleanParticipants.length; i++) {
+        const pName = cleanParticipants[i];
+        // Pour respecter la contrainte d'unicité, le 1er garde l'email pur, les suivants un alias
+        const regEmail = i === 0 ? finalBuyerEmail : `${finalBuyerEmail.split('@')[0]}+p${i + 1}@${finalBuyerEmail.split('@')[1]}`;
+        const { error: insErr } = await supabase.from('event_registrations').insert([{
+          event_id: event.id,
+          fullname: pName,
+          email: regEmail,
+          phone: finalPayerPhone || null,
+          custom_data: {
+            ...customData,
+            order_ref: orderRef,
+            is_paid_booking: true,
+            payment_status: 'pending', // En attente de validation back-office
+            unit_price: unitPrice,
+            total_amount: totalAmount,
+            ticket_tier: activeTier?.label || null,
+            buyer_email: finalBuyerEmail,
+            payer_phone: finalPayerPhone,
+            payment_operator: paymentOperator,
+            participant_index: i + 1,
+            group_size: placesCount,
+            all_participants: cleanParticipants,
+          },
+        }]);
+
+        if (insErr && insErr.code === '23505') {
+          setError('Une inscription existe déjà pour cette adresse email.');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      // 2. Message WhatsApp pré-rempli pour la confirmation
+      let messageText = '';
+      if (placesCount <= 1) {
+        messageText = `Bonjour,\n\nJe viens de payer ma réservation :\n\n→ Numéro payeur : ${finalPayerPhone}\n→ Nom du participant : ${cleanParticipants[0]}\n→ Montant : ${totalAmount.toLocaleString('fr-FR')} XAF\n→ Événement : ${event.title}\n\nMerci de vérifier le paiement et de valider mon billet officiel.\n\nCordialement`;
+      } else {
+        const participantsList = cleanParticipants.map(p => `   • ${p}`).join('\n');
+        messageText = `Bonjour,\n\nJe viens de payer ${placesCount} places pour l'événement "${event.title}" :\n\n→ Numéro du payeur : ${finalPayerPhone}\n→ Montant payé : ${totalAmount.toLocaleString('fr-FR')} XAF\n→ Participants :\n${participantsList}\n\nMerci de vérifier le paiement et de valider nos ${placesCount} billets officiels.\n\nCordialement`;
+      }
+
+      const targetWaNumber = currentPaymentConfig.whatsappNumber || '241077617776';
+      const waUrl = `https://wa.me/${targetWaNumber}?text=${encodeURIComponent(messageText)}`;
+      setWhatsappLink(waUrl);
+
+      setRegisteredName(cleanParticipants[0]);
+      setRegisteredEmail(finalBuyerEmail);
+      setSuccess(true);
+      setIsSubmitting(false);
+
+      // Redirection immédiate vers WhatsApp
+      try {
+        window.open(waUrl, '_blank');
+      } catch {}
+    } catch (err: any) {
+      console.error('Erreur paiement réservation:', err);
+      setError(err?.message || 'Une erreur est survenue lors de la validation.');
+      setIsSubmitting(false);
+    }
+  };
+
+  // ── Soumission gratuite standard ──────────────────────────────────────────
+  const isLastFreeStep = freeStep === totalSteps - 1;
+  const progress = totalSteps > 0 ? ((freeStep + 1) / totalSteps) * 100 : 100;
+  const pageFields = allFields.slice(freeStep * fieldsPerPage, (freeStep + 1) * fieldsPerPage);
+
+  const canAdvanceFree = () => {
     if (emailDupStatus === 'duplicate') return false;
     for (const field of pageFields) {
       if (field.id === 'fullname') {
@@ -123,69 +367,39 @@ const EventRegistrationModal: React.FC<{
           if (Array.isArray(val) && val.length === 0) return false;
           if (typeof val === 'string' && val.trim() === '') return false;
         }
-        // Custom email field format validation
-        if (field.label.toLowerCase().includes('email') || field.label.toLowerCase().includes('courriel')) {
-          const val = customData[field.id];
-          if (val && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return false;
-        }
       }
     }
     return true;
   };
 
-  const handleNext = () => {
-    if (!canAdvance()) return;
-    if (isLastStep) {
-      handleSubmit();
-    } else {
-      setStep(s => s + 1);
-    }
-  };
-
-  const handleSubmit = async () => {
+  const handleFreeSubmit = async () => {
     setIsSubmitting(true);
     setError(null);
 
-    // Extraire nom et email depuis les champs custom ou les champs par défaut
-    let ticketName = '';
-    let ticketEmail = '';
+    let ticketName = formData.fullname.trim();
+    let ticketEmail = formData.email.trim();
 
     if (hasCustomFields) {
-      const emailField = customFields.find(f =>
+      const emailField = customFields.find((f: any) =>
         f.label.toLowerCase().includes('email') ||
         f.label.toLowerCase().includes('courriel') ||
         f.label.toLowerCase().includes('mail')
       );
-      if (emailField) ticketEmail = customData[emailField.id] || '';
+      if (emailField) ticketEmail = (customData[emailField.id] || '').trim();
 
-      const nameFields = customFields.filter(f =>
+      const nameFields = customFields.filter((f: any) =>
         f.label.toLowerCase().includes('nom') ||
         f.label.toLowerCase().includes('prénom') ||
-        f.label.toLowerCase().includes('prenom') ||
-        f.label.toLowerCase().includes('name') ||
         f.label.toLowerCase().includes('fullname')
       );
       if (nameFields.length > 0) {
-        ticketName = nameFields.map(f => customData[f.id] || '').filter(Boolean).join(' ');
+        ticketName = nameFields.map((f: any) => customData[f.id] || '').filter(Boolean).join(' ').trim();
       }
-
-      if (!ticketEmail) {
-        const found = Object.values(customData).find(val => typeof val === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val));
-        ticketEmail = (found as string) || '';
-      }
-      if (!ticketName) {
-        const firstText = customFields.find(f => f.type === 'text');
-        if (firstText) ticketName = customData[firstText.id] || '';
-      }
-    } else {
-      ticketName = formData.fullname;
-      ticketEmail = formData.email;
     }
 
-    const finalName = ticketName.trim() || 'Participant';
-    const finalEmail = ticketEmail.trim();
+    const finalName = ticketName || 'Participant';
+    const finalEmail = ticketEmail;
 
-    // ── Vérif serveur : anti-bot + format email + domaine jetable ──────────
     const check = await verifySubmission({ token: captchaToken, email: finalEmail, kind: 'event_registration' });
     if (!check.ok) {
       setError(VERIFY_MESSAGES[check.reason ?? 'server_error'] || 'Vérification échouée.');
@@ -194,7 +408,6 @@ const EventRegistrationModal: React.FC<{
       return;
     }
 
-    // ── Vérifier doublon inscription (vérification préalable côté client) ───
     if (finalEmail) {
       const { data: existing } = await supabase
         .from('event_registrations')
@@ -218,16 +431,9 @@ const EventRegistrationModal: React.FC<{
     }]);
 
     if (insertError) {
-      // 23505 = unique_violation: the database constraint blocked a duplicate
       if (insertError.code === '23505') {
         setError('Vous êtes déjà inscrit à cet événement avec cette adresse email.');
-      } else if (/complet/i.test(insertError.message)) {
-        // trigger enforce_event_capacity : plus de places
-        setError('Cet événement est complet, les inscriptions sont closes.');
-      } else if (insertError.code === '23514') {
-        setError('Cette adresse email n\'est pas valide.');
       } else {
-        console.error('Insert error:', insertError);
         setError(`Erreur lors de l'inscription : ${insertError.message}`);
       }
       setCaptchaNonce(n => n + 1);
@@ -240,8 +446,7 @@ const EventRegistrationModal: React.FC<{
     setSuccess(true);
     setIsSubmitting(false);
 
-    // ── Génération PDF + envoi email en arrière-plan ────────────────────────
-    if (isInAppBrowser()) reactivateInAppBanner(); // le téléchargement du billet démarre : on rappelle la carte tout de suite
+    if (isInAppBrowser()) reactivateInAppBanner();
     const cleanTitle = event.title.replace(/[^a-z0-9]/gi, '_');
     let pdfBase64 = '';
     try {
@@ -262,7 +467,6 @@ const EventRegistrationModal: React.FC<{
       console.error('Erreur génération PDF:', pdfErr);
     }
 
-    // Déclenche l'envoi sans attendre la réponse de Brevo (fire-and-forget)
     supabase.functions.invoke('send-event-confirmation', {
       body: {
         email: finalEmail || 'visiteur@ong-ddb.org',
@@ -278,6 +482,7 @@ const EventRegistrationModal: React.FC<{
     setEmailSent(true);
   };
 
+  // ── Rendu champ dynamique (customFields) ───────────────────────────────────
   const renderField = (field: any) => {
     const value = field.id === 'fullname' ? formData.fullname : field.id === 'email' ? formData.email : customData[field.id];
     const onChange = (val: any) => handleFieldChange(field.id, val);
@@ -291,7 +496,7 @@ const EventRegistrationModal: React.FC<{
         
         {field.id === 'fullname' && (
           <input
-            autoFocus={step === 0}
+            autoFocus={freeStep === 0}
             type="text"
             value={formData.fullname}
             onChange={e => onChange(e.target.value)}
@@ -336,52 +541,15 @@ const EventRegistrationModal: React.FC<{
 
         {field.id !== 'fullname' && field.id !== 'email' && (
           <>
-            {field.type === 'text' && (() => {
-              const isEmail = field.label.toLowerCase().includes('email') || field.label.toLowerCase().includes('courriel');
-              if (isEmail) {
-                return (
-                  <div className="space-y-1">
-                    <div className="relative">
-                      <input
-                        type="email"
-                        value={value || ''}
-                        onChange={e => onChange(e.target.value)}
-                        placeholder="exemple@email.com"
-                        className={`w-full px-4 py-2.5 pr-10 rounded-xl border bg-gray-50 focus:outline-none focus:ring-2 focus:bg-white text-sm transition-all
-                          ${emailDupStatus === 'duplicate'
-                            ? 'border-red-400 focus:ring-red-300'
-                            : emailDupStatus === 'ok'
-                            ? 'border-green-400 focus:ring-green-500'
-                            : 'border-gray-200 focus:ring-green-500'}`}
-                      />
-                      {emailDupStatus === 'checking' && (
-                        <Loader2 size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />
-                      )}
-                      {emailDupStatus === 'ok' && (
-                        <CheckCircle size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" />
-                      )}
-                      {emailDupStatus === 'duplicate' && (
-                        <AlertCircle size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500" />
-                      )}
-                    </div>
-                    {emailDupStatus === 'duplicate' && (
-                      <p className="flex items-center gap-1.5 text-xs text-red-600 font-semibold">
-                        <AlertCircle size={12} />
-                        Vous êtes déjà inscrit à cet événement avec cette adresse email.
-                      </p>
-                    )}
-                  </div>
-                );
-              }
-              return (
-                <input
-                  type="text"
-                  value={value || ''}
-                  onChange={e => onChange(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white text-sm transition-all"
-                />
-              );
-            })()}
+            {field.type === 'text' && (
+              <input
+                type="text"
+                value={value || ''}
+                onChange={e => onChange(e.target.value)}
+                placeholder="Votre réponse"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white text-sm transition-all"
+              />
+            )}
             {field.type === 'textarea' && (
               <textarea
                 rows={2}
@@ -439,42 +607,6 @@ const EventRegistrationModal: React.FC<{
     );
   };
 
-  // ── Vérification doublon email en temps réel (debounce 700ms) ───────────
-  useEffect(() => {
-    let typedEmail = '';
-    if (hasCustomFields) {
-      const emailField = customFields.find((f: any) =>
-        f.label.toLowerCase().includes('email') ||
-        f.label.toLowerCase().includes('courriel') ||
-        f.label.toLowerCase().includes('mail')
-      );
-      typedEmail = emailField ? String(customData[emailField.id] || '') : '';
-    } else {
-      typedEmail = formData.email;
-    }
-    typedEmail = typedEmail.trim();
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typedEmail)) {
-      setEmailDupStatus('idle');
-      if (emailDupDebounce.current) clearTimeout(emailDupDebounce.current);
-      return;
-    }
-
-    setEmailDupStatus('checking');
-    if (emailDupDebounce.current) clearTimeout(emailDupDebounce.current);
-    emailDupDebounce.current = setTimeout(async () => {
-      const { data } = await supabase
-        .from('event_registrations')
-        .select('id')
-        .eq('event_id', event.id)
-        .ilike('email', typedEmail)
-        .limit(1);
-      setEmailDupStatus(data && data.length > 0 ? 'duplicate' : 'ok');
-    }, 700);
-
-    return () => { if (emailDupDebounce.current) clearTimeout(emailDupDebounce.current); };
-  }, [formData.email, customData, hasCustomFields]);
-
   return (
     <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
       <motion.div
@@ -482,7 +614,7 @@ const EventRegistrationModal: React.FC<{
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: '100%', opacity: 0 }}
         transition={{ type: 'spring', damping: 28, stiffness: 350 }}
-        className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md overflow-hidden"
+        className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         style={{ maxHeight: '95vh' }}
       >
@@ -493,21 +625,42 @@ const EventRegistrationModal: React.FC<{
           </button>
           {!success && (
             <>
-              <p className="text-xs text-green-300 uppercase tracking-widest font-semibold mb-1">Inscription</p>
-              <h3 className="text-lg font-bold leading-tight pr-8 line-clamp-2">{event.title}</h3>
-              {/* Progress bar */}
-              <div className="mt-4 bg-white/20 rounded-full h-1.5 overflow-hidden">
-                <motion.div
-                  className="h-full bg-green-300 rounded-full"
-                  animate={{ width: `${progress}%` }}
-                  transition={{ duration: 0.3 }}
-                />
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs text-green-300 uppercase tracking-widest font-semibold">
+                  {isPaidEvent ? 'Réservation & Billetterie' : 'Inscription'}
+                </span>
+                {isPaidEvent && unitPrice > 0 && (
+                  <span className="bg-white/15 px-2 py-0.5 rounded-full text-[11px] font-bold text-white">
+                    {unitPrice.toLocaleString('fr-FR')} XAF / place
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-green-300 mt-1.5">Étape {step + 1} sur {totalSteps}</p>
+              <h3 className="text-lg font-bold leading-tight pr-8 line-clamp-2">{event.title}</h3>
+              
+              {isPaidEvent ? (
+                <div className="flex items-center gap-2 mt-3 text-xs text-green-200">
+                  <span className={`px-2 py-0.5 rounded-full font-bold ${paidFlowStep === 'details' ? 'bg-white text-green-900' : 'bg-white/20 text-white'}`}>
+                    1. Participants
+                  </span>
+                  <span>→</span>
+                  <span className={`px-2 py-0.5 rounded-full font-bold ${paidFlowStep === 'payment' ? 'bg-white text-green-900' : 'bg-white/20 text-white'}`}>
+                    2. Paiement Airtel / Moov
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <div className="mt-4 bg-white/20 rounded-full h-1.5 overflow-hidden">
+                    <motion.div className="h-full bg-green-300 rounded-full" animate={{ width: `${progress}%` }} transition={{ duration: 0.3 }} />
+                  </div>
+                  <p className="text-xs text-green-300 mt-1.5">Étape {freeStep + 1} sur {totalSteps}</p>
+                </>
+              )}
             </>
           )}
           {success && (
-            <h3 className="text-lg font-bold">Inscription confirmée !</h3>
+            <h3 className="text-lg font-bold">
+              {isPaidEvent ? 'Réservation transmise avec succès !' : 'Inscription confirmée !'}
+            </h3>
           )}
         </div>
 
@@ -515,39 +668,81 @@ const EventRegistrationModal: React.FC<{
         <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(95vh - 140px)' }}>
           {success ? (
             <div className="text-center py-4">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="text-green-600" size={32} />
-              </div>
-              <p className="text-gray-700 font-semibold mb-1">Inscription confirmée !</p>
-              <p className="text-gray-500 text-sm mb-4">
-                Votre billet PDF a été téléchargé automatiquement.
-              </p>
+              {isPaidEvent ? (
+                <>
+                  <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Clock className="text-amber-600" size={32} />
+                  </div>
+                  <p className="text-gray-900 font-bold text-lg mb-1">
+                    Réservation enregistrée avec succès !
+                  </p>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 mb-3">
+                    <Clock size={13} />
+                    En attente de validation du paiement
+                  </div>
+                  <p className="text-gray-600 text-sm mb-4">
+                    Votre déclaration de paiement sur <strong className="text-gray-900">{paymentOperator === 'airtel' ? 'Airtel Money' : 'Moov Money'}</strong> a bien été enregistrée pour <strong>{placesCount} place{placesCount > 1 ? 's' : ''}</strong>.
+                  </p>
 
-              {isInAppBrowser() && (
-                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl py-2.5 px-4 mb-4">
-                  Pas d'inquiétude si le téléchargement n'a pas démarré : votre inscription est déjà enregistrée et votre billet vous a été envoyé par email.
-                </p>
-              )}
+                  <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-xs text-blue-900 text-left mb-5 space-y-2">
+                    <div className="flex items-start gap-2.5">
+                      <ShieldCheck size={18} className="text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold text-blue-950">Validation & envoi des billets :</p>
+                        <p className="text-blue-800 mt-0.5">
+                          Dès que l'administration aura validé votre transaction, vos billets officiels avec QR Code seront automatiquement envoyés par email à l'adresse :
+                        </p>
+                        <p className="font-bold text-gray-900 mt-1 bg-white px-2.5 py-1 rounded-lg border border-blue-200 inline-block font-mono">
+                          {registeredEmail}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
 
-              {/* État envoi email */}
-              {!emailSent ? (
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-400 mb-5 bg-gray-50 rounded-xl py-2.5 px-4 border border-gray-100">
-                  <span className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                  Envoi de votre billet par email en cours…
-                </div>
+                  {/* Bouton direct WhatsApp pour événement payant */}
+                  {whatsappLink && (
+                    <div className="bg-[#25D366]/10 border border-[#25D366]/30 rounded-2xl p-4 mb-5 text-left">
+                      <p className="text-xs font-bold text-[#128C7E] uppercase tracking-wide mb-1">Confirmation WhatsApp</p>
+                      <p className="text-xs text-gray-700 mb-3">
+                        Pour accélérer la validation, merci d'envoyer votre message de confirmation pré-rempli sur WhatsApp si la discussion ne s'est pas ouverte :
+                      </p>
+                      <a
+                        href={whatsappLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 w-full bg-[#25D366] hover:bg-[#20b858] text-white font-bold py-3 px-4 rounded-xl shadow-sm text-sm transition-all"
+                      >
+                        <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current flex-shrink-0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.554 4.122 1.526 5.853L.05 23.95l6.254-1.638A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.894a9.88 9.88 0 01-5.034-1.374l-.36-.214-3.732.978.995-3.63-.235-.374A9.859 9.859 0 012.107 12c0-5.457 4.436-9.893 9.893-9.893 5.457 0 9.893 4.436 9.893 9.893 0 5.457-4.436 9.894-9.893 9.894z"/></svg>
+                        Ouvrir la discussion WhatsApp
+                      </a>
+                    </div>
+                  )}
+                </>
               ) : (
-                <div className="flex items-center justify-center gap-2 text-sm text-green-700 mb-5 bg-green-50 rounded-xl py-2.5 px-4 border border-green-100">
-                  <CheckCircle size={15} className="flex-shrink-0" />
-                  {registeredEmail ? `Billet envoyé à ${registeredEmail}` : 'Billet envoyé par email'}
-                </div>
+                <>
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle className="text-green-600" size={32} />
+                  </div>
+                  <p className="text-gray-900 font-bold text-lg mb-1">
+                    Inscription confirmée !
+                  </p>
+                  <p className="text-gray-600 text-sm mb-4">
+                    Votre billet PDF a été téléchargé automatiquement.
+                  </p>
+
+                  <div className="flex items-center justify-center gap-2 text-sm text-green-700 mb-5 bg-green-50 rounded-xl py-2.5 px-4 border border-green-100">
+                    <CheckCircle size={15} className="flex-shrink-0" />
+                    {registeredEmail ? `Billet envoyé à ${registeredEmail}` : 'Billet envoyé par email'}
+                  </div>
+                </>
               )}
 
               {event.poster_enabled !== false && (
-                <div className="bg-green-50 rounded-xl p-5 mb-4 border border-green-100 text-left">
+                <div className="bg-green-50 rounded-xl p-4 mb-4 border border-green-100 text-left">
                   <p className="font-bold text-green-800 mb-1 text-sm">Faites le savoir !</p>
-                  <p className="text-xs text-green-700 mb-3">Générez votre affiche et partagez sur les réseaux sociaux.</p>
+                  <p className="text-xs text-green-700 mb-3">Générez votre affiche officielle et partagez-la sur vos réseaux.</p>
                   <button
-                    onClick={() => { onClose(); onGeneratePoster(registeredName || formData.fullname); }}
+                    onClick={() => { onClose(); onGeneratePoster(registeredName || participantNames[0]); }}
                     className="w-full bg-green-600 text-white font-bold py-2.5 px-4 rounded-xl hover:bg-green-700 transition-colors text-sm"
                   >
                     Générer mon visuel "J'y serai"
@@ -558,21 +753,341 @@ const EventRegistrationModal: React.FC<{
                 Fermer
               </button>
             </div>
+          ) : isPaidEvent ? (
+            /* ══════════════════════════════════════════════════════════════════════
+               PARCOURS ÉVÉNEMENT PAYANT : 1. DÉTAILS/PARTICIPANTS -> 2. PAIEMENT
+               ══════════════════════════════════════════════════════════════════════ */
+            <div>
+              {error && <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-xl mb-4 font-medium">{error}</div>}
+
+              {paidFlowStep === 'details' && (
+                <div className="space-y-5">
+                  {/* Choix du tarif (si plusieurs tarifs proposés) */}
+                  {paidTiers.length > 1 && (
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Sélectionnez votre tarif
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {paidTiers.map(tier => (
+                          <button
+                            key={tier.id}
+                            type="button"
+                            onClick={() => setSelectedTierId(tier.id)}
+                            className={`p-3 rounded-xl border text-left transition-all ${
+                              selectedTierId === tier.id
+                                ? 'border-green-600 bg-green-50/50 ring-2 ring-green-500/20 shadow-sm'
+                                : 'border-gray-200 hover:border-gray-300 bg-gray-50/50'
+                            }`}
+                          >
+                            <p className="font-bold text-sm text-gray-900">{tier.label}</p>
+                            <p className="text-xs font-bold text-green-700 mt-0.5">
+                              {tier.price ? `${tier.price.toLocaleString('fr-FR')} XAF` : 'Gratuit'}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Sélecteur du nombre de places */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">Nombre de places</p>
+                        <p className="text-xs text-gray-500">
+                          {unitPrice > 0 ? `${unitPrice.toLocaleString('fr-FR')} XAF par personne` : 'Tarif standard'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
+                        <button
+                          type="button"
+                          onClick={() => handlePlacesChange(placesCount - 1)}
+                          disabled={placesCount <= 1}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+                        >
+                          <Minus size={14} />
+                        </button>
+                        <span className="font-extrabold text-base text-gray-900 w-6 text-center">{placesCount}</span>
+                        <button
+                          type="button"
+                          onClick={() => handlePlacesChange(placesCount + 1)}
+                          disabled={placesCount >= 10}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Total sur une seule ligne */}
+                    <div className="flex items-center justify-between pt-2.5 border-t border-gray-200/70 text-xs">
+                      <span className="text-gray-500 font-medium">Total :</span>
+                      <span className="text-sm font-bold text-gray-900 whitespace-nowrap">
+                        {totalAmount.toLocaleString('fr-FR')} XAF
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Noms des participants (dynamique selon placesCount) */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        {placesCount === 1 ? 'Participant' : `Participants (${placesCount})`}
+                      </label>
+                      <span className="text-[11px] text-gray-400">1 ticket officiel par nom</span>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {participantNames.map((name, idx) => (
+                        <div key={idx} className="relative">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-green-100 text-green-800 text-xs font-bold flex items-center justify-center flex-shrink-0">
+                              {idx + 1}
+                            </span>
+                            <input
+                              type="text"
+                              value={name}
+                              onChange={e => handleParticipantChange(idx, e.target.value)}
+                              placeholder={idx === 0 ? "Votre nom & prénom complet" : `Participant ${idx + 1} : Nom & prénom complet`}
+                              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white text-sm transition-all"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Coordonnées du payeur */}
+                  <div className="space-y-3 pt-2">
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Coordonnées de l'acheteur
+                    </label>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-600">
+                        Votre adresse email <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        value={buyerEmail}
+                        onChange={e => setBuyerEmail(e.target.value)}
+                        placeholder="votre@email.com"
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white text-sm transition-all"
+                      />
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        Tous les billets électroniques seront envoyés à cette adresse email.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-600">
+                        Votre numéro de téléphone <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        value={payerPhone}
+                        onChange={e => setPayerPhone(e.target.value)}
+                        placeholder="Ex: +241 77 12 34 56 ou 077 12 34 56"
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white text-sm transition-all"
+                      />
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        Le numéro utilisé pour envoyer le paiement Airtel Money ou Moov Money.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Champs dynamiques supplémentaires éventuels */}
+                  {customFields.length > 0 && (
+                    <div className="space-y-4 pt-2 border-t border-gray-100">
+                      {customFields.map((field: any) => renderField(field))}
+                    </div>
+                  )}
+
+                  {/* Bouton passer au paiement */}
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={handleProceedToPayment}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 text-base active:scale-95"
+                    >
+                      Procéder au paiement ({totalAmount.toLocaleString('fr-FR')} XAF)
+                      <ArrowRight size={18} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {paidFlowStep === 'payment' && (
+                <div className="space-y-5">
+                  {/* Bannière montant total */}
+                  <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-4 text-center">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">Montant total à régler</p>
+                    <p className="text-3xl font-extrabold text-emerald-950 mt-1">
+                      {totalAmount.toLocaleString('fr-FR')} <span className="text-base font-semibold">XAF</span>
+                    </p>
+                    <p className="text-xs text-emerald-700 mt-1">
+                      {placesCount} place{placesCount > 1 ? 's' : ''} {activeTier?.label ? `(${activeTier.label})` : ''} · {(unitPrice).toLocaleString('fr-FR')} XAF / place
+                    </p>
+                  </div>
+
+                  {/* Choix opérateur Airtel / Moov */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Choisissez votre moyen de paiement
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {(['airtel', 'moov'] as const).map(opKey => {
+                        const op = currentPaymentConfig[opKey];
+                        const isSelected = paymentOperator === opKey;
+                        return (
+                          <button
+                            key={opKey}
+                            type="button"
+                            onClick={() => setPaymentOperator(opKey)}
+                            className={`p-3.5 rounded-2xl border-2 text-left transition-all relative ${
+                              isSelected
+                                ? opKey === 'airtel'
+                                  ? 'border-red-600 bg-red-50/60 ring-2 ring-red-500/20'
+                                  : 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/20'
+                                : 'border-gray-200 hover:border-gray-300 bg-gray-50/40'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className={`w-3 h-3 rounded-full ${opKey === 'airtel' ? 'bg-red-600' : 'bg-blue-600'}`} />
+                              {isSelected && <Check size={14} className={opKey === 'airtel' ? 'text-red-700' : 'text-blue-700'} />}
+                            </div>
+                            <p className="font-bold text-sm text-gray-900">{op.name}</p>
+                            <p className="text-[11px] text-gray-500">{op.prefix}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Carte Numéro marchand + bouton copier */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs text-gray-500 font-medium">
+                          Numéro marchand {currentPaymentConfig[paymentOperator].name} :
+                        </p>
+                        <p className="text-lg font-bold font-mono text-gray-900 tracking-wide mt-0.5">
+                          {currentPaymentConfig[paymentOperator].number}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Titulaire : <strong className="text-gray-800">{currentPaymentConfig[paymentOperator].accountName}</strong>
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyNumber(currentPaymentConfig[paymentOperator].rawNumber, paymentOperator)}
+                        className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm flex-shrink-0 ${
+                          copiedOperator === paymentOperator
+                            ? 'bg-green-600 text-white'
+                            : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                        }`}
+                      >
+                        {copiedOperator === paymentOperator ? <Check size={15} /> : <Copy size={15} />}
+                        {copiedOperator === paymentOperator ? 'Numéro copié !' : 'Copier'}
+                      </button>
+                    </div>
+
+                    {/* Instructions claires */}
+                    <div className="bg-amber-50/70 border border-amber-200/60 rounded-xl p-3 text-xs text-amber-900 space-y-1">
+                      <p className="font-bold flex items-center gap-1.5 text-amber-950">
+                        <ShieldCheck size={14} className="text-amber-700 flex-shrink-0" />
+                        Instructions de paiement :
+                      </p>
+                      <p>1. Ouvrez votre application <strong>{currentPaymentConfig[paymentOperator].name}</strong> sur votre téléphone.</p>
+                      <p>2. Payez exactement le montant de <strong>{totalAmount.toLocaleString('fr-FR')} XAF</strong> vers le numéro ci-dessus.</p>
+                      <p>3. Cliquez ci-dessous sur <strong>« J’ai effectué le paiement »</strong> pour finaliser.</p>
+                    </div>
+                  </div>
+
+                  {/* Numéro du payeur */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Numéro du payeur (votre numéro) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      value={payerPhone}
+                      onChange={e => setPayerPhone(e.target.value)}
+                      placeholder="Ex: +241 77 123 456"
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-green-500 text-sm transition-all"
+                    />
+                    <p className="text-[11px] text-gray-400">Le numéro qui a effectué le transfert d'argent.</p>
+                  </div>
+
+                  {/* Récapitulatif commande */}
+                  <div className="border border-gray-200 rounded-2xl p-4 bg-gray-50/50 space-y-2">
+                    <p className="text-xs font-bold text-gray-700 uppercase tracking-wider">Récapitulatif de la réservation</p>
+                    <div className="text-xs text-gray-600 space-y-1">
+                      <p><span className="font-semibold text-gray-800">Événement :</span> {event.title}</p>
+                      <p><span className="font-semibold text-gray-800">Participants ({placesCount}) :</span></p>
+                      <ul className="pl-4 list-disc space-y-0.5 text-gray-700">
+                        {participantNames.map((n, i) => (
+                          <li key={i}><strong className="text-gray-900">{n || `Participant ${i + 1}`}</strong></li>
+                        ))}
+                      </ul>
+                      <p className="pt-1 text-[11px] text-gray-500">
+                        Billets envoyés à : <strong className="text-gray-800">{buyerEmail}</strong>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Anti-bot Turnstile */}
+                  <div className="mt-4">
+                    <Turnstile onToken={setCaptchaToken} resetSignal={captchaNonce} />
+                  </div>
+
+                  {/* Boutons retour & validation */}
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setPaidFlowStep('details')}
+                      className="px-4 py-3 font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors text-sm"
+                    >
+                      Modifier
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handlePaidSubmit}
+                      disabled={isSubmitting || !payerPhone.trim()}
+                      className="flex-1 bg-[#25D366] hover:bg-[#20b858] text-white font-bold py-3.5 rounded-xl transition-all shadow-md disabled:opacity-40 flex items-center justify-center gap-2 text-sm sm:text-base active:scale-95"
+                    >
+                      {isSubmitting ? (
+                        <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current flex-shrink-0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.554 4.122 1.526 5.853L.05 23.95l6.254-1.638A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.894a9.88 9.88 0 01-5.034-1.374l-.36-.214-3.732.978.995-3.63-.235-.374A9.859 9.859 0 012.107 12c0-5.457 4.436-9.893 9.893-9.893 5.457 0 9.893 4.436 9.893 9.893 0 5.457-4.436 9.894-9.893 9.894z"/></svg>
+                          J’ai effectué le paiement
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
+            /* ══════════════════════════════════════════════════════════════════════
+               PARCOURS ÉVÉNEMENT GRATUIT : STEP-BY-STEP HABITUEL
+               ══════════════════════════════════════════════════════════════════════ */
             <div>
               {error && <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-4">{error}</div>}
 
               <div className="space-y-5">
-                {pageFields.map(field => renderField(field))}
+                {pageFields.map((field: any) => renderField(field))}
               </div>
 
-              {isLastStep && <div className="mt-5"><Turnstile onToken={setCaptchaToken} resetSignal={captchaNonce} /></div>}
+              {isLastFreeStep && <div className="mt-5"><Turnstile onToken={setCaptchaToken} resetSignal={captchaNonce} /></div>}
 
               <div className="flex gap-3 mt-6">
-                {step > 0 && (
+                {freeStep > 0 && (
                   <button
                     type="button"
-                    onClick={() => setStep(s => s - 1)}
+                    onClick={() => setFreeStep(s => s - 1)}
                     className="px-5 py-3 font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
                   >
                     Retour
@@ -580,13 +1095,17 @@ const EventRegistrationModal: React.FC<{
                 )}
                 <button
                   type="button"
-                  onClick={handleNext}
-                  disabled={!canAdvance() || isSubmitting}
+                  onClick={() => {
+                    if (!canAdvanceFree()) return;
+                    if (isLastFreeStep) handleFreeSubmit();
+                    else setFreeStep(s => s + 1);
+                  }}
+                  disabled={!canAdvanceFree() || isSubmitting}
                   className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-40 flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? (
                     <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : isLastStep ? (
+                  ) : isLastFreeStep ? (
                     'Confirmer mon inscription'
                   ) : (
                     <>Suivant <ChevronRight size={18} /></>
@@ -1212,6 +1731,64 @@ const EventDetailPage: React.FC = () => {
                   </p>
                 );
               })()}
+
+              {/* ── Programme de l'événement ── */}
+              {event.program && event.program.length > 0 && (
+                <div className="mt-10 pt-8 border-t border-white/10">
+                  <div className="flex items-center justify-between gap-3 mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-ddb-300 flex-shrink-0">
+                        <Clock size={20} />
+                      </div>
+                      <div>
+                        <h3 className="font-heading text-xl font-bold text-white">Programme de l'événement</h3>
+                        <p className="text-xs text-white/50">Déroulement et interventions prévues</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/10 text-white/80 border border-white/10">
+                      {event.program.length} étape{event.program.length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  <div className="relative pl-6 sm:pl-8 space-y-4 sm:space-y-5 before:absolute before:left-3 before:top-3 before:bottom-3 before:w-0.5 before:bg-white/15">
+                    {event.program.map((item, idx) => (
+                      <div key={item.id || idx} className="relative group">
+                        {/* Bulle numérotée timeline */}
+                        <div className="absolute -left-6 sm:-left-8 top-3 w-6 h-6 rounded-full bg-ddb-900 border-2 border-ddb-300 flex items-center justify-center text-[11px] font-bold text-ddb-300 shadow-sm group-hover:scale-110 group-hover:bg-ddb-400 group-hover:text-ddb-950 transition-all">
+                          {idx + 1}
+                        </div>
+
+                        <div className="bg-white/5 hover:bg-white/[0.08] border border-white/10 hover:border-white/20 rounded-2xl p-4 sm:p-5 transition-all">
+                          <div className="flex items-start justify-between gap-3 flex-wrap mb-2">
+                            <h4 className="font-heading text-base sm:text-lg font-bold text-white group-hover:text-ddb-200 transition-colors">
+                              {item.title}
+                            </h4>
+                            {item.time && (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 text-xs font-bold whitespace-nowrap">
+                                <Clock size={12} />
+                                {item.time}
+                              </span>
+                            )}
+                          </div>
+
+                          {item.speaker && (
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-white/80 mb-2">
+                              <User size={12} className="text-ddb-300" />
+                              <span className="font-medium">{item.speaker}</span>
+                            </div>
+                          )}
+
+                          {item.description && (
+                            <p className="text-sm text-white/70 whitespace-pre-line leading-relaxed mt-1">
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
                 {event.ticket_tiers && event.ticket_tiers.length > 0 && (
                   <div className="mt-10 pt-8 border-t border-white/10">

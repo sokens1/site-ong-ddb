@@ -100,13 +100,14 @@ const STEPS = [
   { key: 'poster', label: "Visuel J'y serai", sub: 'Affiche personnalisée', icon: Sparkles },
 ] as const;
 
-type StepKey = typeof STEPS[number]['key'];
+export type StepKey = typeof STEPS[number]['key'];
 
 interface EventWizardModalProps {
   isOpen: boolean;
   onClose: () => void;
   eventId?: number;
   onSaved?: (event: any) => void;
+  initialStep?: StepKey;
 }
 
 const Toggle: React.FC<{ checked: boolean; onChange: () => void }> = ({ checked, onChange }) => (
@@ -131,9 +132,9 @@ const SectionHeader: React.FC<{ icon: React.ElementType; title: string; sub?: st
   </div>
 );
 
-const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, eventId, onSaved }) => {
+const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, eventId, onSaved, initialStep }) => {
   const isEditing = !!eventId;
-  const [step, setStep] = useState<StepKey>('info');
+  const [step, setStep] = useState<StepKey>(initialStep || 'info');
   const [formData, setFormData] = useState<WizardEvent>(emptyEvent());
   const [fetching, setFetching] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -142,7 +143,7 @@ const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, ev
 
   useEffect(() => {
     if (!isOpen) return;
-    setStep('info');
+    setStep(initialStep || 'info');
     setError(null);
     if (eventId) {
       setFetching(true);

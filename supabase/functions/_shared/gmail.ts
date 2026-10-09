@@ -122,11 +122,12 @@ export function buildRawMessage(opts: {
   return base64url(`${headerLines.join('\r\n')}\r\n\r\n${body}`)
 }
 
-/** Message avec pièce jointe (billet/certificat PDF), 1 destinataire direct. */
+/** Message avec une ou plusieurs pièces jointes (billets/certificats PDF), 1 destinataire direct. */
 export function buildRawMessageWithAttachment(opts: {
   from: string; fromName: string; to: string; toName: string
   subject: string; html: string; text: string
-  attachmentBase64: string; attachmentName: string
+  attachmentBase64?: string; attachmentName?: string
+  attachments?: Array<{ base64: string; name: string }>
 }): string {
   const mixedBoundary = `mix_${crypto.randomUUID().replace(/-/g, '')}`
   const altBoundary = `alt_${crypto.randomUUID().replace(/-/g, '')}`
@@ -139,7 +140,29 @@ export function buildRawMessageWithAttachment(opts: {
     `Content-Type: multipart/mixed; boundary="${mixedBoundary}"`,
   ].join('\r\n')
 
-  const chunkedAttachment = (opts.attachmentBase64.match(/.{1,76}/g) || []).join('\r\n')
+  const attachmentsList: Array<{ base64: string; name: string }> = []
+  if (Array.isArray(opts.attachments) && opts.attachments.length > 0) {
+    attachmentsList.push(...opts.attachments)
+  } else if (opts.attachmentBase64) {
+    attachmentsList.push({
+      base64: opts.attachmentBase64,
+      name: opts.attachmentName || 'document.pdf',
+    })
+  }
+
+  const attachmentParts: string[] = []
+  for (const att of attachmentsList) {
+    const chunked = (att.base64.match(/.{1,76}/g) || []).join('\r\n')
+    attachmentParts.push(
+      `--${mixedBoundary}`,
+      `Content-Type: application/pdf; name="${att.name}"`,
+      `Content-Disposition: attachment; filename="${att.name}"`,
+      'Content-Transfer-Encoding: base64',
+      '',
+      chunked,
+      '',
+    )
+  }
 
   const body = [
     `--${mixedBoundary}`,
@@ -159,13 +182,7 @@ export function buildRawMessageWithAttachment(opts: {
     '',
     `--${altBoundary}--`,
     '',
-    `--${mixedBoundary}`,
-    `Content-Type: application/pdf; name="${opts.attachmentName}"`,
-    `Content-Disposition: attachment; filename="${opts.attachmentName}"`,
-    'Content-Transfer-Encoding: base64',
-    '',
-    chunkedAttachment,
-    '',
+    ...attachmentParts,
     `--${mixedBoundary}--`,
   ].join('\r\n')
 

@@ -50,14 +50,47 @@ export const generateTicketPDF = async (
   template: TicketTemplate = 'classic',
   invitationText?: string,
   invitationSubtext?: string,
+  existingDoc?: jsPDF,
 ): Promise<jsPDF> => {
   if (template === 'invitation') {
-    return generateInvitationTicketPDF(fullname, eventTitle, eventDate, eventLocation, organizerLogos, eventDates, invitationText, invitationSubtext);
+    return generateInvitationTicketPDF(fullname, eventTitle, eventDate, eventLocation, organizerLogos, eventDates, invitationText, invitationSubtext, existingDoc);
   }
   if (template === 'modern') {
-    return generateModernTicketPDF(fullname, eventTitle, eventDate, eventLocation, organizerLogos, eventDates);
+    return generateModernTicketPDF(fullname, eventTitle, eventDate, eventLocation, organizerLogos, eventDates, existingDoc);
   }
-  return generateClassicTicketPDF(fullname, eventTitle, eventDate, eventLocation, organizerLogos, eventDates);
+  return generateClassicTicketPDF(fullname, eventTitle, eventDate, eventLocation, organizerLogos, eventDates, existingDoc);
+};
+
+/**
+ * Génère un document PDF unique multi-pages regroupant l'ensemble des billets d'une commande (1 page par billet).
+ */
+export const generateGroupTicketsPDF = async (
+  fullnames: string[],
+  eventTitle: string,
+  eventDate: string,
+  eventLocation?: string,
+  organizerLogos?: string[],
+  eventDates?: { date: string; label?: string }[],
+  template: TicketTemplate = 'classic',
+  invitationText?: string,
+  invitationSubtext?: string,
+): Promise<jsPDF> => {
+  const pageFormat = template === 'invitation' ? [210, 135] : [210, 100];
+  let doc: jsPDF | undefined;
+  for (let i = 0; i < fullnames.length; i++) {
+    const name = fullnames[i];
+    if (i === 0) {
+      doc = await generateTicketPDF(
+        name, eventTitle, eventDate, eventLocation, organizerLogos, eventDates, template, invitationText, invitationSubtext
+      );
+    } else {
+      doc!.addPage(pageFormat as [number, number], 'landscape');
+      await generateTicketPDF(
+        name, eventTitle, eventDate, eventLocation, organizerLogos, eventDates, template, invitationText, invitationSubtext, doc
+      );
+    }
+  }
+  return doc || new jsPDF();
 };
 
 const generateClassicTicketPDF = async (
@@ -66,9 +99,10 @@ const generateClassicTicketPDF = async (
   eventDate: string,
   eventLocation?: string,
   organizerLogos?: string[],
-  eventDates?: { date: string; label?: string }[]
+  eventDates?: { date: string; label?: string }[],
+  existingDoc?: jsPDF,
 ): Promise<jsPDF> => {
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [210, 100] });
+  const doc = existingDoc || new jsPDF({ orientation: 'landscape', unit: 'mm', format: [210, 100] });
 
   const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString('fr-FR', {
@@ -213,8 +247,9 @@ const generateModernTicketPDF = async (
   eventLocation?: string,
   organizerLogos?: string[],
   eventDates?: { date: string; label?: string }[],
+  existingDoc?: jsPDF,
 ): Promise<jsPDF> => {
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [210, 100] });
+  const doc = existingDoc || new jsPDF({ orientation: 'landscape', unit: 'mm', format: [210, 100] });
 
   const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -371,8 +406,9 @@ const generateInvitationTicketPDF = async (
   eventDates?: { date: string; label?: string }[],
   invitationText?: string,
   invitationSubtext?: string,
+  existingDoc?: jsPDF,
 ): Promise<jsPDF> => {
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [210, 135] });
+  const doc = existingDoc || new jsPDF({ orientation: 'landscape', unit: 'mm', format: [210, 135] });
   const W = 210, H = 135;
 
   const fmtFullDate = (dStr: string) => {

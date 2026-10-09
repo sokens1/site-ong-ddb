@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 import {
   ArrowLeft, Users, Trash2, Star, Eye, Search, Pencil, Send, CheckCircle2, Download, Loader2,
   BarChart2, FileSpreadsheet, HardHat, Upload, Mail, Edit3, Award, Ticket, Sparkles, ClipboardList,
-  MessageSquare, Calendar, MapPin,
+  MessageSquare, Calendar, MapPin, Clock, Smartphone, CreditCard, Plus, ChevronDown, ChevronUp, Layers, AlertCircle,
 } from 'lucide-react';
 import EventStatsTab from './EventStatsTab';
 import { motion } from 'framer-motion';
@@ -13,8 +13,8 @@ import { supabase } from '../../../supabaseClient';
 import ConfirmationModal from '../../../components/admin/ConfirmationModal';
 import Modal from '../../../components/admin/Modal';
 import EventEmailComposerModal from '../../../components/admin/EventEmailComposerModal';
-import EventWizardModal from '../../../components/admin/EventWizardModal';
-import { generateTicketPDF, TicketTemplate } from '../../../utils/ticketPdf';
+import EventWizardModal, { StepKey } from '../../../components/admin/EventWizardModal';
+import { generateTicketPDF, generateGroupTicketsPDF, TicketTemplate } from '../../../utils/ticketPdf';
 import { generateCertificatePDF, CertificateTemplate } from '../../../utils/certificatePdf';
 import { logAdminActivity } from '../../../utils/securityLog';
 import { FormField } from '../../../components/admin/FieldBuilder';
@@ -81,6 +81,22 @@ interface Registration {
   certificate_sent_at?: string;
 }
 
+interface BookingOrder {
+  groupKey: string;
+  isGroup: boolean;
+  isPaid: boolean;
+  paymentStatus: 'pending' | 'paid' | 'free';
+  orderRef?: string;
+  buyerEmail: string;
+  payerPhone?: string;
+  paymentOperator?: 'airtel' | 'moov';
+  totalAmount?: number;
+  placesCount: number;
+  createdAt: string;
+  items: Registration[];
+  primaryRegistration: Registration;
+}
+
 interface Volunteer {
   id: number;
   event_id: number;
@@ -109,6 +125,12 @@ const CreateEventPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'info' | 'participants' | 'volunteers' | 'feedbacks' | 'stats' | 'certificates'>('info');
   const [infoWizardOpen, setInfoWizardOpen] = useState(false);
+  const [wizardInitialStep, setWizardInitialStep] = useState<StepKey>('info');
+
+  const openWizardAt = (step: StepKey = 'info') => {
+    setWizardInitialStep(step);
+    setInfoWizardOpen(true);
+  };
 
   const getCurrentDateTime = () => {
     const now = new Date();
@@ -123,6 +145,8 @@ const CreateEventPage: React.FC = () => {
     event_dates: [], logo_url: '',
     organizer_logos: [], partner_logos: [],
     poster_enabled: true,
+    program: [],
+    ticket_tiers: [],
   });
 
   const [registrations, setRegistrations] = useState<Registration[]>([]);
@@ -131,6 +155,8 @@ const CreateEventPage: React.FC = () => {
   const [feedbacksLoading, setFeedbacksLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [participantSearch, setParticipantSearch] = useState('');
+  const [paymentFilter, setPaymentFilter] = useState<'all' | 'pending' | 'paid' | 'free'>('all');
+  const [validatingPaymentId, setValidatingPaymentId] = useState<number | null>(null);
   const itemsPerPage = 10;
 
   // ── Certificats : envoi automatique aux participants scannés ──────────────
@@ -143,6 +169,29 @@ const CreateEventPage: React.FC = () => {
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   const [viewingParticipant, setViewingParticipant] = useState<Registration | null>(null);
+  const [viewingOrder, setViewingOrder] = useState<BookingOrder | null>(null);
+  const [expandedOrderKeys, setExpandedOrderKeys] = useState<Set<string>>(new Set());
+  const [validatingOrderKey, setValidatingOrderKey] = useState<string | null>(null);
+  const [downloadingOrderKey, setDownloadingOrderKey] = useState<string | null>(null);
+
+  // Modale de confirmation de validation (remplace window.alert)
+  const [validationModal, setValidationModal] = useState<{
+    isOpen: boolean;
+    orderRef?: string;
+    recipientEmail: string;
+    placesCount: number;
+    participantNames: string[];
+  } | null>(null);
+  const [errorMessageModal, setErrorMessageModal] = useState<string | null>(null);
+
+  const toggleOrderExpand = (key: string) => {
+    setExpandedOrderKeys(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   // ── Téléchargement direct du billet (sans renvoi email) ───────────────────
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
@@ -169,6 +218,256 @@ const CreateEventPage: React.FC = () => {
       alert('Erreur lors de la génération du billet.');
     } finally {
       setDownloadingId(null);
+    }
+  };
+
+  // ── Téléchargement de tous les billets d'une commande groupée ─────────────
+  const handleDownloadOrderTickets = async (order: BookingOrder) => {
+    setDownloadingOrderKey(order.groupKey);
+    try {
+      const cleanTitle = (formData.title || 'evenement').replace(/[^a-z0-9]/gi, '_');
+      const names = order.items.map(r => r.fullname || 'Participant');
+      const doc = await generateGroupTicketsPDF(
+        names,
+        formData.title || '',
+        formData.event_date || '',
+        formData.location,
+        formData.organizer_logos,
+        formData.event_dates,
+        formData.ticket_template || 'classic',
+        formData.invitation_text,
+        formData.invitation_subtext,
+      );
+      doc.save(`Billets_${order.placesCount}_places_${cleanTitle}.pdf`);
+    } catch (err) {
+      console.error('Erreur téléchargement billets commande:', err);
+      setErrorMessageModal('Erreur lors du téléchargement des billets.');
+    } finally {
+      setDownloadingOrderKey(null);
+    }
+  };
+
+  // ── Validation d'une commande complète & Envoi de tous les billets en 1 seul email ────────
+  const handleValidateOrder = async (order: BookingOrder) => {
+    setValidatingOrderKey(order.groupKey);
+    try {
+      const recipientEmail = order.buyerEmail;
+      if (!recipientEmail || recipientEmail === VISITOR_EMAIL) {
+        throw new Error("Adresse email de l'acheteur introuvable.");
+      }
+
+      const cleanTitle = (formData.title || 'evenement').replace(/[^a-z0-9]/gi, '_');
+      const participantNames = order.items.map(r => r.fullname || 'Participant');
+
+      // 1. Générer le document unique regroupant tous les billets (1 page par participant)
+      const groupDoc = await generateGroupTicketsPDF(
+        participantNames,
+        formData.title || '',
+        formData.event_date || '',
+        formData.location,
+        formData.organizer_logos,
+        formData.event_dates,
+        formData.ticket_template || 'classic',
+        formData.invitation_text,
+        formData.invitation_subtext,
+      );
+      const bundlePdfBase64 = groupDoc.output('datauristring').split('base64,')[1];
+      const bundlePdfName = `Billets_${order.placesCount}_places_${cleanTitle}.pdf`;
+
+      // 2. Envoyer UN SEUL email synthétisé avec l'ensemble des billets
+      const { error: sendErr } = await supabase.functions.invoke('send-event-confirmation', {
+        body: {
+          email: recipientEmail,
+          fullname: order.primaryRegistration.fullname,
+          eventTitle: formData.title,
+          eventDate: formData.event_date,
+          eventLocation: formData.location,
+          pdfBase64: bundlePdfBase64, // Nécessaire pour la compatibilité avec l'Edge Function distante
+          pdfName: bundlePdfName,
+          attachments: [{ base64: bundlePdfBase64, name: bundlePdfName }],
+          participantNames,
+        },
+      });
+      if (sendErr) {
+        let msg = sendErr.message || String(sendErr);
+        if ((sendErr as any)?.context) {
+          try {
+            const errBody = await (sendErr as any).context.json();
+            if (errBody?.error) msg = errBody.error;
+          } catch { /* silent */ }
+        }
+        throw new Error(msg);
+      }
+
+      // 3. Mettre à jour toutes les inscriptions de cette commande en base de données
+      const nowIso = new Date().toISOString();
+      const updatedIds = order.items.map(r => r.id);
+
+      for (const reg of order.items) {
+        const newCustom = {
+          ...(reg.custom_data || {}),
+          payment_status: 'paid',
+          validated_at: nowIso,
+        };
+        await supabase
+          .from('event_registrations')
+          .update({ custom_data: newCustom })
+          .eq('id', reg.id);
+      }
+
+      // 4. Mettre à jour l'état local registrations
+      setRegistrations(prev => prev.map(r => {
+        if (updatedIds.includes(r.id)) {
+          return {
+            ...r,
+            custom_data: {
+              ...(r.custom_data || {}),
+              payment_status: 'paid',
+              validated_at: nowIso,
+            },
+          };
+        }
+        return r;
+      }));
+
+      // 5. Mettre à jour la modale de détails si ouverte
+      if (viewingOrder && viewingOrder.groupKey === order.groupKey) {
+        setViewingOrder({
+          ...viewingOrder,
+          paymentStatus: 'paid',
+          items: viewingOrder.items.map(it => ({
+            ...it,
+            custom_data: { ...(it.custom_data || {}), payment_status: 'paid', validated_at: nowIso }
+          }))
+        });
+      }
+
+      logAdminActivity('validate_paid_order', `event_orders:${order.orderRef || order.buyerEmail}`, {
+        buyerEmail: recipientEmail,
+        count: order.placesCount,
+      });
+
+      // Modale de confirmation in-app (remplace window.alert)
+      setValidationModal({
+        isOpen: true,
+        orderRef: order.orderRef,
+        recipientEmail,
+        placesCount: order.placesCount,
+        participantNames: order.items.map(r => r.fullname),
+      });
+    } catch (err: any) {
+      console.error('Erreur validation commande:', err);
+      setErrorMessageModal(err.message || String(err));
+    } finally {
+      setValidatingOrderKey(null);
+    }
+  };
+
+  // ── Suppression d'une commande (ou d'une inscription) ─────────────────────
+  const handleDeleteOrder = (order: BookingOrder) => {
+    const isMultiple = order.placesCount > 1;
+    setConfirmModal({
+      isOpen: true,
+      title: isMultiple ? `Supprimer la commande (${order.placesCount} places)` : "Supprimer l'inscription",
+      type: 'danger',
+      message: isMultiple
+        ? `Êtes-vous sûr de vouloir supprimer cette commande de ${order.placesCount} places pour ${order.buyerEmail} ? Toutes les inscriptions associées seront supprimées.`
+        : 'Êtes-vous sûr de vouloir supprimer cette inscription ?',
+      onConfirm: async () => {
+        try {
+          const idsToDelete = order.items.map(r => r.id);
+          for (const regId of idsToDelete) {
+            await supabase.from('event_registrations').delete().eq('id', regId);
+          }
+          setRegistrations(prev => prev.filter(r => !idsToDelete.includes(r.id)));
+          if (viewingOrder && viewingOrder.groupKey === order.groupKey) {
+            setViewingOrder(null);
+          }
+        } catch (err: any) {
+          alert(`Erreur : ${err.message}`);
+        }
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      },
+    });
+  };
+
+  // ── Validation back-office du paiement & Envoi du billet officiel ──────────
+  const handleValidatePaymentAndSendTicket = async (reg: Registration) => {
+    setValidatingPaymentId(reg.id);
+    try {
+      // 1. Générer le billet PDF officiel
+      const doc = await generateTicketPDF(
+        reg.fullname,
+        formData.title || '',
+        formData.event_date || '',
+        formData.location,
+        formData.organizer_logos,
+        formData.event_dates,
+        formData.ticket_template || 'classic',
+        formData.invitation_text,
+        formData.invitation_subtext,
+      );
+      const pdfBase64 = doc.output('datauristring').split('base64,')[1];
+      const cleanTitle = (formData.title || 'evenement').replace(/[^a-z0-9]/gi, '_');
+      const cleanName = (reg.fullname || 'participant').replace(/[^a-zA-Z0-9]/g, '_');
+
+      // 2. Destinataire : buyer_email (prioritaire pour le payeur) ou reg.email
+      const recipientEmail = reg.custom_data?.buyer_email || reg.email;
+      if (!recipientEmail || recipientEmail === VISITOR_EMAIL) {
+        throw new Error("Aucune adresse email valide trouvée pour envoyer le billet.");
+      }
+
+      // 3. Envoyer l'email avec le billet PDF en pièce jointe
+      const { error: fnError } = await supabase.functions.invoke('send-event-confirmation', {
+        body: {
+          email: recipientEmail,
+          fullname: reg.fullname,
+          eventTitle: formData.title,
+          eventDate: formData.event_date,
+          eventLocation: formData.location,
+          pdfBase64,
+          pdfName: `Billet_${cleanName}_${cleanTitle}.pdf`,
+        },
+      });
+      if (fnError) throw fnError;
+
+      // 4. Mettre à jour l'inscription : payment_status = 'paid', validated_at
+      const nowIso = new Date().toISOString();
+      const newCustom = {
+        ...(reg.custom_data || {}),
+        payment_status: 'paid',
+        validated_at: nowIso,
+      };
+
+      const { error: updateError } = await supabase
+        .from('event_registrations')
+        .update({ custom_data: newCustom })
+        .eq('id', reg.id);
+      if (updateError) throw updateError;
+
+      // 5. Mettre à jour les états locaux
+      setRegistrations(prev => prev.map(r => r.id === reg.id ? { ...r, custom_data: newCustom } : r));
+      if (viewingParticipant && viewingParticipant.id === reg.id) {
+        setViewingParticipant({ ...viewingParticipant, custom_data: newCustom });
+      }
+
+      logAdminActivity('validate_paid_registration', `event_registrations:${reg.id}`, {
+        buyerEmail: recipientEmail,
+        participant: reg.fullname,
+      });
+
+      setValidationModal({
+        isOpen: true,
+        orderRef: reg.custom_data?.order_ref,
+        recipientEmail,
+        placesCount: 1,
+        participantNames: [reg.fullname],
+      });
+    } catch (err: any) {
+      console.error('Erreur validation paiement:', err);
+      setErrorMessageModal(err.message || String(err));
+    } finally {
+      setValidatingPaymentId(null);
     }
   };
 
@@ -236,11 +535,22 @@ const CreateEventPage: React.FC = () => {
   const [editSuccess, setEditSuccess] = useState(false);
 
   const openEditParticipant = (reg: Registration) => {
+    const isPaid = Boolean(reg.custom_data?.is_paid_booking);
+    const buyerEmail = reg.custom_data?.buyer_email || reg.email || '';
     const custom: Record<string, string> = {};
-    Object.entries(reg.custom_data || {}).forEach(([key, val]) => {
-      custom[key] = Array.isArray(val) ? val.join(', ') : String(val ?? '');
+    if (!isPaid) {
+      Object.entries(reg.custom_data || {}).forEach(([key, val]) => {
+        if ((formData.form_fields || []).some(f => f.id === key)) {
+          custom[key] = Array.isArray(val) ? val.join(', ') : String(val ?? '');
+        }
+      });
+    }
+    setEditForm({
+      fullname: reg.fullname || '',
+      email: isPaid ? buyerEmail : (reg.email || ''),
+      phone: reg.phone || '',
+      custom,
     });
-    setEditForm({ fullname: reg.fullname || '', email: reg.email || '', phone: reg.phone || '', custom });
     setEditError(null);
     setEditSuccess(false);
     setEditingParticipant(reg);
@@ -248,34 +558,43 @@ const CreateEventPage: React.FC = () => {
 
   const handleSaveAndResend = async () => {
     if (!editingParticipant) return;
-    if (!editForm.fullname.trim() || !editForm.email.trim()) {
-      setEditError('Le nom et l\'email sont obligatoires.');
+    if (!editForm.fullname.trim()) {
+      setEditError('Le nom du participant est obligatoire.');
       return;
     }
+    const isPaid = Boolean(editingParticipant.custom_data?.is_paid_booking);
+    const recipientEmail = (editingParticipant.custom_data?.buyer_email || editForm.email).trim();
+    if (!recipientEmail) {
+      setEditError('L\'adresse email est obligatoire.');
+      return;
+    }
+
     setSavingEdit(true);
     setEditError(null);
     try {
       // Reconstruit custom_data en respectant le format d'origine (array vs string)
       const originalCustom = editingParticipant.custom_data || {};
       const newCustom: Record<string, any> = { ...originalCustom };
-      Object.entries(editForm.custom).forEach(([key, val]) => {
-        newCustom[key] = Array.isArray(originalCustom[key])
-          ? val.split(',').map(v => v.trim()).filter(Boolean)
-          : val;
-      });
+      if (!isPaid) {
+        Object.entries(editForm.custom).forEach(([key, val]) => {
+          newCustom[key] = Array.isArray(originalCustom[key])
+            ? val.split(',').map(v => v.trim()).filter(Boolean)
+            : val;
+        });
+      }
 
       const { error: updateError } = await supabase
         .from('event_registrations')
         .update({
           fullname: editForm.fullname.trim(),
-          email: editForm.email.trim(),
+          email: editingParticipant.email, // Conserve l'email d'enregistrement en base
           phone: editForm.phone.trim() || null,
           custom_data: newCustom,
         })
         .eq('id', editingParticipant.id);
       if (updateError) throw updateError;
 
-      // Régénère le billet PDF avec les infos corrigées
+      // Régénère le billet PDF avec le nom corrigé
       const doc = await generateTicketPDF(
         editForm.fullname.trim(),
         formData.title || '',
@@ -292,7 +611,7 @@ const CreateEventPage: React.FC = () => {
 
       const { error: fnError } = await supabase.functions.invoke('send-event-confirmation', {
         body: {
-          email: editForm.email.trim(),
+          email: recipientEmail,
           fullname: editForm.fullname.trim(),
           eventTitle: formData.title,
           eventDate: formData.event_date,
@@ -304,10 +623,11 @@ const CreateEventPage: React.FC = () => {
       if (fnError) throw fnError;
 
       setRegistrations(prev => prev.map(r => r.id === editingParticipant.id
-        ? { ...r, fullname: editForm.fullname.trim(), email: editForm.email.trim(), phone: editForm.phone.trim() || undefined, custom_data: newCustom }
+        ? { ...r, fullname: editForm.fullname.trim(), custom_data: newCustom }
         : r));
       logAdminActivity('edit_registration_resend_ticket', `event_registrations:${editingParticipant.id}`, {
-        newEmail: editForm.email.trim(),
+        newFullname: editForm.fullname.trim(),
+        recipientEmail,
       });
       setEditSuccess(true);
     } catch (err: any) {
@@ -500,6 +820,8 @@ const CreateEventPage: React.FC = () => {
           organizer_logos: Array.isArray(eventItem.organizer_logos) ? eventItem.organizer_logos : [],
           partner_logos: Array.isArray(eventItem.partner_logos) ? eventItem.partner_logos : [],
           poster_enabled: eventItem.poster_enabled !== false,
+          program: Array.isArray(eventItem.program) ? eventItem.program : [],
+          ticket_tiers: Array.isArray(eventItem.ticket_tiers) ? eventItem.ticket_tiers : [],
         });
         fetchRegistrations(parseInt(id));
         fetchFeedbacks(parseInt(id));
@@ -562,19 +884,32 @@ const CreateEventPage: React.FC = () => {
 
   const exportXLSX = () => {
     const customFields = formData.form_fields || [];
-    const headers = ['#', 'Nom', 'Email', 'Téléphone', 'Réf. billet', 'Date inscription', ...customFields.map((f: any) => f.label)];
-    const rows = registrations.map((reg: any, idx: number) => [
-      idx + 1, reg.fullname || '', reg.email || '', reg.phone || '', reg.ticket_ref || '',
-      reg.created_at ? new Date(reg.created_at).toLocaleString('fr-FR') : '',
-      ...customFields.map((f: any) => {
-        const val = reg.custom_data?.[f.id];
-        return Array.isArray(val) ? val.join(', ') : String(val ?? '');
-      }),
-    ]);
+    const headers = ['#', 'Réf. commande', 'Nom participant', 'Email', 'Téléphone', 'Réf. billet', 'Statut paiement', 'Montant', 'Opérateur', 'Date inscription', ...customFields.map((f: any) => f.label)];
+    const rows = registrations.map((reg: any, idx: number) => {
+      const isPaid = Boolean(reg.custom_data?.is_paid_booking);
+      return [
+        idx + 1,
+        reg.custom_data?.order_ref || '',
+        reg.fullname || '',
+        isPaid ? (reg.custom_data?.buyer_email || reg.email || '') : (reg.email || ''),
+        isPaid ? (reg.custom_data?.payer_phone || reg.phone || '') : (reg.phone || ''),
+        reg.ticket_ref || '',
+        isPaid
+          ? (reg.custom_data?.payment_status === 'paid' ? 'Payé & Validé' : 'À valider')
+          : 'Gratuit',
+        reg.custom_data?.total_amount ? `${reg.custom_data.total_amount} XAF` : '',
+        reg.custom_data?.payment_operator || '',
+        reg.created_at ? new Date(reg.created_at).toLocaleString('fr-FR') : '',
+        ...customFields.map((f: any) => {
+          if (isPaid) return '';
+          const val = reg.custom_data?.[f.id];
+          return Array.isArray(val) ? val.join(', ') : String(val ?? '');
+        }),
+      ];
+    });
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    // Largeurs colonnes
-    ws['!cols'] = headers.map((_: any, i: number) => ({ wch: i === 0 ? 5 : i <= 2 ? 28 : 20 }));
+    ws['!cols'] = headers.map((_: any, i: number) => ({ wch: i === 0 ? 5 : i <= 3 ? 24 : 18 }));
     XLSX.utils.book_append_sheet(wb, ws, 'Participants');
     XLSX.writeFile(wb, `participants_${(formData.title || 'evenement').replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
@@ -590,9 +925,92 @@ const CreateEventPage: React.FC = () => {
     { key: 'feedbacks', label: 'Avis reçus', icon: MessageSquare, sub: 'Retours', badge: feedbacks.length || null },
   ] as const;
 
-  const filteredRegs = participantSearch.trim()
-    ? registrations.filter(r => {
-        const q = participantSearch.toLowerCase();
+  // ── Regroupement des réservations par commande (multi-places ou unitaire) ──
+  const bookingOrders: BookingOrder[] = React.useMemo(() => {
+    const groupsMap = new Map<string, Registration[]>();
+
+    for (const reg of registrations) {
+      const orderRef = reg.custom_data?.order_ref;
+      const isPaid = Boolean(reg.custom_data?.is_paid_booking);
+
+      let key: string;
+      if (orderRef) {
+        key = `order_${orderRef}`;
+      } else if (isPaid) {
+        // Fallback pour les commandes payées sans order_ref explicite : regrouper par email de l'acheteur + date (à la minute)
+        const buyer = reg.custom_data?.buyer_email || reg.email;
+        const timeKey = (reg.created_at || '').substring(0, 16);
+        key = `paid_${buyer}_${timeKey}`;
+      } else {
+        // Inscriptions gratuites : individuelles
+        key = `free_${reg.id}`;
+      }
+
+      const existing = groupsMap.get(key) || [];
+      existing.push(reg);
+      groupsMap.set(key, existing);
+    }
+
+    const orders: BookingOrder[] = [];
+    for (const [key, items] of groupsMap.entries()) {
+      const primary = items[0];
+      const isPaid = Boolean(items.some(r => r.custom_data?.is_paid_booking));
+      const orderRef = primary.custom_data?.order_ref;
+      const buyerEmail = primary.custom_data?.buyer_email || primary.email;
+      const payerPhone = primary.custom_data?.payer_phone || primary.phone;
+      const paymentOperator = primary.custom_data?.payment_operator;
+      const totalAmount = primary.custom_data?.total_amount;
+      const placesCount = items.length;
+      const isGroup = items.length > 1;
+
+      let paymentStatus: 'pending' | 'paid' | 'free' = 'free';
+      if (isPaid) {
+        const allPaid = items.every(r => r.custom_data?.payment_status === 'paid');
+        paymentStatus = allPaid ? 'paid' : 'pending';
+      }
+
+      orders.push({
+        groupKey: key,
+        isGroup,
+        isPaid,
+        paymentStatus,
+        orderRef,
+        buyerEmail,
+        payerPhone,
+        paymentOperator,
+        totalAmount,
+        placesCount,
+        createdAt: primary.created_at || '',
+        items,
+        primaryRegistration: primary,
+      });
+    }
+
+    return orders;
+  }, [registrations]);
+
+  const pendingPaymentsCount = bookingOrders.filter(o => o.isPaid && o.paymentStatus === 'pending').length;
+  const paidPaymentsCount = bookingOrders.filter(o => o.isPaid && o.paymentStatus === 'paid').length;
+  const freeRegistrationsCount = bookingOrders.filter(o => !o.isPaid).length;
+
+  const filteredOrders = bookingOrders.filter(order => {
+    // 1. Filtre par statut paiement
+    if (paymentFilter === 'pending') {
+      if (!order.isPaid || order.paymentStatus === 'paid') return false;
+    } else if (paymentFilter === 'paid') {
+      if (!order.isPaid || order.paymentStatus !== 'paid') return false;
+    } else if (paymentFilter === 'free') {
+      if (order.isPaid) return false;
+    }
+
+    // 2. Filtre par recherche texte
+    if (participantSearch.trim()) {
+      const q = participantSearch.toLowerCase();
+      if (order.buyerEmail?.toLowerCase().includes(q)) return true;
+      if (order.payerPhone?.toLowerCase().includes(q)) return true;
+      if (order.orderRef?.toLowerCase().includes(q)) return true;
+
+      return order.items.some(r => {
         const inCustom = r.custom_data
           ? Object.values(r.custom_data).some(v => typeof v === 'string' && v.toLowerCase().includes(q))
           : false;
@@ -600,12 +1018,16 @@ const CreateEventPage: React.FC = () => {
           r.fullname?.toLowerCase().includes(q) ||
           r.email?.toLowerCase().includes(q) ||
           r.phone?.toLowerCase().includes(q) ||
+          r.ticket_ref?.toLowerCase().includes(q) ||
           inCustom
         );
-      })
-    : registrations;
-  const paginatedRegs = filteredRegs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const totalPages = Math.ceil(filteredRegs.length / itemsPerPage);
+      });
+    }
+    return true;
+  });
+
+  const paginatedOrders = filteredOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
 
   const filteredVols = volunteerSearch.trim()
     ? volunteers.filter(v => {
@@ -650,7 +1072,7 @@ const CreateEventPage: React.FC = () => {
           <ArrowLeft size={18} /> Retour
         </button>
         <div className="text-gray-800 font-bold hidden sm:block truncate max-w-[50%]">{formData.title || "Gérer l'événement"}</div>
-        <button onClick={() => setInfoWizardOpen(true)}
+        <button onClick={() => openWizardAt('info')}
           className="px-5 py-2 font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-sm flex items-center gap-2 text-sm">
           <Edit3 size={16} /> Modifier
         </button>
@@ -728,7 +1150,7 @@ const CreateEventPage: React.FC = () => {
               </div>
               <button
                 type="button"
-                onClick={() => setInfoWizardOpen(true)}
+                onClick={() => openWizardAt('info')}
                 className="flex items-center gap-2 px-5 py-2.5 font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-sm text-sm flex-shrink-0"
               >
                 <Edit3 size={16} /> Modifier les informations
@@ -776,6 +1198,121 @@ const CreateEventPage: React.FC = () => {
                 </p>
               </div>
             </div>
+
+            {/* ── Section Programme & Agenda ── */}
+            <div className="border border-gray-100 rounded-2xl p-5 bg-white shadow-sm space-y-4">
+              <div className="flex items-center justify-between gap-3 flex-wrap pb-3 border-b border-gray-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center text-green-700 flex-shrink-0">
+                    <ClipboardList size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-800">Programme de l'événement</h3>
+                    <p className="text-xs text-gray-400">
+                      {(formData.program || []).length} étape{(formData.program || []).length > 1 ? 's' : ''} au planning
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openWizardAt('program')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-green-700 hover:text-green-800 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                >
+                  <Pencil size={13} />
+                  {(formData.program || []).length > 0 ? 'Modifier le programme' : 'Ajouter un programme'}
+                </button>
+              </div>
+
+              {(formData.program || []).length > 0 ? (
+                <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200">
+                  {formData.program!.map((item, idx) => (
+                    <div key={item.id || idx} className="relative">
+                      {/* Pastille numérotée */}
+                      <div className="absolute -left-6 top-1 w-5 h-5 rounded-full bg-white border-2 border-green-600 flex items-center justify-center text-[10px] font-bold text-green-700">
+                        {idx + 1}
+                      </div>
+
+                      <div className="bg-gray-50/80 border border-gray-100 rounded-xl p-3.5 space-y-1.5">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <h4 className="text-sm font-bold text-gray-800">{item.title || 'Étape sans titre'}</h4>
+                          {item.time && (
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-green-100 text-green-800">
+                              {item.time}
+                            </span>
+                          )}
+                        </div>
+                        {item.speaker && (
+                          <p className="text-xs text-gray-600 flex items-center gap-1 font-medium">
+                            <span className="text-gray-400">Intervenant :</span> {item.speaker}
+                          </p>
+                        )}
+                        {item.description && (
+                          <p className="text-xs text-gray-500 whitespace-pre-line leading-relaxed">
+                            {item.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 px-4 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                  <ClipboardList size={28} className="mx-auto text-gray-300 mb-2" />
+                  <p className="text-xs font-semibold text-gray-600">Aucune étape au programme pour le moment</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5 max-w-sm mx-auto mb-3">
+                    Définissez l'agenda, les créneaux horaires et les intervenants pour informer les participants.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => openWizardAt('program')}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl shadow-sm transition-all"
+                  >
+                    <Plus size={14} /> Définir le programme
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* ── Section Tarifs si configurés ── */}
+            {(formData.ticket_tiers || []).length > 0 && (
+              <div className="border border-gray-100 rounded-2xl p-5 bg-white shadow-sm space-y-3">
+                <div className="flex items-center justify-between gap-3 flex-wrap pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center text-green-700 flex-shrink-0">
+                      <Ticket size={18} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-800">Tarifs & Billets</h3>
+                      <p className="text-xs text-gray-400">
+                        {formData.ticket_tiers!.length} tarif{formData.ticket_tiers!.length > 1 ? 's' : ''} configuré{formData.ticket_tiers!.length > 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openWizardAt('program')}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-green-700 hover:text-green-800 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                  >
+                    <Pencil size={13} /> Modifier les tarifs
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {formData.ticket_tiers!.map((tier) => (
+                    <div key={tier.id} className="p-3 bg-gray-50/80 border border-gray-100 rounded-xl">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold text-gray-800 truncate">{tier.label || 'Tarif'}</span>
+                        <span className="text-xs font-bold text-green-700 whitespace-nowrap">
+                          {tier.price ? `${tier.price.toLocaleString('fr-FR')} FCFA` : 'Gratuit'}
+                        </span>
+                      </div>
+                      {tier.description && (
+                        <p className="text-xs text-gray-500 mt-1">{tier.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {(formData.logo_url || (formData.organizer_logos || []).length > 0 || (formData.partner_logos || []).length > 0) && (
               <div className="border border-gray-100 rounded-xl p-4">
@@ -844,6 +1381,57 @@ const CreateEventPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Barre de filtres par statut de paiement */}
+            <div className="flex items-center gap-2 px-6 sm:px-10 py-3 bg-gray-50/70 border-b border-gray-100 overflow-x-auto">
+              <span className="text-xs font-semibold text-gray-400 mr-1">Filtres :</span>
+              <button
+                type="button"
+                onClick={() => { setPaymentFilter('all'); setCurrentPage(1); }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                  paymentFilter === 'all'
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                Toutes ({bookingOrders.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => { setPaymentFilter('pending'); setCurrentPage(1); }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                  paymentFilter === 'pending'
+                    ? 'bg-amber-600 text-white'
+                    : 'bg-white border border-gray-200 text-amber-800 hover:bg-amber-50'
+                }`}
+              >
+                <Clock size={12} />
+                À valider ({pendingPaymentsCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => { setPaymentFilter('paid'); setCurrentPage(1); }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                  paymentFilter === 'paid'
+                    ? 'bg-green-700 text-white'
+                    : 'bg-white border border-gray-200 text-green-800 hover:bg-green-50'
+                }`}
+              >
+                <CheckCircle2 size={12} />
+                Payées ({paidPaymentsCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => { setPaymentFilter('free'); setCurrentPage(1); }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                  paymentFilter === 'free'
+                    ? 'bg-gray-700 text-white'
+                    : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                Gratuites ({freeRegistrationsCount})
+              </button>
+            </div>
+
             {registrationsLoading ? (
               <div className="text-center py-16">
                 <span className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin inline-block" />
@@ -860,89 +1448,272 @@ const CreateEventPage: React.FC = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b border-gray-100">
+                      <tr className="bg-gray-50/70 border-b border-gray-100">
                         <th className="px-5 py-3 w-10">
                           <input
                             type="checkbox"
-                            checked={paginatedRegs.length > 0 && paginatedRegs.every(r => selectedParticipantIds.has(r.id))}
+                            checked={
+                              paginatedOrders.length > 0 &&
+                              paginatedOrders.every(o => o.items.every(r => selectedParticipantIds.has(r.id)))
+                            }
                             onChange={e => {
                               setSelectedParticipantIds(prev => {
                                 const s = new Set(prev);
-                                paginatedRegs.forEach(r => e.target.checked ? s.add(r.id) : s.delete(r.id));
+                                paginatedOrders.forEach(o => {
+                                  o.items.forEach(r => {
+                                    if (e.target.checked) s.add(r.id);
+                                    else s.delete(r.id);
+                                  });
+                                });
                                 return s;
                               });
                             }}
                             className="rounded border-gray-300 text-green-600 focus:ring-green-500"
                           />
                         </th>
-                        <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Participant</th>
+                        <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Participant(s)</th>
                         <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Contact</th>
+                        <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Paiement</th>
                         <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider hidden md:table-cell">Date</th>
                         <th className="text-center px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {paginatedRegs.map((reg) => {
-                        const hasCustomData = reg.custom_data && Object.keys(reg.custom_data).length > 0;
+                    <tbody className="divide-y divide-gray-100">
+                      {paginatedOrders.map((order) => {
+                        const isAllSelected = order.items.every(r => selectedParticipantIds.has(r.id));
+                        const isExpanded = expandedOrderKeys.has(order.groupKey);
+
                         return (
-                          <tr key={reg.id} className="hover:bg-green-50/30 transition-colors group">
-                            <td className="px-5 py-4">
-                              <input
-                                type="checkbox"
-                                checked={selectedParticipantIds.has(reg.id)}
-                                onChange={() => toggleParticipantSelection(reg.id)}
-                                className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                              />
-                            </td>
-                            <td className="px-4 py-4">
-                              <p className="font-bold text-gray-900">{reg.fullname}</p>
-                              {hasCustomData && (
-                                <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">
-                                  {Object.keys(reg.custom_data!).length} réponse{Object.keys(reg.custom_data!).length > 1 ? 's' : ''}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-4 py-4 hidden sm:table-cell">
-                              <p className="text-gray-700">{reg.email}</p>
-                              {reg.phone && <p className="text-gray-400 text-xs mt-0.5">{reg.phone}</p>}
-                            </td>
-                            <td className="px-4 py-4 hidden md:table-cell text-gray-400 text-xs whitespace-nowrap">
-                              {reg.created_at ? new Date(reg.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
-                            </td>
-                            <td className="px-4 py-4">
-                              <div className="flex items-center justify-center gap-1">
-                                <button
-                                  onClick={() => setViewingParticipant(reg)}
-                                  title="Voir les détails"
-                                  className="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                >
-                                  <Eye size={16} />
-                                </button>
-                                <button
-                                  onClick={() => openEditParticipant(reg)}
-                                  title="Modifier et renvoyer le billet"
-                                  className="p-2 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors"
-                                >
-                                  <Pencil size={16} />
-                                </button>
-                                <button
-                                  onClick={() => handleDownloadTicket(reg)}
-                                  disabled={downloadingId === reg.id}
-                                  title="Télécharger le billet"
-                                  className="p-2 text-green-500 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
-                                >
-                                  {downloadingId === reg.id ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteRegistration(reg.id)}
-                                  title="Supprimer"
-                                  className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
+                          <React.Fragment key={order.groupKey}>
+                            <tr className="hover:bg-gray-50/80 transition-colors">
+                              <td className="px-5 py-4 align-top">
+                                <input
+                                  type="checkbox"
+                                  checked={isAllSelected}
+                                  onChange={() => {
+                                    setSelectedParticipantIds(prev => {
+                                      const s = new Set(prev);
+                                      if (isAllSelected) {
+                                        order.items.forEach(r => s.delete(r.id));
+                                      } else {
+                                        order.items.forEach(r => s.add(r.id));
+                                      }
+                                      return s;
+                                    });
+                                  }}
+                                  className="rounded border-gray-300 text-green-600 focus:ring-green-500 mt-1"
+                                />
+                              </td>
+                              <td className="px-4 py-4 align-top">
+                                {order.isGroup ? (
+                                  <div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-bold text-gray-900 text-sm">
+                                        {order.primaryRegistration.fullname}
+                                      </span>
+                                      <span className="text-[11px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                                        {order.placesCount} places
+                                      </span>
+                                      {order.orderRef && (
+                                        <span className="text-[11px] font-mono text-gray-400">
+                                          {order.orderRef}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="mt-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleOrderExpand(order.groupKey)}
+                                        className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 transition-colors py-0.5"
+                                      >
+                                        {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                                        <span>{isExpanded ? 'Masquer' : `Voir les ${order.placesCount} participants`}</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <p className="font-bold text-gray-900 text-sm">{order.primaryRegistration.fullname}</p>
+                                    {order.primaryRegistration.ticket_ref && (
+                                      <span className="text-xs font-mono text-gray-400 block mt-0.5">
+                                        {order.primaryRegistration.ticket_ref}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-4 py-4 hidden sm:table-cell align-top">
+                                <p className="text-gray-800 text-xs sm:text-sm">{order.buyerEmail}</p>
+                                {order.payerPhone && (
+                                  <p className="text-gray-400 text-xs mt-0.5 font-mono">
+                                    {order.payerPhone}
+                                  </p>
+                                )}
+                              </td>
+                              <td className="px-4 py-4 align-top">
+                                {order.paymentStatus === 'pending' && (
+                                  <div className="space-y-1">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                                      <Clock size={11} className="text-amber-600" />
+                                      À valider · {order.paymentOperator === 'airtel' ? 'Airtel' : 'Moov'}
+                                    </span>
+                                    {order.totalAmount ? (
+                                      <div className="text-xs font-bold text-gray-900 font-mono">
+                                        {Number(order.totalAmount).toLocaleString('fr-FR')} XAF
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                )}
+                                {order.paymentStatus === 'paid' && (
+                                  <div className="space-y-1">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-green-50 text-green-800 border border-green-200">
+                                      <CheckCircle2 size={11} className="text-green-600" />
+                                      Payé · {order.paymentOperator === 'airtel' ? 'Airtel' : 'Moov'}
+                                    </span>
+                                    {order.totalAmount ? (
+                                      <div className="text-xs font-medium text-gray-600 font-mono">
+                                        {Number(order.totalAmount).toLocaleString('fr-FR')} XAF
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                )}
+                                {order.paymentStatus === 'free' && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs text-gray-600 bg-gray-100">
+                                    Gratuit
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-4 hidden md:table-cell text-gray-400 text-xs whitespace-nowrap align-top">
+                                {order.createdAt ? new Date(order.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                              </td>
+                              <td className="px-4 py-4 align-top">
+                                <div className="flex items-center justify-center gap-1 flex-wrap">
+                                  {order.paymentStatus === 'pending' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleValidateOrder(order)}
+                                      disabled={validatingOrderKey === order.groupKey}
+                                      title="Valider et envoyer le(s) billet(s)"
+                                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-semibold shadow-xs transition-all disabled:opacity-50"
+                                    >
+                                      {validatingOrderKey === order.groupKey ? (
+                                        <>
+                                          <Loader2 size={12} className="animate-spin" />
+                                          <span>Validation…</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <CheckCircle2 size={12} />
+                                          <span>Valider {order.isGroup ? `(${order.placesCount})` : ''}</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => setViewingOrder(order)}
+                                    title="Détails"
+                                    className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                  >
+                                    <Eye size={15} />
+                                  </button>
+                                  {order.isGroup ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDownloadOrderTickets(order)}
+                                      disabled={downloadingOrderKey === order.groupKey}
+                                      title={`Télécharger les ${order.placesCount} billets`}
+                                      className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                                    >
+                                      {downloadingOrderKey === order.groupKey ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+                                    </button>
+                                  ) : (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => openEditParticipant(order.primaryRegistration)}
+                                        title="Modifier"
+                                        className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                      >
+                                        <Pencil size={15} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDownloadTicket(order.primaryRegistration)}
+                                        disabled={downloadingId === order.primaryRegistration.id}
+                                        title="Télécharger le billet"
+                                        className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                                      >
+                                        {downloadingId === order.primaryRegistration.id ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+                                      </button>
+                                    </>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteOrder(order)}
+                                    title="Supprimer"
+                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+
+                            {/* Accordéon déroulant avec la liste des participants de la commande */}
+                            {order.isGroup && isExpanded && (
+                              <tr className="bg-gray-50/70 border-b border-gray-200">
+                                <td colSpan={6} className="px-6 py-3">
+                                  <div className="pl-4 sm:pl-8 border-l-2 border-gray-300 space-y-2">
+                                    <p className="text-xs font-semibold text-gray-600">
+                                      Noms des participants ({order.placesCount}) :
+                                    </p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                      {order.items.map((subReg, subIdx) => (
+                                        <div
+                                          key={subReg.id}
+                                          className="bg-white p-2.5 rounded-lg border border-gray-200 shadow-xs flex items-center justify-between gap-2"
+                                        >
+                                          <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-1.5">
+                                              <span className="w-5 h-5 rounded-full bg-gray-100 text-gray-700 font-bold text-[10px] flex items-center justify-center flex-shrink-0">
+                                                {subIdx + 1}
+                                              </span>
+                                              <p className="font-semibold text-xs text-gray-900 truncate">{subReg.fullname}</p>
+                                            </div>
+                                            {subReg.ticket_ref && (
+                                              <span className="text-[10px] font-mono text-gray-400 block ml-6.5 mt-0.5">
+                                                Réf: {subReg.ticket_ref}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="flex items-center gap-1 flex-shrink-0 text-gray-400">
+                                            <button
+                                              type="button"
+                                              onClick={() => openEditParticipant(subReg)}
+                                              title="Corriger le nom sur le billet"
+                                              className="p-1.5 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                            >
+                                              <Pencil size={13} />
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleDownloadTicket(subReg)}
+                                              disabled={downloadingId === subReg.id}
+                                              title="Télécharger ce billet"
+                                              className="p-1.5 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                                            >
+                                              {downloadingId === subReg.id ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
                         );
                       })}
                     </tbody>
@@ -1298,9 +2069,21 @@ const CreateEventPage: React.FC = () => {
       {/* Modals */}
       <EventWizardModal
         isOpen={infoWizardOpen}
+        initialStep={wizardInitialStep}
         eventId={id ? parseInt(id) : undefined}
         onClose={() => setInfoWizardOpen(false)}
-        onSaved={() => { setInfoWizardOpen(false); refreshEvents(); }}
+        onSaved={(saved) => {
+          setInfoWizardOpen(false);
+          refreshEvents();
+          if (saved) {
+            setFormData(prev => ({
+              ...prev,
+              ...saved,
+              program: Array.isArray(saved.program) ? saved.program : prev.program,
+              ticket_tiers: Array.isArray(saved.ticket_tiers) ? saved.ticket_tiers : prev.ticket_tiers,
+            }));
+          }
+        }}
       />
 
       <ConfirmationModal
@@ -1312,60 +2095,272 @@ const CreateEventPage: React.FC = () => {
         type={confirmModal.type}
       />
 
-      {/* Participant detail modal */}
-      {viewingParticipant && (
+      {/* Order detail modal */}
+      {viewingOrder && (
         <Modal
-          isOpen={!!viewingParticipant}
-          onClose={() => setViewingParticipant(null)}
-          title="Détails du participant"
+          isOpen={!!viewingOrder}
+          onClose={() => setViewingOrder(null)}
+          title={`Détails de la réservation — ${viewingOrder.placesCount} place${viewingOrder.placesCount > 1 ? 's' : ''}`}
           size="lg"
         >
           <div className="space-y-6">
-            {/* En-tête récapitulatif */}
-            <div className="flex items-center gap-4 p-4 bg-green-50/60 rounded-2xl border border-green-100">
-              <div className="w-12 h-12 rounded-full bg-green-600 text-white flex items-center justify-center font-bold text-lg flex-shrink-0">
-                {(viewingParticipant.fullname || '?').charAt(0).toUpperCase()}
+            {/* Header badges */}
+            <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                {viewingOrder.orderRef && (
+                  <span className="font-mono text-xs font-bold bg-gray-100 text-gray-700 px-2.5 py-1 rounded-lg border border-gray-200">
+                    {viewingOrder.orderRef}
+                  </span>
+                )}
+                <span className="text-xs font-bold text-gray-500">
+                  {viewingOrder.placesCount} billet{viewingOrder.placesCount > 1 ? 's' : ''}
+                </span>
               </div>
-              <div className="min-w-0">
-                <p className="font-bold text-gray-900 text-base break-words">{viewingParticipant.fullname}</p>
-                <p className="text-sm text-gray-500 break-words">{viewingParticipant.email}</p>
+              <div>
+                {viewingOrder.paymentStatus === 'paid' ? (
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200">
+                    <CheckCircle2 size={13} />
+                    Payé & Validé
+                  </span>
+                ) : viewingOrder.paymentStatus === 'pending' ? (
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-100 px-3 py-1 rounded-full border border-amber-200">
+                    <Clock size={13} />
+                    En attente de validation
+                  </span>
+                ) : (
+                  <span className="text-xs font-medium bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">
+                    Gratuit
+                  </span>
+                )}
               </div>
             </div>
 
-            {/* Informations de base */}
+            {/* Informations acheteur & paiement */}
+            <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 space-y-3">
+              <h4 className="text-xs font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5">
+                <CreditCard size={14} className="text-gray-500" />
+                Informations Acheteur & Paiement
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                <div className="bg-white p-2.5 rounded-lg border border-gray-200">
+                  <span className="text-gray-400 font-medium block text-[10px] uppercase">Acheteur</span>
+                  <span className="font-semibold text-gray-900 text-sm">
+                    {viewingOrder.primaryRegistration.fullname}
+                  </span>
+                </div>
+                <div className="bg-white p-2.5 rounded-lg border border-gray-200">
+                  <span className="text-gray-400 font-medium block text-[10px] uppercase">Email destinataire</span>
+                  <span className="font-semibold text-gray-900 text-sm break-all">
+                    {viewingOrder.buyerEmail}
+                  </span>
+                </div>
+                {viewingOrder.isPaid && (
+                  <>
+                    <div className="bg-white p-2.5 rounded-lg border border-gray-200">
+                      <span className="text-gray-400 font-medium block text-[10px] uppercase">Opérateur Mobile Money</span>
+                      <span className="font-semibold text-gray-900">
+                        {viewingOrder.paymentOperator === 'airtel' ? 'Airtel Money' : viewingOrder.paymentOperator === 'moov' ? 'Moov Money' : '—'}
+                      </span>
+                    </div>
+                    <div className="bg-white p-2.5 rounded-lg border border-gray-200">
+                      <span className="text-gray-400 font-medium block text-[10px] uppercase">Numéro du payeur</span>
+                      <span className="font-semibold text-gray-900 font-mono">
+                        {viewingOrder.payerPhone || '—'}
+                      </span>
+                    </div>
+                    <div className="bg-white p-2.5 rounded-lg border border-gray-200 sm:col-span-2">
+                      <span className="text-gray-400 font-medium block text-[10px] uppercase">Montant total</span>
+                      <span className="font-bold text-gray-900 text-base">
+                        {viewingOrder.totalAmount ? `${Number(viewingOrder.totalAmount).toLocaleString('fr-FR')} XAF` : '—'}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {viewingOrder.paymentStatus === 'pending' && (
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => handleValidateOrder(viewingOrder)}
+                    disabled={validatingOrderKey === viewingOrder.groupKey}
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-sm shadow-md transition-all disabled:opacity-50"
+                  >
+                    {validatingOrderKey === viewingOrder.groupKey ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>Validation en cours & envoi des {viewingOrder.placesCount} billets…</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 size={16} />
+                        <span>Valider la commande ({viewingOrder.placesCount} billet{viewingOrder.placesCount > 1 ? 's' : ''}) & envoyer par email</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Liste des participants */}
             <div>
-              <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Informations de base</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { label: 'Téléphone', value: viewingParticipant.phone || '—' },
-                  { label: 'Réf. billet', value: viewingParticipant.ticket_ref || '—' },
-                  {
-                    label: 'Date inscription',
-                    value: viewingParticipant.created_at
-                      ? new Date(viewingParticipant.created_at).toLocaleString('fr-FR')
-                      : '—',
-                  },
-                  {
-                    label: 'Statut',
-                    value: viewingParticipant.scanned_at
-                      ? `Scanné le ${new Date(viewingParticipant.scanned_at).toLocaleString('fr-FR')}`
-                      : 'Pas encore scanné',
-                  },
-                ].map(row => (
-                  <div key={row.label} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">{row.label}</p>
-                    <p className="text-sm text-gray-800 font-medium break-words whitespace-pre-wrap leading-snug">{row.value}</p>
+              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                <Users size={14} className="text-gray-400" />
+                Noms des participants ({viewingOrder.placesCount})
+              </h4>
+              <div className="space-y-2">
+                {viewingOrder.items.map((it, idx) => (
+                  <div key={it.id} className="bg-gray-50 p-2.5 rounded-lg border border-gray-200 flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-gray-200 text-gray-700 font-bold text-[10px] flex items-center justify-center">
+                          {idx + 1}
+                        </span>
+                        <p className="font-semibold text-sm text-gray-900 truncate">{it.fullname}</p>
+                      </div>
+                      {it.ticket_ref && (
+                        <p className="text-[11px] font-mono text-gray-400 ml-7 mt-0.5">Réf: {it.ticket_ref}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => openEditParticipant(it)}
+                        className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-white rounded-lg transition-colors"
+                        title="Corriger le nom"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadTicket(it)}
+                        disabled={downloadingId === it.id}
+                        className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-white rounded-lg transition-colors disabled:opacity-50"
+                        title="Télécharger ce billet"
+                      >
+                        {downloadingId === it.id ? <Loader2 size={13} className="animate-spin" /> : <Download size={14} />}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Réponses au formulaire */}
-            {viewingParticipant.custom_data && Object.keys(viewingParticipant.custom_data).length > 0 && (
+            <div className="flex justify-between items-center pt-3 border-t border-gray-100 flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => handleDeleteOrder(viewingOrder)}
+                className="px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1.5"
+              >
+                <Trash2 size={14} /> Supprimer cette commande
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleDownloadOrderTickets(viewingOrder)}
+                  disabled={downloadingOrderKey === viewingOrder.groupKey}
+                  className="px-4 py-2 text-xs font-bold text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {downloadingOrderKey === viewingOrder.groupKey ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                  Télécharger tous les billets
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewingOrder(null)}
+                  className="px-5 py-2 font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors text-xs"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Participant detail modal */}
+      {viewingParticipant && (
+        <Modal
+          isOpen={!!viewingParticipant}
+          onClose={() => setViewingParticipant(null)}
+          title="Détails de l'inscription"
+          size="lg"
+        >
+          <div className="space-y-6">
+            {/* En-tête */}
+            <div className="flex items-center gap-3 p-3.5 bg-gray-50 rounded-xl border border-gray-200">
+              <div className="w-10 h-10 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-base flex-shrink-0">
+                {(viewingParticipant.fullname || '?').charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="font-bold text-gray-900 text-base">{viewingParticipant.fullname}</p>
+                {viewingParticipant.custom_data?.is_paid_booking ? (
+                  <p className="text-xs text-gray-500">
+                    Billet rattaché à la commande de : <span className="font-semibold text-gray-700">{viewingParticipant.custom_data.buyer_email || viewingParticipant.email}</span>
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-500">{viewingParticipant.email}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Informations du billet */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+              <div className="bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                <span className="text-gray-400 font-medium block text-[10px] uppercase">Réf. billet</span>
+                <span className="font-mono font-semibold text-gray-800">{viewingParticipant.ticket_ref || '—'}</span>
+              </div>
+              <div className="bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                <span className="text-gray-400 font-medium block text-[10px] uppercase">Contrôle à l'entrée</span>
+                <span className="font-medium text-gray-800">
+                  {viewingParticipant.scanned_at
+                    ? `Scanné le ${new Date(viewingParticipant.scanned_at).toLocaleString('fr-FR')}`
+                    : 'Pas encore scanné'}
+                </span>
+              </div>
+            </div>
+
+            {/* Détails du paiement Mobile Money */}
+            {viewingParticipant.custom_data?.is_paid_booking && (
+              <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 space-y-3">
+                <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Smartphone size={14} className="text-gray-500" />
+                  Données renseignées par le payeur
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                  <div className="bg-white p-2.5 rounded-lg border border-gray-200">
+                    <span className="text-gray-400 font-medium block text-[10px] uppercase">Email du payeur</span>
+                    <span className="font-semibold text-gray-900 break-all">
+                      {viewingParticipant.custom_data.buyer_email || viewingParticipant.email}
+                    </span>
+                  </div>
+                  <div className="bg-white p-2.5 rounded-lg border border-gray-200">
+                    <span className="text-gray-400 font-medium block text-[10px] uppercase">Numéro du payeur</span>
+                    <span className="font-semibold text-gray-900 font-mono">
+                      {viewingParticipant.custom_data.payer_phone || '—'}
+                    </span>
+                  </div>
+                  <div className="bg-white p-2.5 rounded-lg border border-gray-200">
+                    <span className="text-gray-400 font-medium block text-[10px] uppercase">Moyen de paiement</span>
+                    <span className="font-semibold text-gray-900">
+                      {viewingParticipant.custom_data.payment_operator === 'airtel' ? 'Airtel Money' : 'Moov Money'}
+                    </span>
+                  </div>
+                  <div className="bg-white p-2.5 rounded-lg border border-gray-200">
+                    <span className="text-gray-400 font-medium block text-[10px] uppercase">Montant total</span>
+                    <span className="font-bold text-gray-900">
+                      {viewingParticipant.custom_data.total_amount ? `${Number(viewingParticipant.custom_data.total_amount).toLocaleString('fr-FR')} XAF` : '—'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Réponses au formulaire (uniquement pour les événements gratuits avec formulaire) */}
+            {!viewingParticipant.custom_data?.is_paid_booking && formData.form_fields && formData.form_fields.length > 0 && (
               <div>
                 <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Réponses au formulaire</h4>
                 <div className="space-y-2.5">
-                  {(formData.form_fields || []).map(field => {
+                  {formData.form_fields.map(field => {
                     const val = viewingParticipant.custom_data?.[field.id];
                     if (val === undefined || val === null || val === '') return null;
                     return (
@@ -1377,17 +2372,6 @@ const CreateEventPage: React.FC = () => {
                       </div>
                     );
                   })}
-                  {/* Extra fields not in form_fields (e.g. phone) */}
-                  {Object.entries(viewingParticipant.custom_data).filter(([key]) =>
-                    !(formData.form_fields || []).find(f => f.id === key) && key !== 'phone'
-                  ).map(([key, val]) => (
-                    <div key={key} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">{key}</p>
-                      <p className="text-sm text-gray-800 font-medium break-words whitespace-pre-wrap leading-relaxed">
-                        {Array.isArray(val) ? val.join(', ') : String(val)}
-                      </p>
-                    </div>
-                  ))}
                 </div>
               </div>
             )}
@@ -1395,27 +2379,28 @@ const CreateEventPage: React.FC = () => {
         </Modal>
       )}
 
-      {/* Edit participant + resend ticket modal */}
+      {/* Edit participant modal */}
       {editingParticipant && (
         <Modal
           isOpen={!!editingParticipant}
           onClose={() => setEditingParticipant(null)}
-          title={`Modifier — ${editingParticipant.fullname}`}
-          size="lg"
+          title={`Corriger — ${editingParticipant.fullname}`}
+          size="md"
         >
-          <div className="p-1 space-y-5">
+          <div className="p-1 space-y-4">
             {editSuccess ? (
               <div className="text-center py-6">
-                <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <CheckCircle2 className="text-green-600" size={28} />
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <CheckCircle2 className="text-green-600" size={24} />
                 </div>
-                <p className="font-bold text-gray-800 mb-1">Billet corrigé renvoyé !</p>
-                <p className="text-sm text-gray-500 mb-5">
-                  Les informations ont été mises à jour et le nouveau billet a été envoyé à {editForm.email}.
+                <p className="font-bold text-gray-900 mb-1">Billet corrigé et renvoyé !</p>
+                <p className="text-xs text-gray-500 mb-4">
+                  Le billet avec le nouveau nom a été envoyé à l'acheteur ({editingParticipant.custom_data?.buyer_email || editForm.email}).
                 </p>
                 <button
+                  type="button"
                   onClick={() => setEditingParticipant(null)}
-                  className="px-5 py-2.5 font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors text-sm"
+                  className="px-5 py-2 font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors text-xs"
                 >
                   Fermer
                 </button>
@@ -1423,14 +2408,29 @@ const CreateEventPage: React.FC = () => {
             ) : (
               <>
                 {editError && (
-                  <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg">{editError}</div>
+                  <div className="bg-red-50 border border-red-200 text-red-600 text-xs p-2.5 rounded-lg">{editError}</div>
                 )}
 
-                <div>
-                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Informations de base</h4>
+                {editingParticipant.custom_data?.is_paid_booking ? (
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">Nom complet</label>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Nom complet du participant *</label>
+                      <input
+                        type="text"
+                        value={editForm.fullname}
+                        onChange={e => setEditForm(f => ({ ...f, fullname: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                        placeholder="Nom figurant sur le billet"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                      Ce billet sera expédié à l'adresse de l'acheteur : <strong className="text-gray-700">{editingParticipant.custom_data.buyer_email || editForm.email}</strong>.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Nom complet *</label>
                       <input
                         type="text"
                         value={editForm.fullname}
@@ -1439,7 +2439,7 @@ const CreateEventPage: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">Email</label>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Email *</label>
                       <input
                         type="email"
                         value={editForm.email}
@@ -1448,35 +2448,13 @@ const CreateEventPage: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">Téléphone</label>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Téléphone</label>
                       <input
                         type="text"
                         value={editForm.phone}
                         onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
                         className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
                       />
-                    </div>
-                  </div>
-                </div>
-
-                {Object.keys(editForm.custom).length > 0 && (
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Réponses au formulaire</h4>
-                    <div className="space-y-3">
-                      {Object.entries(editForm.custom).map(([key, val]) => {
-                        const field = (formData.form_fields || []).find(f => f.id === key);
-                        return (
-                          <div key={key}>
-                            <label className="block text-xs font-semibold text-gray-500 mb-1">{field?.label || key}</label>
-                            <input
-                              type="text"
-                              value={val}
-                              onChange={e => setEditForm(f => ({ ...f, custom: { ...f.custom, [key]: e.target.value } }))}
-                              className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
-                            />
-                          </div>
-                        );
-                      })}
                     </div>
                   </div>
                 )}
@@ -1510,6 +2488,91 @@ const CreateEventPage: React.FC = () => {
                 </div>
               </>
             )}
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal in-app de confirmation de validation et d'envoi des billets */}
+      {validationModal && (
+        <Modal
+          isOpen={validationModal.isOpen}
+          onClose={() => setValidationModal(null)}
+          title="Validation effectuée"
+          size="md"
+        >
+          <div className="text-center py-4 space-y-4">
+            <div className="w-14 h-14 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto shadow-sm">
+              <CheckCircle2 size={30} />
+            </div>
+            <div>
+              <h3 className="text-base sm:text-lg font-bold text-gray-900">
+                {validationModal.placesCount > 1
+                  ? `${validationModal.placesCount} billets envoyés avec succès !`
+                  : 'Billet officiel envoyé avec succès !'}
+              </h3>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                Un e-mail récapitulatif unique regroupant {validationModal.placesCount > 1 ? `les ${validationModal.placesCount} billets PDF en pièces jointes` : 'le billet officiel en pièce jointe'} a été transmis à l'acheteur :
+              </p>
+              <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 border border-green-200 rounded-lg text-xs font-semibold text-green-800">
+                <Mail size={13} />
+                <span>{validationModal.recipientEmail}</span>
+              </div>
+            </div>
+
+            {validationModal.participantNames && validationModal.participantNames.length > 0 && (
+              <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 text-left text-xs space-y-2">
+                <span className="font-semibold text-gray-700 block">
+                  Billet{validationModal.placesCount > 1 ? 's' : ''} émis pour :
+                </span>
+                <div className="space-y-1">
+                  {validationModal.participantNames.map((name, i) => (
+                    <div key={i} className="flex items-center gap-2 text-gray-600">
+                      <span className="w-4 h-4 rounded-full bg-gray-200 text-gray-700 font-bold text-[9px] flex items-center justify-center flex-shrink-0">
+                        {i + 1}
+                      </span>
+                      <span className="font-medium text-gray-800 truncate">{name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setValidationModal(null)}
+              className="w-full py-2.5 px-4 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-xs sm:text-sm transition-all shadow-sm"
+            >
+              Fermer
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal in-app d'erreur de validation */}
+      {errorMessageModal && (
+        <Modal
+          isOpen={!!errorMessageModal}
+          onClose={() => setErrorMessageModal(null)}
+          title="Une erreur est survenue"
+          size="md"
+        >
+          <div className="text-center py-4 space-y-4">
+            <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
+              <AlertCircle size={26} />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-gray-900">Impossible de finaliser l'action</h3>
+              <p className="text-xs text-red-600 mt-2 bg-red-50 p-3 rounded-xl border border-red-100 text-left leading-relaxed break-words font-mono">
+                {errorMessageModal}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setErrorMessageModal(null)}
+              className="w-full py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold text-xs sm:text-sm transition-colors"
+            >
+              Fermer
+            </button>
           </div>
         </Modal>
       )}
