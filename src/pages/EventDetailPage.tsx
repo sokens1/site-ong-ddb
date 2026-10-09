@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, MapPin, Users, X, CheckCircle, ChevronLeft, Star, MessageSquare, ChevronRight, Share2, Copy, Check, Loader2, AlertCircle, Clock, User, Plus, Minus, CreditCard, Phone, ArrowRight, ExternalLink, ShieldCheck } from 'lucide-react';
 import PosterGeneratorModal from '../components/events/PosterGeneratorModal';
+import { EventProgramModal } from '../components/events/EventProgramModal';
 import InAppBrowserBanner from '../components/InAppBrowserBanner';
 import { InAppBrowserProvider, useInAppBrowserBanner } from '../context/InAppBrowserContext';
 import { isInAppBrowser } from '../utils/inAppBrowser';
@@ -1294,6 +1295,7 @@ const EventDetailPage: React.FC = () => {
   const [certRecoveryError, setCertRecoveryError] = useState<string | null>(null);
   const certRecoveryDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [programModalOpen, setProgramModalOpen] = useState(false);
 
   const fetchEventData = async () => {
     if (!id) { setLoading(false); return; }
@@ -1728,60 +1730,42 @@ const EventDetailPage: React.FC = () => {
                 );
               })()}
 
-              {/* ── Programme de l'événement ── */}
+              {/* ── Programme de l'événement (Carte déclencheur Modal) ── */}
               {event.program && event.program.length > 0 && (
                 <div className="mt-10 pt-8 border-t border-white/10">
-                  <div className="flex items-center justify-between gap-3 mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-ddb-300 flex-shrink-0">
-                        <Clock size={20} />
+                  <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-white/[0.08] via-white/[0.04] to-transparent border border-white/15 p-6 sm:p-7 backdrop-blur-md shadow-xl transition-all hover:border-ddb-400/40 group">
+                    {/* Glow décoratif */}
+                    <div className="absolute -top-16 -right-16 w-40 h-40 bg-ddb-500/20 rounded-full blur-3xl pointer-events-none group-hover:bg-ddb-500/30 transition-all" />
+
+                    <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-ddb-400 to-emerald-600 flex items-center justify-center text-slate-950 flex-shrink-0 shadow-lg group-hover:scale-105 transition-transform">
+                          <Clock size={24} className="stroke-[2.5]" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <h3 className="font-heading text-lg sm:text-xl font-bold text-white">Programme de l'événement</h3>
+                            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                              {event.program.length} étape{event.program.length > 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <p className="text-xs sm:text-sm text-white/60">
+                            Consultez le déroulement détaillé, les horaires et téléchargez le PDF officiel.
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-heading text-xl font-bold text-white">Programme de l'événement</h3>
-                        <p className="text-xs text-white/50">Déroulement et interventions prévues</p>
+
+                      <div className="flex items-center gap-2.5 w-full sm:w-auto flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setProgramModalOpen(true)}
+                          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-ddb-500 to-emerald-600 hover:from-ddb-400 hover:to-emerald-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-950/40 hover:scale-[1.02] active:scale-95 transition-all"
+                        >
+                          <span>Voir le programme</span>
+                          <ChevronRight size={16} />
+                        </button>
                       </div>
                     </div>
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/10 text-white/80 border border-white/10">
-                      {event.program.length} étape{event.program.length > 1 ? 's' : ''}
-                    </span>
-                  </div>
-
-                  <div className="relative pl-6 sm:pl-8 space-y-4 sm:space-y-5 before:absolute before:left-3 before:top-3 before:bottom-3 before:w-0.5 before:bg-white/15">
-                    {event.program.map((item, idx) => (
-                      <div key={item.id || idx} className="relative group">
-                        {/* Bulle numérotée timeline */}
-                        <div className="absolute -left-6 sm:-left-8 top-3 w-6 h-6 rounded-full bg-ddb-900 border-2 border-ddb-300 flex items-center justify-center text-[11px] font-bold text-ddb-300 shadow-sm group-hover:scale-110 group-hover:bg-ddb-400 group-hover:text-ddb-950 transition-all">
-                          {idx + 1}
-                        </div>
-
-                        <div className="bg-white/5 hover:bg-white/[0.08] border border-white/10 hover:border-white/20 rounded-2xl p-4 sm:p-5 transition-all">
-                          <div className="flex items-start justify-between gap-3 flex-wrap mb-2">
-                            <h4 className="font-heading text-base sm:text-lg font-bold text-white group-hover:text-ddb-200 transition-colors">
-                              {item.title}
-                            </h4>
-                            {item.time && (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 text-xs font-bold whitespace-nowrap">
-                                <Clock size={12} />
-                                {item.time}
-                              </span>
-                            )}
-                          </div>
-
-                          {item.speaker && (
-                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-white/80 mb-2">
-                              <User size={12} className="text-ddb-300" />
-                              <span className="font-medium">{item.speaker}</span>
-                            </div>
-                          )}
-
-                          {item.description && (
-                            <p className="text-sm text-white/70 whitespace-pre-line leading-relaxed mt-1">
-                              {item.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 </div>
               )}
@@ -2067,6 +2051,14 @@ const EventDetailPage: React.FC = () => {
           event={event}
           defaultName={posterState.name}
           onClose={() => setPosterState({ isOpen: false, name: '' })}
+        />
+      )}
+
+      {programModalOpen && (
+        <EventProgramModal
+          isOpen={programModalOpen}
+          onClose={() => setProgramModalOpen(false)}
+          event={event as any}
         />
       )}
     </div>
