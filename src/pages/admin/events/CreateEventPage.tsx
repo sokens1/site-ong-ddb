@@ -8,6 +8,7 @@ import {
   MessageSquare, Calendar, MapPin, Clock, Smartphone, CreditCard, Plus, ChevronDown, ChevronUp, Layers, AlertCircle,
 } from 'lucide-react';
 import EventStatsTab from './EventStatsTab';
+import { EventPostersTab } from '../../../components/admin/EventPostersTab';
 import { motion } from 'framer-motion';
 import { supabase } from '../../../supabaseClient';
 import ConfirmationModal from '../../../components/admin/ConfirmationModal';
@@ -123,7 +124,7 @@ const CreateEventPage: React.FC = () => {
   const { data: eventsData, refresh: refreshEvents } = useCrud<Event>({ tableName: 'events' });
   const isEditing = !!id;
 
-  const [activeTab, setActiveTab] = useState<'info' | 'participants' | 'volunteers' | 'feedbacks' | 'stats' | 'certificates'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'participants' | 'volunteers' | 'feedbacks' | 'stats' | 'certificates' | 'posters'>('info');
   const [infoWizardOpen, setInfoWizardOpen] = useState(false);
   const [wizardInitialStep, setWizardInitialStep] = useState<StepKey>('info');
 
@@ -927,6 +928,7 @@ const CreateEventPage: React.FC = () => {
   const tabs = [
     { key: 'info', label: 'Informations', icon: ClipboardList, sub: 'Résumé & configuration' },
     { key: 'participants', label: 'Participants', icon: Users, sub: 'Inscrits', badge: registrations.length || null },
+    { key: 'posters', label: "Affiches J'y serai", icon: Sparkles, sub: 'Visuels générés' },
     { key: 'certificates', label: 'Certificats', icon: Award, sub: 'Envoi aux scannés', badge: scannedRegistrations.length || null },
     { key: 'volunteers', label: 'Volontaires', icon: HardHat, sub: 'Bénévoles', badge: volunteers.length || null },
     { key: 'stats', label: 'Statistiques', icon: BarChart2, sub: 'KPIs & graphes' },
@@ -2070,6 +2072,13 @@ const CreateEventPage: React.FC = () => {
                 ))}
               </div>
             )}
+          </motion.div>
+        )}
+
+        {/* ── Posters Tab : Galerie, Téléchargement ZIP et Purge ── */}
+        {activeTab === 'posters' && id && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-6 sm:px-10 py-8">
+            <EventPostersTab eventId={id} eventTitle={formData.title || 'Événement'} />
           </motion.div>
         )}
       </div>

@@ -1447,10 +1447,10 @@ const EventDetailPage: React.FC = () => {
     <div className="min-h-screen bg-ddb-900 pb-28 lg:pb-20">
       <InAppBrowserBanner />
 
-      {/* ── Hero : mobile = image + tout superposé dessus ; desktop = image à gauche, éléments à droite ── */}
-      <div className="relative -mt-24 bg-ddb-900 pt-24 lg:grid lg:grid-cols-2 lg:items-stretch">
-        {/* Image */}
-        <div className="relative h-[75vh] min-h-[480px] w-full overflow-hidden sm:h-[620px] lg:h-auto lg:min-h-[640px]">
+      {/* ── Hero ── */}
+      {/* Mobile : Image immersive avec overlay */}
+      <div className="relative -mt-24 bg-ddb-900 pt-24 lg:hidden">
+        <div className="relative h-[75vh] min-h-[480px] w-full overflow-hidden sm:h-[620px]">
           {event.image_url ? (
             <img
               src={event.image_url}
@@ -1468,16 +1468,11 @@ const EventDetailPage: React.FC = () => {
             <Calendar size={64} className="text-white/20" />
           </div>
 
-          {/* Contrôles + titre superposés — mobile/tablette uniquement */}
-          <div className="absolute inset-0 bg-gradient-to-t from-ddb-900 via-black/10 to-black/40 lg:hidden" />
-          <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-ddb-900 to-transparent lg:hidden" />
+          <div className="absolute inset-0 bg-gradient-to-t from-ddb-900 via-black/10 to-black/40" />
+          <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-ddb-900 to-transparent" />
 
-          {/* Fondus haut/bas/droite — desktop aussi, pour fondre avec le vert autour */}
-          <div className="absolute inset-x-0 top-0 hidden h-24 bg-gradient-to-b from-ddb-900 to-transparent lg:block" />
-          <div className="absolute inset-x-0 bottom-0 hidden h-24 bg-gradient-to-t from-ddb-900 to-transparent lg:block" />
-          <div className="absolute inset-y-0 right-0 hidden w-24 bg-gradient-to-l from-ddb-900 to-transparent lg:block" />
-          <div className="absolute inset-0 flex flex-col justify-between pb-6 pt-6 sm:pt-8 lg:hidden">
-            <div className="container mx-auto max-w-5xl px-4">
+          <div className="absolute inset-0 flex flex-col justify-between pb-6 pt-6 sm:pt-8">
+            <div className="container mx-auto max-w-6xl px-4">
               <div className="flex items-center justify-between">
                 <Link
                   to="/"
@@ -1504,7 +1499,7 @@ const EventDetailPage: React.FC = () => {
                 </button>
               </div>
             </div>
-            <div className="container mx-auto max-w-5xl px-4">
+            <div className="container mx-auto max-w-6xl px-4">
               <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold uppercase tracking-widest text-white ${status.color}`}>
                 {status.label}
               </span>
@@ -1515,192 +1510,222 @@ const EventDetailPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Panneau à droite — desktop uniquement : tous les éléments */}
-        <div className="hidden flex-col justify-center gap-6 bg-ddb-900 p-10 lg:flex xl:p-16">
-          <div className="flex items-center justify-between">
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-white/60 transition-colors hover:text-white"
-            >
-              <ChevronLeft size={16} />
-              Retour aux événements
-            </Link>
-            <div className="relative">
-              <button
-                onClick={() => {
-                  const shareUrl = `${window.location.origin}/events/${event.slug || event.id}`;
-                  if (navigator.share) {
-                    navigator.share({ title: event.title, url: shareUrl }).catch(() => {});
-                  } else {
-                    setShareOpen(v => !v);
-                  }
-                }}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
-                aria-label="Partager"
-              >
-                <Share2 size={17} />
-              </button>
+        {/* Ligne d'infos — mobile uniquement */}
+        <div className="container mx-auto max-w-6xl px-4">
+          <div className="mt-6 grid grid-cols-3 divide-x divide-white/10 rounded-2xl border border-white/10 bg-white/5 p-4">
+            {event.location && (
+              <div className="px-1 first:pl-0 last:pr-0">
+                <p className="text-xs font-bold text-white sm:text-sm">Lieu</p>
+                <p className="mt-1 flex items-center gap-1 text-[11px] text-white/60 sm:text-xs">
+                  <MapPin size={12} className="shrink-0 text-ddb-300" />
+                  <span className="truncate">{event.location}</span>
+                </p>
+              </div>
+            )}
 
-              {shareOpen && (
-                <div className="absolute right-0 top-full z-50 mt-2 w-72 rounded-2xl border border-gray-100 bg-white p-4 shadow-2xl">
-                  <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">Partager cet événement</p>
-                  <div className="mb-3 flex items-center gap-2">
-                    <input
-                      readOnly
-                      value={`${window.location.origin}/events/${event.slug || event.id}`}
-                      className="flex-1 truncate rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600 outline-none"
-                    />
+            <div className="px-1 first:pl-0 last:pr-0">
+              <p className="text-xs font-bold text-white sm:text-sm">Date</p>
+              <p className="mt-1 flex items-center gap-1 text-[11px] text-white/60 sm:text-xs">
+                <Calendar size={12} className="shrink-0 text-ddb-300" />
+                <span className="truncate">
+                  {new Date(event.event_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                </span>
+              </p>
+            </div>
+
+            <div className="px-1 first:pl-0 last:pr-0">
+              <p className="text-xs font-bold text-white sm:text-sm">Places</p>
+              <p className="mt-1 flex items-center gap-1 text-[11px] text-white/60 sm:text-xs">
+                <Users size={12} className="shrink-0 text-ddb-300" />
+                <span className="truncate">
+                  {event.max_slots ? `${seatsTaken ?? 0}/${event.max_slots}` : 'Libre'}
+                </span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop : Grille 2 colonnes parfaitement centrée dans container max-w-6xl (comme le footer) */}
+      <div className="hidden lg:block relative -mt-24 bg-gradient-to-b from-ddb-950 via-ddb-900 to-ddb-900 pt-32 pb-4">
+        <div className="container mx-auto max-w-6xl px-4">
+          <div className="grid grid-cols-2 gap-10 items-stretch">
+            {/* Image Desktop encadrée et arrondie */}
+            <div className="relative min-h-[480px] max-h-[560px] rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-slate-950 group">
+              {event.image_url ? (
+                <img
+                  src={event.image_url}
+                  alt={event.title}
+                  className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+              ) : null}
+              <div
+                className={`absolute inset-0 flex items-center justify-center bg-ddb-900 ${event.image_url ? 'hidden' : ''}`}
+              >
+                <Calendar size={64} className="text-white/20" />
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+            </div>
+
+            {/* Panneau Droit Desktop */}
+            <div className="flex flex-col justify-between gap-6 py-2">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <Link
+                    to="/"
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-white/60 transition-colors hover:text-white"
+                  >
+                    <ChevronLeft size={16} />
+                    Retour aux événements
+                  </Link>
+
+                  <div className="relative">
                     <button
                       onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/events/${event.slug || event.id}`);
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 2000);
+                        const shareUrl = `${window.location.origin}/events/${event.slug || event.id}`;
+                        if (navigator.share) {
+                          navigator.share({ title: event.title, url: shareUrl }).catch(() => {});
+                        } else {
+                          setShareOpen(v => !v);
+                        }
                       }}
-                      className={`flex-shrink-0 rounded-lg p-2 transition-all ${copied ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+                      aria-label="Partager"
                     >
-                      {copied ? <Check size={14} /> : <Copy size={14} />}
+                      <Share2 size={17} />
                     </button>
+
+                    {shareOpen && (
+                      <div className="absolute right-0 top-full z-50 mt-2 w-72 rounded-2xl border border-gray-100 bg-white p-4 shadow-2xl text-slate-800">
+                        <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">Partager cet événement</p>
+                        <div className="mb-3 flex items-center gap-2">
+                          <input
+                            readOnly
+                            value={`${window.location.origin}/events/${event.slug || event.id}`}
+                            className="flex-1 truncate rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600 outline-none"
+                          />
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(`${window.location.origin}/events/${event.slug || event.id}`);
+                              setCopied(true);
+                              setTimeout(() => setCopied(false), 2000);
+                            }}
+                            className={`flex-shrink-0 rounded-lg p-2 transition-all ${copied ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                          >
+                            {copied ? <Check size={14} /> : <Copy size={14} />}
+                          </button>
+                        </div>
+                        <a
+                          href={`https://wa.me/?text=${encodeURIComponent(`${event.title} — ${window.location.origin}/events/${event.slug || event.id}`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mb-2 flex w-full items-center gap-3 rounded-xl bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#20b858]"
+                        >
+                          WhatsApp
+                        </a>
+                        <a
+                          href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${window.location.origin}/events/${event.slug || event.id}`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex w-full items-center gap-3 rounded-xl bg-[#1877F2] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1565d8]"
+                        >
+                          Facebook
+                        </a>
+                        <button onClick={() => setShareOpen(false)} className="absolute right-3 top-3 text-gray-300 transition-colors hover:text-gray-500">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    )}
+                    {shareOpen && <div className="fixed inset-0 z-40" onClick={() => setShareOpen(false)} />}
                   </div>
-                  <a
-                    href={`https://wa.me/?text=${encodeURIComponent(`${event.title} — ${window.location.origin}/events/${event.slug || event.id}`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mb-2 flex w-full items-center gap-3 rounded-xl bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#20b858]"
-                  >
-                    <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0 fill-current"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.554 4.122 1.526 5.853L.05 23.95l6.254-1.638A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.894a9.88 9.88 0 01-5.034-1.374l-.36-.214-3.732.978.995-3.63-.235-.374A9.859 9.859 0 012.107 12c0-5.457 4.436-9.893 9.893-9.893 5.457 0 9.893 4.436 9.893 9.893 0 5.457-4.436 9.894-9.893 9.894z"/></svg>
-                    WhatsApp
-                  </a>
-                  <a
-                    href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${window.location.origin}/events/${event.slug || event.id}`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex w-full items-center gap-3 rounded-xl bg-[#1877F2] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1565d8]"
-                  >
-                    <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0 fill-current"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                    Facebook
-                  </a>
-                  <button onClick={() => setShareOpen(false)} className="absolute right-3 top-3 text-gray-300 transition-colors hover:text-gray-500">
-                    <X size={14} />
-                  </button>
                 </div>
-              )}
-              {shareOpen && <div className="fixed inset-0 z-40" onClick={() => setShareOpen(false)} />}
-            </div>
-          </div>
 
-          <div>
-            <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold uppercase tracking-widest text-white ${status.color}`}>
-              {status.label}
-            </span>
-            <h1 className="mt-4 font-heading text-4xl font-extrabold leading-[1.1] text-white xl:text-5xl">
-              {event.title}
-            </h1>
-          </div>
+                <div>
+                  <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold uppercase tracking-widest text-white ${status.color}`}>
+                    {status.label}
+                  </span>
+                  <h1 className="mt-4 font-heading text-3xl xl:text-4xl font-extrabold leading-[1.15] text-white">
+                    {event.title}
+                  </h1>
+                </div>
 
-          {/* Ligne d'infos */}
-          <div className="grid grid-cols-1 gap-5 rounded-2xl border border-white/10 bg-white/5 p-5 sm:grid-cols-3">
-            <div>
-              <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-white/40">
-                <Calendar size={13} />
-                Date
-              </p>
-              <div className="mt-1 text-sm font-semibold text-white">
-                {(() => {
-                  const extras = (event.event_dates || []).filter(d => d.date);
-                  const fmtD = (d: string) =>
-                    new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
-                  if (extras.length > 0) {
-                    const last = extras[extras.length - 1].date;
-                    return <>Du {fmtD(event.event_date)} au {fmtD(last)}</>;
-                  }
-                  return <>{new Date(event.event_date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</>;
-                })()}
+                {/* Ligne d'infos Desktop */}
+                <div className="grid grid-cols-1 gap-4 rounded-2xl border border-white/10 bg-white/5 p-5 sm:grid-cols-3">
+                  <div>
+                    <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-white/40">
+                      <Calendar size={13} />
+                      Date
+                    </p>
+                    <div className="mt-1 text-sm font-semibold text-white">
+                      {(() => {
+                        const extras = (event.event_dates || []).filter(d => d.date);
+                        const fmtD = (d: string) =>
+                          new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+                        if (extras.length > 0) {
+                          const last = extras[extras.length - 1].date;
+                          return <>Du {fmtD(event.event_date)} au {fmtD(last)}</>;
+                        }
+                        return <>{new Date(event.event_date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</>;
+                      })()}
+                    </div>
+                  </div>
+
+                  {event.location && (
+                    <div className="sm:border-l sm:border-white/10 sm:pl-4">
+                      <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-white/40">
+                        <MapPin size={13} />
+                        Lieu
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-white truncate">{event.location}</p>
+                    </div>
+                  )}
+
+                  <div className="sm:border-l sm:border-white/10 sm:pl-4">
+                    <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-white/40">
+                      <Users size={13} />
+                      Places
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-white">
+                      {event.max_slots ? `${seatsTaken ?? 0} / ${event.max_slots}` : 'Entrée libre'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bouton d'action Desktop */}
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  onClick={() => setShowModal(true)}
+                  disabled={isPast || isFull}
+                  className={`flex-1 inline-flex items-center justify-center gap-2 rounded-full py-3.5 font-heading text-base font-bold transition-all shadow-xl ${
+                    isPast || isFull
+                      ? 'cursor-not-allowed bg-white/10 text-white/30'
+                      : 'bg-white text-ddb-950 hover:bg-emerald-400 hover:text-slate-950 hover:-translate-y-0.5 active:scale-95'
+                  }`}
+                >
+                  {isPast ? 'Événement terminé' : isFull ? 'Complet' : "S'inscrire"}
+                  {!isPast && !isFull && <Calendar size={18} />}
+                </button>
+                {isPast && hasFeedback && (
+                  <button
+                    onClick={() => setFeedbackOpen(true)}
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 py-3.5 px-6 font-heading text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-95"
+                  >
+                    <MessageSquare size={16} />
+                    Donner mon avis
+                  </button>
+                )}
               </div>
             </div>
-
-            {event.location && (
-              <div className="sm:border-l sm:border-white/10 sm:pl-5">
-                <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-white/40">
-                  <MapPin size={13} />
-                  Lieu
-                </p>
-                <p className="mt-1 text-sm font-semibold text-white">{event.location}</p>
-              </div>
-            )}
-
-            <div className="sm:border-l sm:border-white/10 sm:pl-5">
-              <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-white/40">
-                <Users size={13} />
-                Places
-              </p>
-              <p className="mt-1 text-sm font-semibold text-white">
-                {event.max_slots ? `${seatsTaken ?? 0} / ${event.max_slots} inscrits` : 'Entrée libre'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowModal(true)}
-              disabled={isPast || isFull}
-              className={`flex-1 inline-flex items-center justify-center gap-2 rounded-full py-3.5 font-heading text-base font-bold transition-all ${
-                isPast || isFull
-                  ? 'cursor-not-allowed bg-white/10 text-white/30'
-                  : 'bg-white text-ddb-950 hover:-translate-y-0.5 active:scale-95'
-              }`}
-            >
-              {isPast ? 'Événement terminé' : isFull ? 'Complet' : "S'inscrire"}
-              {!isPast && !isFull && <Calendar size={18} />}
-            </button>
-            {isPast && hasFeedback && (
-              <button
-                onClick={() => setFeedbackOpen(true)}
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 py-3.5 px-5 font-heading text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-95"
-              >
-                <MessageSquare size={16} />
-                Donner mon avis
-              </button>
-            )}
           </div>
         </div>
       </div>
 
-      {/* Ligne d'infos — mobile/tablette uniquement (le panneau desktop l'affiche déjà) */}
-      <div className="container mx-auto max-w-5xl px-4 lg:hidden">
-        <div className="mt-6 grid grid-cols-3 divide-x divide-white/10 rounded-2xl border border-white/10 bg-white/5 p-4">
-          {event.location && (
-            <div className="px-1 first:pl-0 last:pr-0">
-              <p className="text-xs font-bold text-white sm:text-sm">Lieu</p>
-              <p className="mt-1 flex items-center gap-1 text-[11px] text-white/60 sm:text-xs">
-                <MapPin size={12} className="shrink-0 text-ddb-300" />
-                <span className="truncate">{event.location}</span>
-              </p>
-            </div>
-          )}
-
-          <div className="px-1 first:pl-0 last:pr-0">
-            <p className="text-xs font-bold text-white sm:text-sm">Date</p>
-            <p className="mt-1 flex items-center gap-1 text-[11px] text-white/60 sm:text-xs">
-              <Calendar size={12} className="shrink-0 text-ddb-300" />
-              <span className="truncate">
-                {new Date(event.event_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-              </span>
-            </p>
-          </div>
-
-          <div className="px-1 first:pl-0 last:pr-0">
-            <p className="text-xs font-bold text-white sm:text-sm">Places</p>
-            <p className="mt-1 flex items-center gap-1 text-[11px] text-white/60 sm:text-xs">
-              <Users size={12} className="shrink-0 text-ddb-300" />
-              <span className="truncate">
-                {event.max_slots ? `${seatsTaken ?? 0}/${event.max_slots}` : 'Libre'}
-              </span>
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-4 pt-8 relative z-30">
+      <div className="container mx-auto max-w-6xl px-4 pt-8 relative z-30">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
 
           {/* Main Content — pas de carte blanche, écritures directement sur le vert */}

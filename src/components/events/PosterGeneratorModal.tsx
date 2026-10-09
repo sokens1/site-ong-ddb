@@ -3,8 +3,10 @@ import { X, Upload, Download, RefreshCw, Camera } from 'lucide-react';
 import { isInAppBrowser } from '../../utils/inAppBrowser';
 import { useInAppBrowserBanner } from '../../context/InAppBrowserContext';
 import { drawPoster as renderPosterToCanvas, PosterTemplate } from '../../utils/posterTemplates';
+import { uploadGeneratedPoster } from '../../utils/posterStorage';
 
 interface Event {
+  id?: number | string;
   title: string;
   theme?: string;
   location?: string;
@@ -108,6 +110,14 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
       reactivateInAppBanner();
       return;
     }
+
+    // Sauvegarde en arrière-plan sur Supabase Storage pour l'admin
+    if (event.id) {
+      uploadGeneratedPoster(event.id, name, canvas).catch((e) =>
+        console.warn('Silent poster upload fail:', e)
+      );
+    }
+
     try {
       const link = document.createElement('a');
       link.download = `jy-serai-${name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}.png`;
