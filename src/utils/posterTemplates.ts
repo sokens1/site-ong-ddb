@@ -30,6 +30,101 @@ const loadImage = (src: string): Promise<HTMLImageElement> =>
     img.src = src;
   });
 
+/**
+ * Détoure le fond blanc extérieur d'un logo par propagation (flood-fill) depuis les 4 bords.
+ * Ne touche JAMAIS aux éléments blancs internes, contours, textes ou illustrations du logo.
+ * Ne modifie aucun pixel de couleur (zéro dégradation).
+ */
+const removeOuterWhiteBackground = (img: HTMLImageElement): HTMLCanvasElement => {
+  const c = document.createElement('canvas');
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  if (!ctx || w === 0 || h === 0) return c;
+
+  ctx.drawImage(img, 0, 0);
+
+  try {
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+
+    // Si le logo est déjà un PNG transparent sur ses coins, on n'y touche pas
+    const corners = [
+      0,
+      (w - 1) * 4,
+      ((h - 1) * w) * 4,
+      ((h - 1) * w + (w - 1)) * 4,
+    ];
+    if (corners.some(idx => data[idx + 3] < 15)) {
+      return c;
+    }
+
+    const isBgWhite = (idx: number) => {
+      const a = data[idx + 3];
+      if (a < 15) return true;
+      const r = data[idx];
+      const g = data[idx + 1];
+      const b = data[idx + 2];
+      const minC = Math.min(r, g, b);
+      const maxC = Math.max(r, g, b);
+      return minC >= 242 && (maxC - minC) <= 18;
+    };
+
+    if (!corners.some(idx => isBgWhite(idx))) {
+      return c;
+    }
+
+    const visited = new Uint8Array(w * h);
+    const queue = new Int32Array(w * h);
+    let head = 0;
+    let tail = 0;
+
+    const push = (x: number, y: number) => {
+      const p = y * w + x;
+      if (!visited[p]) {
+        visited[p] = 1;
+        const idx = p * 4;
+        if (isBgWhite(idx)) {
+          queue[tail++] = p;
+        }
+      }
+    };
+
+    // Parcourir tous les bords extérieurs
+    for (let x = 0; x < w; x++) {
+      push(x, 0);
+      push(x, h - 1);
+    }
+    for (let y = 0; y < h; y++) {
+      push(0, y);
+      push(w - 1, y);
+    }
+
+    // Propagation flood-fill
+    while (head < tail) {
+      const p = queue[head++];
+      const x = p % w;
+      const y = Math.floor(p / w);
+      const idx = p * 4;
+
+      data[idx + 3] = 0; // Transparence sur le fond externe uniquement
+
+      if (x > 0) push(x - 1, y);
+      if (x < w - 1) push(x + 1, y);
+      if (y > 0) push(x, y - 1);
+      if (y < h - 1) push(x, y + 1);
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+  } catch {
+    // En cas de restriction CORS, fallback propre sans altération
+  }
+
+  return c;
+};
+
 const wrapText = (
   ctx: CanvasRenderingContext2D,
   text: string, x: number, y: number,
@@ -361,77 +456,160 @@ const drawClassic = (args: DrawArgs) => {
   drawLogosZone(args);
 };
 
-// Helper pour dessiner une icône d'horloge (heure)
-const drawClockIcon = (ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, bg = '#facc15') => {
+// Helper pour dessiner une icône d'horloge réaliste (heure)
+const drawClockIcon = (ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, bg = '#f59e0b') => {
   ctx.save();
+  // Cercle de fond
   ctx.fillStyle = bg;
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 2.5;
+
+  // Cadran d'horloge intérieur blanc
+  const dialR = r * 0.74;
+  ctx.fillStyle = '#ffffff';
   ctx.beginPath();
-  ctx.arc(cx, cy, r * 0.62, 0, Math.PI * 2);
+  ctx.arc(cx, cy, dialR, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+  ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  // Aiguilles
-  ctx.lineWidth = 3;
+  // Repères des 4 points cardinaux (12h, 3h, 6h, 9h)
+  ctx.fillStyle = '#64748b';
+  const tickR = dialR * 0.78;
+  const tickSize = Math.max(2, r * 0.09);
+  [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2].forEach((angle) => {
+    const tx = cx + Math.sin(angle) * tickR;
+    const ty = cy - Math.cos(angle) * tickR;
+    ctx.beginPath();
+    ctx.arc(tx, ty, tickSize, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Aiguille des heures (courte et épaisse, pointant vers 10h)
+  ctx.strokeStyle = '#0f172a';
+  ctx.lineWidth = Math.max(3, r * 0.16);
   ctx.lineCap = 'round';
+  const hourAngle = (10 / 12) * Math.PI * 2;
   ctx.beginPath();
   ctx.moveTo(cx, cy);
-  ctx.lineTo(cx, cy - r * 0.38);
-  ctx.moveTo(cx, cy);
-  ctx.lineTo(cx + r * 0.28, cy);
+  ctx.lineTo(cx + Math.sin(hourAngle) * (dialR * 0.52), cy - Math.cos(hourAngle) * (dialR * 0.52));
   ctx.stroke();
+
+  // Aiguille des minutes (fine et plus longue, pointant vers 10 min / 2h)
+  ctx.strokeStyle = '#0f172a';
+  ctx.lineWidth = Math.max(2, r * 0.11);
+  const minAngle = (2 / 12) * Math.PI * 2;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + Math.sin(minAngle) * (dialR * 0.74), cy - Math.cos(minAngle) * (dialR * 0.74));
+  ctx.stroke();
+
+  // Pivot central
+  ctx.fillStyle = '#ef4444';
+  ctx.beginPath();
+  ctx.arc(cx, cy, Math.max(2.5, r * 0.12), 0, Math.PI * 2);
+  ctx.fill();
+
   ctx.restore();
 };
 
-// Helper pour dessiner une icône de calendrier (date)
+// Helper pour dessiner une icône de calendrier réaliste (date)
 const drawCalendarIcon = (ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, bg = '#dc2626') => {
   ctx.save();
+  // Fond rond badge
   ctx.fillStyle = bg;
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.fill();
 
-  const pageW = r * 1.15, pageH = r * 1.05;
-  const px = cx - pageW / 2, py = cy - pageH / 2 + r * 0.08;
+  // Feuillet de calendrier blanc
+  const pageW = r * 1.18;
+  const pageH = r * 1.12;
+  const px = cx - pageW / 2;
+  const py = cy - pageH / 2 + r * 0.06;
+
+  // Corps blanc avec coins arrondis
   ctx.fillStyle = '#ffffff';
-  drawRoundedRect(ctx, px, py, pageW, pageH, 3);
+  drawRoundedRect(ctx, px, py, pageW, pageH, 5);
   ctx.fill();
-  ctx.fillStyle = bg;
-  drawRoundedRect(ctx, px, py, pageW, pageH * 0.32, 3);
+
+  // En-tête rouge du calendrier
+  ctx.save();
+  drawRoundedRect(ctx, px, py, pageW, pageH, 5);
+  ctx.clip();
+  ctx.fillStyle = '#b91c1c';
+  ctx.fillRect(px, py, pageW, pageH * 0.34);
+  ctx.restore();
+
+  // Anneaux / Reliures en haut
+  const ringW = Math.max(2.5, r * 0.11);
+  const ringH = r * 0.28;
+  const ringY = py - ringH * 0.35;
+  const r1X = px + pageW * 0.28;
+  const r2X = px + pageW * 0.72;
+  ctx.fillStyle = '#475569';
+  drawRoundedRect(ctx, r1X - ringW / 2, ringY, ringW, ringH, ringW / 2);
   ctx.fill();
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath(); ctx.arc(px + pageW * 0.26, py, r * 0.09, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(px + pageW * 0.74, py, r * 0.09, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = bg;
-  ctx.beginPath(); ctx.arc(px + pageW * 0.3, py + pageH * 0.65, r * 0.09, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(px + pageW * 0.5, py + pageH * 0.65, r * 0.09, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(px + pageW * 0.7, py + pageH * 0.65, r * 0.09, 0, Math.PI * 2); ctx.fill();
+  drawRoundedRect(ctx, r2X - ringW / 2, ringY, ringW, ringH, ringW / 2);
+  ctx.fill();
+
+  // Grille de jours (cases / points de calendrier)
+  const gridStartY = py + pageH * 0.48;
+  const colGap = pageW * 0.24;
+  const rowGap = pageH * 0.22;
+  const dotR = Math.max(1.8, r * 0.08);
+
+  ctx.fillStyle = '#94a3b8';
+  for (let row = 0; row < 2; row++) {
+    for (let col = 0; col < 3; col++) {
+      // Marquer une des cases en rouge (jour sélectionné)
+      ctx.fillStyle = (row === 0 && col === 1) ? '#dc2626' : '#cbd5e1';
+      const gx = px + pageW * 0.26 + col * colGap;
+      const gy = gridStartY + row * rowGap;
+      ctx.beginPath();
+      ctx.arc(gx, gy, dotR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   ctx.restore();
 };
 
-// Helper pour dessiner une icône de localisation (lieu)
-const drawPinIcon = (ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, bg = '#1e40af') => {
+// Helper pour dessiner une icône de pointeur / géolocalisation réaliste (lieu)
+const drawPinIcon = (ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, bg = '#2563eb') => {
   ctx.save();
+  // Cercle badge
   ctx.fillStyle = bg;
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.fill();
 
-  // Pin blanc à l'intérieur
+  // Forme de Pin / Pointeur de carte en blanc
+  const headCy = cy - r * 0.14;
+  const headR = r * 0.44;
+  const tipY = cy + r * 0.58;
+
   ctx.fillStyle = '#ffffff';
   ctx.beginPath();
-  ctx.arc(cx, cy - 3, r * 0.45, Math.PI * 0.8, Math.PI * 0.2, true);
-  ctx.lineTo(cx, cy + r * 0.55);
+  ctx.arc(cx, headCy, headR, Math.PI * 0.82, Math.PI * 0.18, false);
+  ctx.lineTo(cx, tipY);
   ctx.closePath();
   ctx.fill();
 
+  // Point d'ombre subtil sous la pointe
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.beginPath();
+  ctx.ellipse(cx, tipY + 2, headR * 0.4, 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Trou / Cercle central du pin (couleur du badge pour transparence apparente)
   ctx.fillStyle = bg;
   ctx.beginPath();
-  ctx.arc(cx, cy - 3, r * 0.2, 0, Math.PI * 2);
+  ctx.arc(cx, headCy, headR * 0.44, 0, Math.PI * 2);
   ctx.fill();
+
   ctx.restore();
 };
 
@@ -447,34 +625,34 @@ const drawInfoBadge = (
   valueColor: string,
 ) => {
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.18)';
+  ctx.shadowColor = 'rgba(0,0,0,0.22)';
   ctx.shadowBlur = 10;
   ctx.shadowOffsetY = 3;
   ctx.fillStyle = bg;
-  drawRoundedRect(ctx, x, y, w, h, h / 2);
+  drawRoundedRect(ctx, x, y, w, h, 18);
   ctx.fill();
   ctx.shadowColor = 'transparent';
 
-  const iconR = h * 0.36;
+  const iconR = h * 0.34;
   const iconCx = x + h / 2;
   const iconCy = y + h / 2;
   drawIcon(iconCx, iconCy, iconR);
 
   const textX = iconCx + iconR + 18;
-  const maxTextW = x + w - textX - 20;
+  const maxTextW = x + w - textX - 18;
   ctx.textAlign = 'left';
-  ctx.font = 'bold 14px "Montserrat", "Segoe UI", sans-serif';
+  ctx.font = 'bold 13px "Montserrat", "Segoe UI", sans-serif';
   ctx.fillStyle = labelColor;
-  ctx.fillText(label, textX, y + h * 0.4);
+  ctx.fillText(label.toUpperCase(), textX, y + h * 0.38);
 
-  ctx.font = `900 ${value.length > 16 ? 18 : 22}px "Montserrat", "Segoe UI", sans-serif`;
+  ctx.font = `900 ${value.length > 20 ? 17 : value.length > 15 ? 19 : 22}px "Montserrat", "Segoe UI", sans-serif`;
   ctx.fillStyle = valueColor;
   let displayValue = value;
   while (ctx.measureText(displayValue).width > maxTextW && displayValue.length > 3) {
     displayValue = displayValue.slice(0, -2);
   }
   if (displayValue !== value) displayValue = displayValue.trimEnd() + '…';
-  ctx.fillText(displayValue, textX, y + h * 0.76);
+  ctx.fillText(displayValue, textX, y + h * 0.74);
   ctx.restore();
 };
 
@@ -487,7 +665,7 @@ const drawSpark = (ctx: CanvasRenderingContext2D, cx: number, cy: number, count:
   for (let i = 0; i < count; i++) {
     const angle = (i * Math.PI) / (count - 1) - Math.PI / 2;
     ctx.beginPath();
-    ctx.moveTo(cx + Math.cos(angle) * (len * 0.3), cy + Math.sin(angle) * (len * 0.3));
+    ctx.moveTo(cx + Math.cos(angle) * (len * 0.3), cy + Math.sin(angle) * len * 0.3);
     ctx.lineTo(cx + Math.cos(angle) * len, cy + Math.sin(angle) * len);
     ctx.stroke();
   }
@@ -529,7 +707,7 @@ const drawModern = (args: DrawArgs) => {
     ctx.fillRect(0, 0, canvas.width, canvas.height * 0.5);
   }
 
-  // 2. En-tête : Badge(s) Organisation / Organisateurs — tous les logos ajoutés, pas juste le 1er
+  // 2. En-tête : Badge(s) Organisation / Organisateurs (avec pastille blanche protectrice)
   const headerY = 45;
   const validHeaderOrgs = (orgImgs || []).filter((img): img is HTMLImageElement => img !== null);
   if (validHeaderOrgs.length > 0) {
@@ -539,7 +717,7 @@ const drawModern = (args: DrawArgs) => {
     ctx.save();
     for (const org of validHeaderOrgs) {
       const lw = Math.min((org.width / org.height) * lh, 180);
-      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
       drawRoundedRect(ctx, hx, headerY, lw + 20, lh + 12, 14);
       ctx.fill();
       ctx.drawImage(org, hx + 10, headerY + 6, lw, lh);
@@ -548,59 +726,67 @@ const drawModern = (args: DrawArgs) => {
     ctx.restore();
   }
 
-  // 3. Colonne de Droite : Arche photo au liseré doré + Badge "J'y participe"
-  const archW = 460;
-  const archH = 650;
-  const archX = canvas.width - archW - 55;
-  const archY = 150;
-  const archRadii = { tl: 230, tr: 230, br: 70, bl: 35 };
-  const goldStrokeRadii = { tl: archRadii.tl + 6, tr: archRadii.tr + 6, br: archRadii.br + 6, bl: archRadii.bl + 6 };
+  // 3. Colonne de Droite : Photo rectangulaire allongée vers le bas avec bordure blanche + Badge "J'y serai"
+  const photoW = 460;
+  const photoH = 600;
+  const photoX = canvas.width - photoW - 55;
+  const photoY = 145;
+  const borderThickness = 6;
 
-  // Liseré doré de l'arche
-  ctx.fillStyle = '#facc15';
-  drawVariableRoundedRect(ctx, archX - 6, archY - 6, archW + 12, archH + 12, goldStrokeRadii);
-  ctx.fill();
+  // Bordure blanche du cadre photo
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 6;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(photoX - borderThickness, photoY - borderThickness, photoW + borderThickness * 2, photoH + borderThickness * 2);
+  ctx.restore();
 
-  // Photo de l'utilisateur dans l'arche
+  // Photo de l'utilisateur dans le cadre
   if (userImg) {
     ctx.save();
-    drawVariableRoundedRect(ctx, archX, archY, archW, archH, archRadii);
+    ctx.beginPath();
+    ctx.rect(photoX, photoY, photoW, photoH);
     ctx.clip();
     ctx.fillStyle = '#0f172a';
-    ctx.fillRect(archX, archY, archW, archH);
-    const imgR = Math.max(archW / userImg.width, archH / userImg.height);
+    ctx.fillRect(photoX, photoY, photoW, photoH);
+    const imgR = Math.max(photoW / userImg.width, photoH / userImg.height);
     const dw = userImg.width * imgR, dh = userImg.height * imgR;
-    ctx.drawImage(userImg, archX + archW / 2 - dw / 2, archY + archH / 2 - dh / 2, dw, dh);
+    ctx.drawImage(userImg, photoX + photoW / 2 - dw / 2, photoY + photoH / 2 - dh / 2, dw, dh);
     ctx.restore();
   } else {
     ctx.save();
-    drawVariableRoundedRect(ctx, archX, archY, archW, archH, archRadii);
+    ctx.beginPath();
+    ctx.rect(photoX, photoY, photoW, photoH);
     ctx.clip();
-    const photoGrad = ctx.createLinearGradient(archX, archY, archX + archW, archY + archH);
+    const photoGrad = ctx.createLinearGradient(photoX, photoY, photoX + photoW, photoY + photoH);
     photoGrad.addColorStop(0, '#1e293b');
     photoGrad.addColorStop(1, '#0f172a');
     ctx.fillStyle = photoGrad;
-    ctx.fillRect(archX, archY, archW, archH);
+    ctx.fillRect(photoX, photoY, photoW, photoH);
 
     // Placeholder avatar si pas de photo
     ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
     ctx.beginPath();
-    ctx.arc(archX + archW / 2, archY + 270, 95, 0, Math.PI * 2);
+    ctx.arc(photoX + photoW / 2, photoY + photoH / 2 - 40, 95, 0, Math.PI * 2);
     ctx.fill();
-    ctx.font = 'bold 34px "Montserrat", sans-serif';
+    ctx.font = 'bold 32px "Montserrat", sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
     ctx.textAlign = 'center';
-    ctx.fillText('VOTRE PHOTO', archX + archW / 2, archY + 430);
+    ctx.fillText('VOTRE PHOTO', photoX + photoW / 2, photoY + photoH / 2 + 110);
     ctx.restore();
   }
 
-  // Badge "J'y participe" / "J'y serai" chevauchant le bas de l'arche
-  const badgeW = 420;
-  const badgeH = 115;
-  const badgeX = archX - 35;
-  const badgeY = archY + archH - 125;
+  // Badge "J'y serai !" chevauchant le bas du cadre photo
+  const badgeW = 410;
+  const badgeH = 105;
+  const badgeX = photoX + (photoW - badgeW) / 2;
+  const badgeY = photoY + photoH - 50;
 
   ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+  ctx.shadowBlur = 14;
+  ctx.shadowOffsetY = 6;
   const badgeGrad = ctx.createLinearGradient(badgeX, badgeY, badgeX + badgeW, badgeY + badgeH);
   badgeGrad.addColorStop(0, '#f59e0b');
   badgeGrad.addColorStop(0.5, '#f97316');
@@ -610,66 +796,70 @@ const drawModern = (args: DrawArgs) => {
   // Forme galbée pour le badge
   drawVariableRoundedRect(ctx, badgeX, badgeY, badgeW, badgeH, { tl: 50, tr: 50, br: 50, bl: 50 });
   ctx.fill();
+  ctx.shadowColor = 'transparent';
 
-  // Texte "J'y participe !"
+  // Texte "J'y serai !"
   ctx.font = '900 52px "Segoe UI", "Montserrat", sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'center';
-  ctx.fillText("J'y participe !", badgeX + badgeW / 2, badgeY + 68);
+  ctx.fillText("J'y serai !", badgeX + badgeW / 2, badgeY + 62);
 
   // Vague / Swoosh soulignant le texte
   ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 6;
+  ctx.lineWidth = 5;
   ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(badgeX + 80, badgeY + 88);
-  ctx.quadraticCurveTo(badgeX + badgeW / 2, badgeY + 100, badgeX + badgeW - 80, badgeY + 84);
+  ctx.moveTo(badgeX + 80, badgeY + 80);
+  ctx.quadraticCurveTo(badgeX + badgeW / 2, badgeY + 92, badgeX + badgeW - 80, badgeY + 76);
   ctx.stroke();
   ctx.restore();
 
   // Nom du participant en dessous
-  const nameY = archY + archH + 40;
-  ctx.font = '900 34px "Montserrat", "Segoe UI", sans-serif';
+  const nameY = badgeY + badgeH + 48;
+  ctx.font = '900 36px "Montserrat", "Segoe UI", sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'center';
   const displayName = name.toUpperCase() || 'MON NOM';
-  ctx.fillText(displayName, archX + archW / 2, nameY);
+  ctx.fillText(displayName, photoX + photoW / 2, nameY);
 
-  // 4. Colonne de Gauche : Emplacement du Logo de l'événement (ou Titre si pas de logo)
+  // 4. Colonne de Gauche : Emplacement du Logo de l'événement (plaqué directement, agrandi)
   const leftX = 60;
-  const leftW = 460;
-  let currentY = 150;
+  const leftW = 470;
+  let currentY = 145;
 
   if (logoImg) {
-    // ── Logo dans une carte blanche rectangulaire — bord gauche du poster ──
-    const cardX = 0;                         // commence au bord gauche du poster
-    const cardW = leftX + leftW + 20;        // toute la colonne gauche
-    const cardH = 290;
-    const cardRadius = 24;
+    const padLeft = 45;
+    const padRight = 35;
+    const padY = 18;
+    const maxLogoW = 430;
+    const maxLogoH = 220;
+    const ratio = Math.min(maxLogoW / logoImg.width, maxLogoH / logoImg.height);
+    const dw = logoImg.width * ratio;
+    const dh = logoImg.height * ratio;
 
-    // Fond blanc de la carte
+    const cardW = dw + padLeft + padRight;
+    const cardH = dh + padY * 2;
+    const cardRadius = Math.min(36, cardH / 2);
+
+    // Fond blanc arrondi poussé complètement à gauche (sortant du bord gauche)
     ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.30)';
-    ctx.shadowBlur = 18;
-    ctx.shadowOffsetY = 6;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+    ctx.shadowBlur = 16;
+    ctx.shadowOffsetY = 4;
     ctx.fillStyle = '#ffffff';
-    drawRoundedRect(ctx, cardX, currentY, cardW, cardH, cardRadius);
+    drawVariableRoundedRect(ctx, -15, currentY, cardW + 15, cardH, {
+      tl: 0,
+      bl: 0,
+      tr: cardRadius,
+      br: cardRadius,
+    });
     ctx.fill();
-    ctx.shadowColor = 'transparent';
-
-    // Logo clippé pour remplir tout le rectangle (cover)
-    drawRoundedRect(ctx, cardX, currentY, cardW, cardH, cardRadius);
-    ctx.clip();
-
-    const imgRatio = Math.max(cardW / logoImg.width, cardH / logoImg.height);
-    const dw = logoImg.width * imgRatio;
-    const dh = logoImg.height * imgRatio;
-    const dx = cardX + (cardW - dw) / 2;
-    const dy = currentY + (cardH - dh) / 2;
-    ctx.drawImage(logoImg, dx, dy, dw, dh);
     ctx.restore();
 
-    currentY += cardH + 30;
+    // Logo dessiné dans la carte blanche
+    ctx.drawImage(logoImg, padLeft - 15, currentY + padY, dw, dh);
+
+    currentY += cardH + 24;
   } else {
     // Fallback typographique avec éclat si aucun logo n'a été téléversé
     drawSpark(ctx, leftX + 18, currentY - 10, 7, 24);
@@ -701,33 +891,32 @@ const drawModern = (args: DrawArgs) => {
   // ── Affichage conditionnel du THÈME (affiché uniquement si renseigné) ──
   const themeText = (event.theme || '').trim();
   if (themeText) {
-    currentY += 24;
+    currentY += 16;
     // Badge THÈME (rouge)
     ctx.fillStyle = '#dc2626';
-    drawRoundedRect(ctx, leftX, currentY, 110, 36, 18);
+    drawRoundedRect(ctx, leftX, currentY, 110, 34, 17);
     ctx.fill();
     ctx.font = 'bold 15px "Montserrat", sans-serif';
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
-    ctx.fillText('THÈME', leftX + 55, currentY + 23);
+    ctx.fillText('THÈME', leftX + 55, currentY + 22);
 
     // Texte du Thème
-    currentY += 54;
+    currentY += 50;
     ctx.textAlign = 'left';
     ctx.font = 'bold 20px "Montserrat", "Segoe UI", sans-serif';
     ctx.fillStyle = '#f8fafc';
     wrapText(ctx, themeText.toUpperCase(), leftX, currentY, leftW, 26);
-    currentY += 28;
-  } else {
-    // Si pas de thème, on laisse un espacement naturel
-    currentY += 20;
+    currentY += 32;
   }
 
-  // 5. Étiquettes d'info — chacune dans sa propre pastille : Date · Heure · Lieu
-  currentY += 40;
-  const infoBadgeW = 380;
-  const infoBadgeH = 72;
-  const infoBadgeGap = 14;
+  // 5. Étiquettes d'info — descendues élégamment sous le thème : Date · Heure · Lieu
+  // On s'assure d'une descente bien espacée
+  currentY = Math.max(currentY + 28, 620);
+
+  const infoBadgeW = 390;
+  const infoBadgeH = 74;
+  const infoBadgeGap = 16;
 
   // Date (gère les événements sur plusieurs jours)
   const mainDate = event.event_date ? new Date(event.event_date) : new Date();
@@ -749,8 +938,8 @@ const drawModern = (args: DrawArgs) => {
   if (timeStr) {
     drawInfoBadge(
       ctx, leftX, currentY, infoBadgeW, infoBadgeH, '#facc15',
-      (cx, cy, r) => drawClockIcon(ctx, cx, cy, r, '#0f172a'),
-      'HEURE', timeStr, '#7c2d12', '#0f172a',
+      (cx, cy, r) => drawClockIcon(ctx, cx, cy, r, '#d97706'),
+      'HEURE', timeStr, '#78350f', '#0f172a',
     );
     currentY += infoBadgeH + infoBadgeGap;
   }
@@ -760,13 +949,13 @@ const drawModern = (args: DrawArgs) => {
   if (locText) {
     drawInfoBadge(
       ctx, leftX, currentY, infoBadgeW, infoBadgeH, '#ffffff',
-      (cx, cy, r) => drawPinIcon(ctx, cx, cy, r, '#1e40af'),
+      (cx, cy, r) => drawPinIcon(ctx, cx, cy, r, '#2563eb'),
       'LIEU', locText, '#64748b', '#0f172a',
     );
     currentY += infoBadgeH;
   }
 
-  // 7. Zone Blanche Pleine Largeur en Bas : Dédiée aux Logos des Partenaires & Sponsors
+  // 7. Zone Blanche Pleine Largeur en Bas : Dédiée aux Logos des Partenaires & Sponsors uniquement
   const whiteZoneY = 960;
   const whiteZoneH = canvas.height - whiteZoneY;
 
@@ -779,15 +968,12 @@ const drawModern = (args: DrawArgs) => {
   ctx.lineTo(canvas.width, whiteZoneY);
   ctx.stroke();
 
-  // Rendu de TOUS les logos (organisateurs + partenaires) dans la zone blanche —
-  // le badge en tête n'affiche que le 1er organisateur, les autres doivent apparaître ici.
-  const validOrgs = (orgImgs || []).filter((img): img is HTMLImageElement => img !== null);
+  // Rendu uniquement des logos partenaires/sponsors en bas (les organisateurs sont déjà en haut)
   const validPartners = (partImgs || []).filter((img): img is HTMLImageElement => img !== null);
-  const allLogos = [...validPartners, ...validOrgs];
-  if (allLogos.length > 0) {
-    drawLogoRowStretch(ctx, canvas, allLogos, 58, whiteZoneY + whiteZoneH / 2);
+  if (validPartners.length > 0) {
+    drawLogoRowStretch(ctx, canvas, validPartners, 58, whiteZoneY + whiteZoneH / 2);
   } else {
-    // Si aucun logo n'est encore téléversé, afficher une mention élégante
+    // Si aucun logo partenaire n'est encore téléversé, afficher une mention élégante
     ctx.font = 'bold 16px "Montserrat", "Segoe UI", sans-serif';
     ctx.fillStyle = '#94a3b8';
     ctx.textAlign = 'center';

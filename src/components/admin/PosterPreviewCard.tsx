@@ -53,7 +53,7 @@ const PosterPreviewCard: React.FC<PosterPreviewCardProps> = ({ template, selecte
 
       <div className="px-4 py-2.5 border-t border-gray-100 bg-white flex items-center justify-between">
         <span className="text-xs font-semibold text-gray-700">
-          {template === 'classic' ? 'Classique — vert, sticker manuscrit' : "Moderne — arche dorée, badge « J'y participe »"}
+          {template === 'classic' ? 'Classique — vert, sticker manuscrit' : "Moderne — cadre doré, badge « J'y serai »"}
         </span>
         <span className={`text-[10px] font-bold uppercase tracking-wide ${selected ? 'text-green-600' : 'text-gray-300 group-hover:text-gray-400'}`}>
           {selected ? 'Sélectionné' : 'Choisir'}
