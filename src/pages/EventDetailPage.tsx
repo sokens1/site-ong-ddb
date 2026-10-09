@@ -330,17 +330,11 @@ const EventRegistrationModal: React.FC<{
 
       const targetWaNumber = currentPaymentConfig.whatsappNumber || '241077617776';
       const waUrl = `https://wa.me/${targetWaNumber}?text=${encodeURIComponent(messageText)}`;
-      setWhatsappLink(waUrl);
-
-      setRegisteredName(cleanParticipants[0]);
-      setRegisteredEmail(finalBuyerEmail);
-      setSuccess(true);
       setIsSubmitting(false);
+      onClose();
 
-      // Redirection immédiate vers WhatsApp
-      try {
-        window.open(waUrl, '_blank');
-      } catch {}
+      // Redirection automatique directe vers WhatsApp
+      window.location.href = waUrl;
     } catch (err: any) {
       console.error('Erreur paiement réservation:', err);
       setError(err?.message || 'Une erreur est survenue lors de la validation.');

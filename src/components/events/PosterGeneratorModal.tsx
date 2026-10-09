@@ -6,6 +6,8 @@ import { drawPoster as renderPosterToCanvas, PosterTemplate } from '../../utils/
 
 interface Event {
   title: string;
+  theme?: string;
+  location?: string;
   image_url: string | null;
   logo_url?: string;
   event_date: string;

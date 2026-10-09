@@ -756,13 +756,15 @@ const drawModern = (args: DrawArgs) => {
   }
 
   // Lieu
-  const locText = event.location || 'Siège ONG DDB & En Ligne';
-  drawInfoBadge(
-    ctx, leftX, currentY, infoBadgeW, infoBadgeH, '#ffffff',
-    (cx, cy, r) => drawPinIcon(ctx, cx, cy, r, '#1e40af'),
-    'LIEU', locText, '#64748b', '#0f172a',
-  );
-  currentY += infoBadgeH;
+  const locText = (event.location || '').trim();
+  if (locText) {
+    drawInfoBadge(
+      ctx, leftX, currentY, infoBadgeW, infoBadgeH, '#ffffff',
+      (cx, cy, r) => drawPinIcon(ctx, cx, cy, r, '#1e40af'),
+      'LIEU', locText, '#64748b', '#0f172a',
+    );
+    currentY += infoBadgeH;
+  }
 
   // 7. Zone Blanche Pleine Largeur en Bas : Dédiée aux Logos des Partenaires & Sponsors
   const whiteZoneY = 960;

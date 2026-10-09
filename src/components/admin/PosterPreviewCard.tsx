@@ -24,7 +24,7 @@ const PosterPreviewCard: React.FC<PosterPreviewCardProps> = ({ template, selecte
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [template, event.image_url, event.logo_url, event.title, event.event_date]);
+  }, [template, event.image_url, event.logo_url, event.title, event.event_date, event.location, event.theme]);
 
   return (
     <button

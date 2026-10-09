@@ -865,6 +865,8 @@ const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, ev
                                 onSelect={() => setFormData({ ...formData, poster_template: tpl })}
                                 event={{
                                   title: formData.title,
+                                  theme: formData.theme,
+                                  location: formData.location,
                                   image_url: formData.image_url || null,
                                   logo_url: formData.logo_url,
                                   event_date: formData.event_date,
