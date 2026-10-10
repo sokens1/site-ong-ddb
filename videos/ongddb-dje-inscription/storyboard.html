@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Storyboard — Inscription DJE 2026 (v1)</title>
+<style>
+@font-face{font-family:'Poppins';font-weight:500;src:url("assets/fonts/Poppins-500.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-weight:700;src:url("assets/fonts/Poppins-700.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-weight:800;src:url("assets/fonts/Poppins-800.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-weight:900;src:url("assets/fonts/Poppins-900.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-weight:500;src:url("assets/fonts/WorkSans-500.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-weight:600;src:url("assets/fonts/WorkSans-600.woff2") format('woff2');}
+:root{
+  --forest:#0B3D22; --forest-deep:#052E16; --green:#16A34A; --green-dark:#15803D;
+  --mint:#86EFAC; --mint-pale:#D1FAE5; --cream:#F4F1E8; --white:#fff; --ink:#0B2416;
+  --sun:#F2B632; --orange:#F97316; --sky:#2DD4BF;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#e9ece8;color:var(--ink);font-family:'Work Sans',system-ui,sans-serif;padding:48px 40px 80px}
+header{max-width:1400px;margin:0 auto 36px;display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap}
+header h1{font-family:Poppins;font-weight:800;font-size:40px;letter-spacing:-.02em;color:var(--forest)}
+header h1 small{font-size:18px;background:var(--sun);color:var(--ink);border-radius:999px;padding:4px 12px;vertical-align:middle;margin-left:10px}
+header p{font-size:17px;color:#3c5446;margin-top:6px;max-width:720px}
+.tag{font-family:Poppins;font-weight:700;font-size:13px;letter-spacing:.14em;text-transform:uppercase;background:var(--forest);color:var(--mint);padding:10px 16px;border-radius:999px}
+.grid{max-width:1400px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:40px 32px}
+@media (max-width:1000px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:640px){.grid{grid-template-columns:1fr}}
+.card{display:flex;flex-direction:column;gap:12px}
+.cell{position:relative;aspect-ratio:9/16;container-type:inline-size;overflow:hidden;border-radius:18px;
+  background:radial-gradient(circle at 50% 42%,rgba(134,239,172,.18),transparent 55%),var(--forest);
+  box-shadow:0 18px 40px rgba(5,46,22,.25)}
+/* faint isometric grid */
+.cell::before{content:"";position:absolute;inset:0;opacity:.07;
+  background:repeating-linear-gradient(30deg,var(--mint) 0 1px,transparent 1px 6cqw),repeating-linear-gradient(-30deg,var(--mint) 0 1px,transparent 1px 6cqw)}
+.cell > *{position:absolute}
+.lab{display:flex;justify-content:space-between;font-family:Poppins;font-weight:700;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--forest)}
+.lab span:last-child{color:#5b7466;font-weight:500}
+.note{font-size:14.5px;line-height:1.45;color:#2d4337}
+.note b{color:var(--forest)}
+.seam{align-self:flex-start;font-family:Poppins;font-weight:700;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;border:1.5px solid var(--forest);color:var(--forest);border-radius:999px;padding:4px 10px}
+/* atoms */
+.disp{font-family:Poppins;font-weight:800;text-transform:uppercase;letter-spacing:-.03em;line-height:.92;color:var(--white)}
+.ttl{font-family:Poppins;font-weight:700;letter-spacing:-.01em;line-height:1.05;color:var(--white)}
+.lbl{font-family:Poppins;font-weight:700;letter-spacing:.16em;text-transform:uppercase;font-size:2.8cqw;color:var(--mint)}
+.chip{font-family:'Work Sans';font-weight:600;font-size:3cqw;background:var(--cream);color:var(--ink);border-radius:999px;padding:1.4cqw 3cqw;white-space:nowrap;box-shadow:.6cqw .9cqw 0 rgba(2,20,10,.35)}
+.chip.mint{background:var(--mint)}
+.chip.sun{background:var(--sun)}
+.chip.orange{background:var(--orange);color:#fff}
+.phone{width:46cqw;aspect-ratio:1170/2532;border-radius:6cqw;background:#0A0F0C;padding:1.3cqw;box-shadow:0 3cqw 6cqw rgba(0,0,0,.45)}
+.phone img{width:100%;height:100%;object-fit:cover;object-position:top;border-radius:4.8cqw;display:block}
+.phone::after{content:"";position:absolute;top:2.6cqw;left:50%;transform:translateX(-50%);width:13cqw;height:3.2cqw;border-radius:9cqw;background:#0A0F0C}
+.iso{transform:rotateX(55deg) rotateZ(-35deg);transform-origin:center}
+.lens{border-radius:3cqw;background:var(--white);border:.8cqw solid var(--mint);overflow:hidden;box-shadow:0 2cqw 4cqw rgba(0,0,0,.4)}
+.lens img{display:block;width:100%}
+.progress{display:flex;gap:1.6cqw}
+.progress i{display:block;width:16cqw;height:3.4cqw;border-radius:1cqw;background:var(--forest-deep);box-shadow:inset 0 -.8cqw 0 rgba(0,0,0,.3)}
+.progress i.on{background:var(--mint);box-shadow:inset 0 -.8cqw 0 var(--green)}
+.badge{width:13cqw;height:13cqw;border-radius:50%;background:var(--sun);display:grid;place-items:center;font-family:Poppins;font-weight:900;font-size:8cqw;color:var(--ink);box-shadow:.8cqw 1.2cqw 0 rgba(2,20,10,.4)}
+.cap{left:6cqw;right:6cqw;bottom:6cqw;height:12cqw;border:.3cqw dashed rgba(255,255,255,.35);border-radius:2cqw;display:grid;place-items:center;font-size:2.6cqw;color:rgba(255,255,255,.55);font-family:Poppins;letter-spacing:.12em;text-transform:uppercase}
+.tap{width:12cqw;height:12cqw;border-radius:50%;border:.8cqw solid var(--sun);box-shadow:0 0 0 2.4cqw rgba(242,182,50,.3)}
+svg.prop{overflow:visible}
+/* closing cells */
+.wide{grid-column:1/-1}
+.seammap{display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-family:Poppins;font-weight:700;font-size:13px}
+.seammap .n{background:var(--forest);color:var(--mint);border-radius:10px;padding:8px 12px}
+.seammap .s{color:#5b7466;font-weight:500;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.tokens{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.sw{border-radius:12px;padding:44px 12px 10px;font-family:Poppins;font-weight:700;font-size:12px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.panel{background:#fff;border-radius:18px;padding:24px;display:flex;flex-direction:column;gap:16px}
+.panel h3{font-family:Poppins;font-weight:800;font-size:20px;color:var(--forest)}
+.panel ul{padding-left:18px;font-size:14.5px;line-height:1.6;color:#2d4337}
+</style>
+</head>
+<body>
+
+<!-- isometric prop library (3-face rule: top light, left mid, right dark) -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="tile-cream" viewBox="0 0 200 130"><polygon points="100,0 200,50 100,100 0,50" fill="#F4F1E8"/><polygon points="0,50 100,100 100,130 0,80" fill="#D9D3C2"/><polygon points="100,100 200,50 200,80 100,130" fill="#BDB59F"/></symbol>
+    <symbol id="tile-mint" viewBox="0 0 200 130"><polygon points="100,0 200,50 100,100 0,50" fill="#D1FAE5"/><polygon points="0,50 100,100 100,130 0,80" fill="#86EFAC"/><polygon points="100,100 200,50 200,80 100,130" fill="#4ADE80"/></symbol>
+    <symbol id="tile-green" viewBox="0 0 200 130"><polygon points="100,0 200,50 100,100 0,50" fill="#22C55E"/><polygon points="0,50 100,100 100,130 0,80" fill="#16A34A"/><polygon points="100,100 200,50 200,80 100,130" fill="#15803D"/></symbol>
+    <symbol id="shadow" viewBox="0 0 200 60"><ellipse cx="110" cy="30" rx="95" ry="22" fill="rgba(2,20,10,.45)"/></symbol>
+    <symbol id="calendar" viewBox="0 0 120 130">
+      <polygon points="10,30 70,0 110,20 50,50" fill="#F4F1E8"/><polygon points="10,30 50,50 50,128 10,108" fill="#D9D3C2"/><polygon points="50,50 110,20 110,98 50,128" fill="#fff"/>
+      <polygon points="50,50 110,20 110,40 50,70" fill="#16A34A"/>
+      <text x="80" y="88" font-family="Poppins" font-weight="900" font-size="30" fill="#0B2416" text-anchor="middle" transform="skewY(-26) translate(0,38)">30</text>
+      <text x="80" y="104" font-family="Poppins" font-weight="700" font-size="11" fill="#16A34A" text-anchor="middle" transform="skewY(-26) translate(0,38)">OCT.</text>
+    </symbol>
+    <symbol id="pin" viewBox="0 0 80 120"><path d="M40 0c22 0 38 16 38 37 0 26-38 63-38 63S2 63 2 37C2 16 18 0 40 0z" fill="#F97316"/><path d="M40 0c22 0 38 16 38 37 0 26-38 63-38 63z" fill="#EA580C"/><circle cx="40" cy="36" r="14" fill="#fff"/><ellipse cx="40" cy="110" rx="22" ry="8" fill="rgba(2,20,10,.4)"/></symbol>
+    <symbol id="seat" viewBox="0 0 60 70"><polygon points="5,30 35,15 55,25 25,40" fill="#86EFAC"/><polygon points="5,30 25,40 25,62 5,52" fill="#16A34A"/><polygon points="25,40 55,25 55,47 25,62" fill="#15803D"/><polygon points="35,15 55,25 55,0 35,-10" fill="#4ADE80"/></symbol>
+    <symbol id="stopwatch" viewBox="0 0 120 130"><rect x="52" y="0" width="16" height="14" rx="3" fill="#F2B632"/><circle cx="60" cy="72" r="54" fill="#D9A21F"/><circle cx="56" cy="68" r="54" fill="#F2B632"/><circle cx="56" cy="68" r="42" fill="#F4F1E8"/><path d="M56 68 L56 34" stroke="#0B2416" stroke-width="7" stroke-linecap="round"/><path d="M56 68 L80 80" stroke="#16A34A" stroke-width="6" stroke-linecap="round"/><circle cx="56" cy="68" r="6" fill="#0B2416"/></symbol>
+    <symbol id="envelope" viewBox="0 0 160 120"><polygon points="10,50 90,10 150,40 70,80" fill="#fff"/><polygon points="10,50 70,80 70,118 10,88" fill="#D9D3C2"/><polygon points="70,80 150,40 150,78 70,118" fill="#F4F1E8"/><polyline points="70,80 110,96 150,40" fill="none" stroke="#BDB59F" stroke-width="3"/><circle cx="95" cy="42" r="12" fill="#16A34A"/></symbol>
+    <symbol id="check" viewBox="0 0 120 120"><circle cx="64" cy="64" r="54" fill="#15803D"/><circle cx="58" cy="58" r="54" fill="#86EFAC"/><path d="M32 60 L52 80 L86 40" fill="none" stroke="#0B3D22" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="cocktail" viewBox="0 0 100 140"><polygon points="10,20 90,20 50,70" fill="#2DD4BF"/><polygon points="50,70 90,20 70,20" fill="#14B8A6"/><rect x="47" y="70" width="6" height="45" fill="#F4F1E8"/><ellipse cx="50" cy="118" rx="24" ry="8" fill="#F4F1E8"/><circle cx="72" cy="14" r="9" fill="#F2B632"/></symbol>
+    <symbol id="gradcap" viewBox="0 0 140 100"><polygon points="70,5 135,35 70,65 5,35" fill="#0B2416"/><polygon points="35,48 70,64 105,48 105,72 70,88 35,72" fill="#1F3B2B"/><line x1="120" y1="40" x2="120" y2="78" stroke="#F2B632" stroke-width="5"/><circle cx="120" cy="80" r="6" fill="#F2B632"/></symbol>
+    <symbol id="tree" viewBox="0 0 80 130"><rect x="36" y="80" width="10" height="40" fill="#7C4A2D"/><polygon points="40,0 78,70 40,92 2,70" fill="#22C55E"/><polygon points="40,0 78,70 40,92" fill="#15803D"/></symbol>
+    <symbol id="leaf" viewBox="0 0 60 40"><path d="M2 38C10 8 40 0 58 2 54 24 30 40 2 38z" fill="#86EFAC"/><path d="M2 38C20 26 36 14 58 2" stroke="#15803D" stroke-width="2" fill="none"/></symbol>
+  </defs>
+</svg>
+
+<header>
+  <div>
+    <h1>Inscription au Déjeuner Environnemental <small>v1</small></h1>
+    <p>Tutoriel pub en 3D isométrique : les vraies captures du site dans un iPhone qui voyage d'île en île, du bouton « S'inscrire » jusqu'au visuel « J'y serai ».</p>
+  </div>
+  <div class="tag">1080×1920 · ~60 s · 9 frames</div>
+</header>
+
+<main class="grid">
+
+<!-- 01 HOOK -->
+<div class="card">
+  <div class="cell" id="frame-01">
+    <svg class="prop" style="left:12cqw;top:96cqw;width:76cqw;height:50cqw"><use href="#tile-mint"/></svg>
+    <svg class="prop" style="left:30cqw;top:80cqw;width:40cqw;height:44cqw"><use href="#stopwatch"/></svg>
+    <svg class="prop" style="left:14cqw;top:100cqw;width:9cqw;height:15cqw"><use href="#tree"/></svg>
+    <svg class="prop" style="left:76cqw;top:104cqw;width:8cqw;height:13cqw"><use href="#tree"/></svg>
+    <div class="lbl" style="left:8cqw;top:20cqw">Le Déjeuner Environnemental</div>
+    <div class="disp" style="left:8cqw;top:28cqw;font-size:17cqw">30 OCT.</div>
+    <div class="disp" style="left:8cqw;top:48cqw;font-size:13cqw;color:var(--sun)">UNE<br>MINUTE</div>
+    <div class="chip mint" style="left:50%;transform:translateX(-50%);top:150cqw">⏱ chrono lancé</div>
+    <svg class="prop" style="left:78cqw;top:30cqw;width:12cqw;height:8cqw;transform:rotate(20deg)"><use href="#leaf"/></svg>
+    <svg class="prop" style="left:6cqw;top:70cqw;width:9cqw;height:6cqw;transform:rotate(-30deg)"><use href="#leaf"/></svg>
+    <div class="cap">captions</div>
+  </div>
+  <div class="lab"><span>01 · Une minute, chrono</span><span>accroche · 0–5 s</span></div>
+  <p class="note"><b>Les mots tombent d'abord.</b> « 30 OCT. » claque, puis « UNE MINUTE » en jaune ; l'île monte tuile par tuile sous le chrono qui démarre.</p>
+  <span class="seam">cut (ouverture)</span>
+</div>
+
+<!-- 02 EVENT -->
+<div class="card">
+  <div class="cell" id="frame-02">
+    <svg class="prop" style="left:6cqw;top:104cqw;width:88cqw;height:57cqw"><use href="#tile-cream"/></svg>
+    <div class="phone" style="left:27cqw;top:36cqw"><img src="capture/assets/10-event-hero.png" alt=""></div>
+    <svg class="prop" style="left:5cqw;top:62cqw;width:22cqw;height:24cqw"><use href="#calendar"/></svg>
+    <div class="chip" style="left:4cqw;top:88cqw">30 octobre 2026</div>
+    <svg class="prop" style="left:77cqw;top:56cqw;width:14cqw;height:21cqw"><use href="#pin"/></svg>
+    <div class="chip" style="left:58cqw;top:80cqw">Auditorium AGL</div>
+    <svg class="prop" style="left:72cqw;top:120cqw;width:8cqw;height:9cqw"><use href="#seat"/></svg>
+    <svg class="prop" style="left:80cqw;top:116cqw;width:8cqw;height:9cqw"><use href="#seat"/></svg>
+    <svg class="prop" style="left:76cqw;top:124cqw;width:8cqw;height:9cqw"><use href="#seat"/></svg>
+    <div class="chip sun" style="left:58cqw;top:136cqw">300 places</div>
+    <div class="ttl" style="left:8cqw;top:16cqw;font-size:6.4cqw">ongddb.com › Événements</div>
+    <div class="cap">captions</div>
+  </div>
+  <div class="lab"><span>02 · L'événement</span><span>intro · 5–12 s</span></div>
+  <p class="note"><b>La caméra recule depuis le chrono</b> et révèle l'île : l'iPhone avec la vraie page, puis calendrier, repère AGL et sièges apparaissent quand la voix les nomme.</p>
+  <span class="seam">zoom-through</span>
+</div>
+
+<!-- 03 TAP -->
+<div class="card">
+  <div class="cell" id="frame-03">
+    <div class="phone" style="left:10cqw;top:22cqw;width:80cqw;border-radius:9cqw;padding:2cqw"><img src="capture/assets/11-event-cta.png" alt="" style="border-radius:7.5cqw"></div>
+    <div class="tap" style="left:56cqw;top:96cqw"></div>
+    <div class="chip sun" style="left:50%;transform:translateX(-50%);top:12cqw">Touchez « S'inscrire »</div>
+    <div class="cap">captions</div>
+  </div>
+  <div class="lab"><span>03 · Toucher « S'inscrire »</span><span>démo · 12–15,5 s</span></div>
+  <p class="note"><b>Plongée dans l'écran</b> jusqu'au bouton blanc ; l'onde de toucher part du bouton, puis la feuille verte d'inscription monte du bas.</p>
+  <span class="seam">crossfade</span>
+</div>
+
+<!-- 04 STEP 1 -->
+<div class="card">
+  <div class="cell" id="frame-04">
+    <div class="badge" style="left:8cqw;top:12cqw">1</div>
+    <div class="ttl" style="left:25cqw;top:13cqw;font-size:6cqw">Qui êtes-vous ?</div>
+    <div class="progress" style="left:25cqw;top:22cqw"><i class="on"></i><i></i><i></i></div>
+    <svg class="prop" style="left:14cqw;top:128cqw;width:72cqw;height:47cqw"><use href="#tile-mint"/></svg>
+    <div class="phone" style="left:8cqw;top:36cqw;width:48cqw"><img src="capture/assets/21-step1-filled-top.png" alt=""></div>
+    <div class="lens" style="left:42cqw;top:66cqw;width:52cqw;height:24cqw"><img src="capture/assets/21-step1-filled-top.png" alt="" style="width:120cqw;margin:-106cqw 0 0 -10cqw"></div>
+    <div class="chip" style="left:58cqw;top:96cqw">Nom</div>
+    <div class="chip" style="left:58cqw;top:106cqw">WhatsApp</div>
+    <div class="chip" style="left:58cqw;top:116cqw">E-mail</div>
+    <div class="cap">captions</div>
+  </div>
+  <div class="lab"><span>04 · Étape 1</span><span>démo · 15,5–22,5 s</span></div>
+  <p class="note"><b>Le segment 1 de la barre se remplit</b>, puis la loupe glisse de champ en champ, synchronisée sur « nom… WhatsApp… e-mail » ; « Suivant » pulse à la fin.</p>
+  <span class="seam">push-slide ←</span>
+</div>
+
+<!-- 05 STEP 2 -->
+<div class="card">
+  <div class="cell" id="frame-05">
+    <div class="badge" style="left:8cqw;top:12cqw">2</div>
+    <div class="ttl" style="left:25cqw;top:13cqw;font-size:6cqw">Votre profil</div>
+    <div class="progress" style="left:25cqw;top:22cqw"><i class="on"></i><i class="on"></i><i></i></div>
+    <svg class="prop" style="left:14cqw;top:128cqw;width:72cqw;height:47cqw"><use href="#tile-cream"/></svg>
+    <div class="phone" style="left:44cqw;top:36cqw;width:48cqw"><img src="capture/assets/31-step2-filled-top.png" alt=""></div>
+    <svg class="prop" style="left:6cqw;top:58cqw;width:30cqw;height:22cqw"><use href="#gradcap"/></svg>
+    <div class="chip" style="left:5cqw;top:86cqw">Élève</div>
+    <div class="chip mint" style="left:5cqw;top:96cqw">✓ Étudiant(e)</div>
+    <div class="chip" style="left:5cqw;top:106cqw">Pro</div>
+    <div class="chip" style="left:5cqw;top:116cqw">Entrepreneur(e)</div>
+    <div class="cap">captions</div>
+  </div>
+  <div class="lab"><span>05 · Étape 2</span><span>démo · 22,5–29,5 s</span></div>
+  <p class="note"><b>On glisse vers la 2ᵉ île.</b> Les profils sortent en pastilles au rythme de la voix ; « Étudiant(e) » se coche avec un pop ; l'écran défile jusqu'à « Je confirme ma participation : Oui ».</p>
+  <span class="seam">push-slide ←</span>
+</div>
+
+<!-- 06 STEP 3 -->
+<div class="card">
+  <div class="cell" id="frame-06">
+    <div class="badge" style="left:8cqw;top:12cqw">3</div>
+    <div class="ttl" style="left:25cqw;top:13cqw;font-size:6cqw">Le cocktail dînatoire</div>
+    <div class="progress" style="left:25cqw;top:22cqw"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+    <svg class="prop" style="left:14cqw;top:128cqw;width:72cqw;height:47cqw"><use href="#tile-green"/></svg>
+    <div class="phone" style="left:8cqw;top:36cqw;width:48cqw"><img src="capture/assets/41-step3-choice.png" alt=""></div>
+    <svg class="prop" style="left:66cqw;top:34cqw;width:20cqw;height:28cqw"><use href="#cocktail"/></svg>
+    <div class="chip" style="left:54cqw;top:70cqw">Ticket VIP</div>
+    <div class="chip" style="left:54cqw;top:80cqw">Ticket simple</div>
+    <div class="chip mint" style="left:54cqw;top:90cqw">✓ Conférence seule</div>
+    <div class="chip orange" style="left:54cqw;top:106cqw">Confirmer ✓</div>
+    <div class="cap">captions</div>
+  </div>
+  <div class="lab"><span>06 · Étape 3</span><span>démo · 29,5–37,5 s</span></div>
+  <p class="note"><b>La 3ᵉ île porte le verre à cocktail.</b> Les trois options flottent ; « conférence seule » se coche ; zoom sur « Confirmer mon inscription » et toucher, sur le mot « Confirmer ».</p>
+  <span class="seam">push-slide ←</span>
+</div>
+
+<!-- 07 CONFIRMED -->
+<div class="card">
+  <div class="cell" id="frame-07">
+    <div class="phone" style="left:27cqw;top:30cqw"><img src="capture/assets/50-success-top.png" alt=""></div>
+    <svg class="prop" style="left:60cqw;top:20cqw;width:32cqw;height:32cqw"><use href="#check"/></svg>
+    <svg class="prop" style="left:4cqw;top:112cqw;width:36cqw;height:27cqw"><use href="#envelope"/></svg>
+    <div class="chip" style="left:4cqw;top:142cqw">Billet → boîte mail</div>
+    <div class="disp" style="left:8cqw;top:10cqw;font-size:9cqw">Confirmée !</div>
+    <svg class="prop" style="left:12cqw;top:26cqw;width:6cqw;height:4cqw;transform:rotate(40deg)"><use href="#leaf"/></svg>
+    <svg class="prop" style="left:86cqw;top:62cqw;width:6cqw;height:4cqw;transform:rotate(-20deg)"><use href="#leaf"/></svg>
+    <div class="cap">captions</div>
+  </div>
+  <div class="lab"><span>07 · Inscription confirmée</span><span>bénéfice · 37,5–43,5 s</span></div>
+  <p class="note"><b>Le badge ✓ tamponne en premier</b>, confettis de feuilles ; puis l'enveloppe 3D s'échappe du téléphone vers le bas-gauche sur « boîte mail ».</p>
+  <span class="seam">zoom-through</span>
+</div>
+
+<!-- 08 J'Y SERAI -->
+<div class="card">
+  <div class="cell" id="frame-08">
+    <svg class="prop" style="left:14cqw;top:118cqw;width:72cqw;height:47cqw"><use href="#tile-cream"/></svg>
+    <div style="left:14cqw;top:42cqw;width:72cqw;aspect-ratio:1;background:#fff;padding:2cqw;border-radius:1.5cqw;box-shadow:2cqw 3cqw 0 rgba(2,20,10,.45);transform:rotate(-4deg)"><img src="capture/assets/62-poster-jy-serai.png" alt="" style="width:100%;display:block"></div>
+    <div class="disp" style="left:8cqw;top:12cqw;font-size:8cqw">Le bonus</div>
+    <div class="chip orange" style="left:8cqw;top:24cqw;font-size:4cqw">« J'y serai ! »</div>
+    <div class="phone" style="left:66cqw;top:10cqw;width:26cqw"><img src="capture/assets/61-poster-preview.png" alt=""></div>
+    <div class="chip" style="left:10cqw;top:146cqw">WhatsApp</div>
+    <div class="chip" style="left:38cqw;top:154cqw">Facebook</div>
+    <div class="chip" style="left:66cqw;top:146cqw">Instagram</div>
+    <div class="cap" style="bottom:2cqw;height:8cqw">captions</div>
+  </div>
+  <div class="lab"><span>08 · Le bonus « J'y serai »</span><span>sommet · 43,5–52,5 s</span></div>
+  <p class="note"><b>Zoom sur le bouton « Générer mon visuel »</b>, la photo s'ajoute dans le générateur, puis l'affiche s'extrait du téléphone et se pose en cadre 3D sur le socle ; les icônes de partage orbitent sur « Partagez-la partout ».</p>
+  <span class="seam">crossfade</span>
+</div>
+
+<!-- 09 CTA -->
+<div class="card">
+  <div class="cell" id="frame-09">
+    <svg class="prop" style="left:4cqw;top:44cqw;width:34cqw;height:22cqw"><use href="#tile-mint"/></svg>
+    <svg class="prop" style="left:33cqw;top:52cqw;width:34cqw;height:22cqw"><use href="#tile-cream"/></svg>
+    <svg class="prop" style="left:62cqw;top:60cqw;width:34cqw;height:22cqw"><use href="#tile-green"/></svg>
+    <div class="badge" style="left:14cqw;top:34cqw;width:10cqw;height:10cqw;font-size:6cqw">1</div>
+    <div class="badge" style="left:43cqw;top:42cqw;width:10cqw;height:10cqw;font-size:6cqw">2</div>
+    <div class="badge" style="left:72cqw;top:50cqw;width:10cqw;height:10cqw;font-size:6cqw">3</div>
+    <div class="disp" style="left:8cqw;top:10cqw;font-size:7.6cqw;line-height:1.05">3 étapes<br><span style="color:var(--sun)">1 minute</span><br>1 place</div>
+    <div style="left:8cqw;right:8cqw;top:92cqw;background:var(--cream);border-radius:4cqw;padding:5cqw;box-shadow:1.2cqw 1.8cqw 0 rgba(2,20,10,.45)">
+      <div class="lbl" style="position:static;color:var(--green)">Inscrivez-vous</div>
+      <div class="ttl" style="position:static;color:var(--ink);font-size:6cqw;margin-top:1.5cqw">ongddb.com/events/<br>dje-2026</div>
+      <div style="margin-top:3cqw;display:flex;gap:2cqw;align-items:center"><span class="chip orange" style="box-shadow:none">30 OCT.</span><span class="chip mint" style="box-shadow:none">Auditorium AGL</span></div>
+    </div>
+    <img src="capture/assets/ong-ddb.png" alt="" style="left:40cqw;top:146cqw;width:20cqw;border-radius:50%;background:#fff;padding:1cqw">
+    <div class="cap" style="bottom:2cqw;height:8cqw">captions</div>
+  </div>
+  <div class="lab"><span>09 · Trois étapes, une place</span><span>CTA · 52,5–60 s</span></div>
+  <p class="note"><b>Les trois îles s'allument 1 · 2 · 3</b> sur « trois étapes, une minute, une place », puis la carte du lien se pose et le logo ONG DDB signe la fin.</p>
+  <span class="seam">zoom-through</span>
+</div>
+
+<!-- closing: seam map -->
+<div class="panel wide">
+  <h3>Carte des transitions</h3>
+  <div class="seammap">
+    <span class="n">01</span><span class="s">zoom-through</span><span class="n">02</span><span class="s">crossfade</span><span class="n">03</span><span class="s">push ←</span><span class="n">04</span><span class="s">push ←</span><span class="n">05</span><span class="s">push ←</span><span class="n">06</span><span class="s">zoom-through</span><span class="n">07</span><span class="s">crossfade</span><span class="n">08</span><span class="s">zoom-through</span><span class="n">09</span>
+  </div>
+  <p class="note">Les « push ← » font voyager l'iPhone d'île en île pendant les 3 étapes : la continuité visuelle du parcours.</p>
+</div>
+
+<!-- closing: tokens -->
+<div class="panel wide">
+  <h3>Tokens · ONG DDB Isométrique</h3>
+  <div class="tokens">
+    <div class="sw" style="background:#0B3D22;color:#86EFAC">forest #0B3D22 · fond</div>
+    <div class="sw" style="background:#16A34A;color:#fff">green #16A34A · marque</div>
+    <div class="sw" style="background:#86EFAC">mint #86EFAC · progression</div>
+    <div class="sw" style="background:#F4F1E8">cream #F4F1E8 · tuiles</div>
+    <div class="sw" style="background:#F2B632">sun #F2B632 · accent unique</div>
+    <div class="sw" style="background:#F97316;color:#fff">orange #F97316 · J'y serai + CTA</div>
+  </div>
+  <ul>
+    <li><b>Poppins 800 MAJ</b> pour les mots-chocs · <b>Poppins 700</b> titres · <b>Work Sans</b> pastilles.</li>
+    <li>Une seule projection isométrique, une seule lumière (haut-gauche) ; ombres au sol vers le bas-droite.</li>
+    <li>Les écrans du site sont toujours les vraies captures, lisibles quand la voix les explique.</li>
+    <li>Interdits : chiffres inventés, dégradés « SaaS », verre dépoli, faux UI.</li>
+  </ul>
+</div>
+
+</main>
+</body>
+</html>

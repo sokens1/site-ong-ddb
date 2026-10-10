@@ -1,0 +1,211 @@
+<template>
+<style>
+@font-face{font-family:'Poppins';font-style:normal;font-weight:400;font-display:block;src:url("assets/fonts/Poppins-400.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:500;font-display:block;src:url("assets/fonts/Poppins-500.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:600;font-display:block;src:url("assets/fonts/Poppins-600.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:700;font-display:block;src:url("assets/fonts/Poppins-700.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:800;font-display:block;src:url("assets/fonts/Poppins-800.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:900;font-display:block;src:url("assets/fonts/Poppins-900.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:400;font-display:block;src:url("assets/fonts/WorkSans-400.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:500;font-display:block;src:url("assets/fonts/WorkSans-500.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:600;font-display:block;src:url("assets/fonts/WorkSans-600.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:700;font-display:block;src:url("assets/fonts/WorkSans-700.woff2") format('woff2');}
+
+#root{position:absolute;left:0;top:0;width:1080px;height:1920px;overflow:hidden;container-type:size;font-family:'Work Sans',sans-serif;color:#fff}
+
+/* 7 · Atmosphere (full-bleed background clip) */
+#f06-step3-bg{position:absolute;left:0;top:0;width:1080px;height:1920px;overflow:hidden;
+  background:radial-gradient(circle at 340px 930px,rgba(134,239,172,.16),rgba(134,239,172,0) 620px),#0B3D22}
+#f06-step3-grid{position:absolute;inset:0;opacity:.07;
+  background:repeating-linear-gradient(30deg,#86EFAC 0 1px,transparent 1px 64px),repeating-linear-gradient(-30deg,#86EFAC 0 1px,transparent 1px 64px)}
+.f06-step3-leaf{position:absolute;width:60px;height:40px;overflow:visible}
+
+/* camera (coordinate-target-zoom: outer scales, inner translates) */
+#f06-step3-zoom-outer{position:absolute;left:0;top:0;width:1080px;height:1920px;transform-origin:50% 50%;will-change:transform}
+#f06-step3-zoom-inner{position:absolute;left:0;top:0;width:1080px;height:1920px;will-change:transform}
+
+/* 1 · iPhone */
+.f06-step3-phone{position:absolute;width:500px;aspect-ratio:1170/2532;border-radius:66px;background:#0A0F0C;padding:14px;
+  box-shadow:0 40px 80px rgba(0,0,0,.45),inset 0 0 0 3px #26302B;box-sizing:border-box}
+.f06-step3-screen{position:relative;width:100%;height:100%;border-radius:52px;overflow:hidden;background:#fff}
+.f06-step3-screen img{position:absolute;left:0;top:0;width:100%;display:block}
+.f06-step3-island{position:absolute;top:30px;left:50%;margin-left:-70px;width:140px;height:36px;border-radius:20px;background:#0A0F0C}
+/* cropped copy of the « Confirmer mon inscription » button, for the press */
+#f06-step3-btn{position:absolute;left:156.1px;top:934.7px;width:286.4px;height:57.3px;border-radius:15px;overflow:hidden;transform-origin:50% 50%}
+.f06-step3-screen #f06-step3-btn img{position:absolute;left:-156.1px;top:-934.7px;width:472px;max-width:none}
+
+.f06-step3-prop{position:absolute;overflow:visible}
+
+/* 3 · Step header */
+#f06-step3-badge{position:absolute;left:80px;top:150px;width:120px;height:120px;border-radius:50%;background:#F2B632;
+  display:flex;align-items:center;justify-content:center;font-family:'Poppins';font-weight:900;font-size:72px;line-height:1;color:#0B2416;
+  box-shadow:8px 12px 0 rgba(2,20,10,.4)}
+#f06-step3-title{position:absolute;left:230px;top:160px;font-family:'Poppins';font-weight:700;font-size:64px;line-height:1.05;letter-spacing:-.01em;color:#fff;white-space:nowrap}
+#f06-step3-title span{display:inline-block}
+#f06-step3-progress{position:absolute;left:230px;top:250px;display:flex;gap:16px}
+.f06-step3-seg{position:relative;width:170px;height:36px;border-radius:10px;background:#052E16;box-shadow:inset 0 -8px 0 rgba(0,0,0,.3);overflow:hidden}
+.f06-step3-fill{position:absolute;inset:0;border-radius:10px;background:#86EFAC;box-shadow:inset 0 -8px 0 #16A34A;transform-origin:0 50%}
+#f06-step3-glow{position:absolute;left:222px;top:242px;width:558px;height:52px;border-radius:18px;
+  box-shadow:0 0 34px 10px rgba(134,239,172,.55);opacity:0}
+
+/* 4 · Chips */
+.f06-step3-chip{position:absolute;border-radius:9999px;padding:16px 34px;font-family:'Work Sans';font-weight:600;font-size:34px;line-height:1.2;
+  background:#F4F1E8;color:#0B2416;white-space:nowrap;box-shadow:6px 10px 0 rgba(2,20,10,.35)}
+.f06-step3-chip.f06-step3-mint{background:#86EFAC}
+.f06-step3-chip.f06-step3-sun{background:#F2B632}
+
+/* 5 · Tap ring (screen space, lands on the zoomed button at canvas centre) */
+#f06-step3-tap,#f06-step3-ripple{position:absolute;left:480px;top:900px;width:120px;height:120px;border-radius:50%;border:8px solid #F2B632;box-sizing:border-box}
+</style>
+
+<div data-hf-id="hf-bd92" id="root" data-composition-id="06-step3" data-width="1080" data-height="1920" data-duration="9.02">
+
+  <svg data-hf-id="hf-30au" width="0" height="0" style="position:absolute" aria-hidden="true"><defs data-hf-id="hf-mh0t">
+  <symbol data-hf-id="hf-92mt" id="06-step3-tile-cream" viewBox="0 0 200 130"><polygon data-hf-id="hf-xt60" points="100,0 200,50 100,100 0,50" fill="#F4F1E8" /><polygon data-hf-id="hf-5aha" points="0,50 100,100 100,130 0,80" fill="#D9D3C2" /><polygon data-hf-id="hf-48dr" points="100,100 200,50 200,80 100,130" fill="#BDB59F" /></symbol>
+  <symbol data-hf-id="hf-nwcr" id="06-step3-tile-mint" viewBox="0 0 200 130"><polygon data-hf-id="hf-aziu" points="100,0 200,50 100,100 0,50" fill="#D1FAE5" /><polygon data-hf-id="hf-5bf4" points="0,50 100,100 100,130 0,80" fill="#86EFAC" /><polygon data-hf-id="hf-wra7" points="100,100 200,50 200,80 100,130" fill="#4ADE80" /></symbol>
+  <symbol data-hf-id="hf-2bfm" id="06-step3-tile-green" viewBox="0 0 200 130"><polygon data-hf-id="hf-qhhs" points="100,0 200,50 100,100 0,50" fill="#22C55E" /><polygon data-hf-id="hf-jhd1" points="0,50 100,100 100,130 0,80" fill="#16A34A" /><polygon data-hf-id="hf-8dm6" points="100,100 200,50 200,80 100,130" fill="#15803D" /></symbol>
+  <symbol data-hf-id="hf-ed5e" id="06-step3-shadow" viewBox="0 0 200 60"><ellipse data-hf-id="hf-8qr0" cx="110" cy="30" rx="95" ry="22" fill="rgba(2,20,10,.45)" /></symbol>
+  <symbol data-hf-id="hf-2ahw" id="06-step3-cocktail" viewBox="0 0 100 140"><polygon data-hf-id="hf-7o49" points="10,20 90,20 50,70" fill="#2DD4BF" /><polygon data-hf-id="hf-tixp" points="50,70 90,20 70,20" fill="#14B8A6" /><rect data-hf-id="hf-76lc" x="47" y="70" width="6" height="45" fill="#F4F1E8" /><ellipse data-hf-id="hf-g9po" cx="50" cy="118" rx="24" ry="8" fill="#F4F1E8" /><circle data-hf-id="hf-c1xv" cx="72" cy="14" r="9" fill="#F2B632" /></symbol>
+  <symbol data-hf-id="hf-cs8k" id="06-step3-leaf" viewBox="0 0 60 40"><path data-hf-id="hf-oivg" d="M2 38C10 8 40 0 58 2 54 24 30 40 2 38z" fill="#86EFAC" /><path data-hf-id="hf-0k69" d="M2 38C20 26 36 14 58 2" stroke="#15803D" stroke-width="2" fill="none" /></symbol>
+  </defs></svg>
+
+  <!-- background clip: atmosphere -->
+  <div data-hf-id="hf-iv5t" id="f06-step3-bg" class="clip" data-start="0" data-duration="9.02" data-track-index="0">
+    <div data-hf-id="hf-nova" id="f06-step3-grid"></div>
+    <svg data-hf-id="hf-tpqk" class="f06-step3-leaf" id="f06-step3-leaf-0" style="left:0;top:520px"><use data-hf-id="hf-o8at" href="#06-step3-leaf" /></svg>
+    <svg data-hf-id="hf-qjfm" class="f06-step3-leaf" id="f06-step3-leaf-1" style="left:0;top:820px"><use data-hf-id="hf-3vix" href="#06-step3-leaf" /></svg>
+    <svg data-hf-id="hf-dk27" class="f06-step3-leaf" id="f06-step3-leaf-2" style="left:0;top:1120px"><use data-hf-id="hf-52g0" href="#06-step3-leaf" /></svg>
+    <svg data-hf-id="hf-balj" class="f06-step3-leaf" id="f06-step3-leaf-3" style="left:0;top:1420px"><use data-hf-id="hf-4o4z" href="#06-step3-leaf" /></svg>
+    <svg data-hf-id="hf-dbvc" class="f06-step3-leaf" id="f06-step3-leaf-4" style="left:0;top:380px"><use data-hf-id="hf-2olu" href="#06-step3-leaf" /></svg>
+  </div>
+
+  <!-- camera world -->
+  <div data-hf-id="hf-pzc2" id="f06-step3-zoom-outer" class="clip" data-start="0" data-duration="9.02" data-track-index="1">
+    <div data-hf-id="hf-qhut" id="f06-step3-zoom-inner" data-layout-allow-overflow="">
+
+      <!-- header -->
+      <div data-hf-id="hf-l1fk" id="f06-step3-badge">3</div>
+      <div data-hf-id="hf-zqtg" id="f06-step3-title"><span data-hf-id="hf-dxem" id="f06-step3-w1">Le</span> <span data-hf-id="hf-41bo" id="f06-step3-w2">cocktail</span> <span data-hf-id="hf-5sd1" id="f06-step3-w3">dînatoire</span></div>
+      <div data-hf-id="hf-4ewd" id="f06-step3-glow"></div>
+      <div data-hf-id="hf-l4of" id="f06-step3-progress">
+        <div data-hf-id="hf-5xju" class="f06-step3-seg"><div data-hf-id="hf-wvrs" class="f06-step3-fill"></div></div>
+        <div data-hf-id="hf-mr7i" class="f06-step3-seg"><div data-hf-id="hf-bv3k" class="f06-step3-fill"></div></div>
+        <div data-hf-id="hf-n5ij" class="f06-step3-seg"><div data-hf-id="hf-33cd" class="f06-step3-fill" id="f06-step3-fill3"></div></div>
+      </div>
+
+      <!-- green island under the phone -->
+      <svg data-hf-id="hf-jiup" class="f06-step3-prop" id="f06-step3-island-shadow" style="left:170px;top:1460px;width:640px;height:150px"><use data-hf-id="hf-s529" href="#06-step3-shadow" /></svg>
+      <svg data-hf-id="hf-1htk" class="f06-step3-prop" id="f06-step3-island" style="left:100px;top:1170px;width:640px;height:416px"><use data-hf-id="hf-pgdn" href="#06-step3-tile-green" /></svg>
+
+      <!-- phone -->
+      <div data-hf-id="hf-4u65" class="f06-step3-phone" id="f06-step3-phone" style="left:86px;top:389px">
+        <div data-hf-id="hf-pnhf" class="f06-step3-screen">
+          <img data-hf-id="hf-m36x" id="f06-step3-scr-40" src="assets/40-step3-empty.png" alt="">
+          <img data-hf-id="hf-v2kl" id="f06-step3-scr-41" src="assets/41-step3-choice.png" alt="">
+          <img data-hf-id="hf-djgt" id="f06-step3-scr-42" src="assets/42-step3-captcha-ok.png" alt="">
+          <div data-hf-id="hf-5wwa" id="f06-step3-btn"><img data-hf-id="hf-12vn" src="assets/42-step3-captcha-ok.png" alt=""></div>
+        </div>
+        <i data-hf-id="hf-jvgo" class="f06-step3-island"></i>
+      </div>
+
+      <!-- cocktail prop on a mint tile, with an iso plate -->
+      <div data-hf-id="hf-0thw" id="f06-step3-propgroup" style="position:absolute;left:660px;top:330px;width:340px;height:420px">
+        <svg data-hf-id="hf-2wnc" class="f06-step3-prop" style="left:20px;top:330px;width:300px;height:80px"><use data-hf-id="hf-zxrp" href="#06-step3-shadow" /></svg>
+        <svg data-hf-id="hf-zamp" class="f06-step3-prop" style="left:20px;top:210px;width:280px;height:182px"><use data-hf-id="hf-fc3i" href="#06-step3-tile-mint" /></svg>
+        <svg data-hf-id="hf-s8cf" class="f06-step3-prop" style="left:30px;top:228px;width:130px;height:70px" viewBox="0 0 130 70">
+          <ellipse data-hf-id="hf-yxxa" cx="65" cy="40" rx="60" ry="28" fill="#BDB59F" />
+          <ellipse data-hf-id="hf-2q63" cx="65" cy="34" rx="60" ry="28" fill="#F4F1E8" />
+          <ellipse data-hf-id="hf-lfab" cx="65" cy="34" rx="40" ry="18" fill="#D9D3C2" />
+          <circle data-hf-id="hf-zlwx" cx="54" cy="30" r="8" fill="#22C55E" /><circle data-hf-id="hf-0zzr" cx="72" cy="34" r="7" fill="#F2B632" /><circle data-hf-id="hf-blg1" cx="64" cy="24" r="6" fill="#2DD4BF" />
+        </svg>
+        <svg data-hf-id="hf-umi2" class="f06-step3-prop" id="f06-step3-cocktail" style="left:130px;top:0;width:180px;height:252px"><use data-hf-id="hf-3ler" href="#06-step3-cocktail" /></svg>
+      </div>
+
+      <!-- option chips -->
+      <div data-hf-id="hf-b82x" class="f06-step3-chip" id="f06-step3-chip-vip" style="left:600px;top:780px">Ticket VIP</div>
+      <div data-hf-id="hf-hg5o" class="f06-step3-chip" id="f06-step3-chip-simple" style="left:600px;top:888px">Ticket simple</div>
+      <div data-hf-id="hf-lazk" class="f06-step3-chip" id="f06-step3-chip-conf" style="left:600px;top:996px">Conférence seule</div>
+      <div data-hf-id="hf-nh3n" class="f06-step3-chip f06-step3-mint" id="f06-step3-chip-conf-ok" style="left:600px;top:996px">✓ Conférence seule</div>
+      <div data-hf-id="hf-3ads" class="f06-step3-chip f06-step3-sun" id="f06-step3-chip-go" style="left:600px;top:1150px">Confirmer ✓</div>
+    </div>
+  </div>
+
+  <!-- tap ring (screen space) -->
+  <div data-hf-id="hf-o2ao" id="f06-step3-ripple"></div>
+  <div data-hf-id="hf-g249" id="f06-step3-tap"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script>
+  (function(){
+    window.__timelines = window.__timelines || {};
+    var tl = gsap.timeline({ paused: true });
+    var D = 8.62;
+
+    /* atmosphere: leaves drift once across the frame (index-derived, finite) */
+    for (var i = 0; i < 5; i++) {
+      var dir = i % 2 === 0 ? 1 : -1;
+      var x0 = dir > 0 ? -80 - i * 40 : 1100 + i * 30;
+      var x1 = dir > 0 ? 1120 : -120;
+      tl.fromTo("#f06-step3-leaf-" + i,
+        { x: x0, y: 0, rotation: -20 + i * 15, opacity: 0.55 },
+        { x: x1, y: -140 + i * 30, rotation: 160 + i * 25, opacity: 0.55, duration: D, ease: "none" }, 0);
+    }
+
+    /* Scene 1 (0–1.4): phone establishes, badge pops, segment 3 fills */
+    tl.fromTo("#f06-step3-island", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, 0);
+    tl.fromTo("#f06-step3-island-shadow", { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "power2.out" }, 0.1);
+    tl.fromTo("#f06-step3-phone", { y: 90, scale: 0.96, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: 0.6, ease: "power3.out" }, 0);
+    tl.fromTo("#f06-step3-scr-41", { opacity: 0 }, { opacity: 0, duration: 0.01 }, 0);
+    tl.fromTo("#f06-step3-scr-42", { opacity: 0 }, { opacity: 0, duration: 0.01 }, 0);
+    tl.fromTo("#f06-step3-btn", { opacity: 0, scale: 1 }, { opacity: 0, scale: 1, duration: 0.01 }, 0);
+    tl.fromTo("#f06-step3-badge", { scale: 0, rotation: -25 }, { scale: 1, rotation: 0, duration: 0.5, ease: "back.out(2.2)" }, 0.1);
+    tl.fromTo("#f06-step3-progress", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 0.15);
+    tl.fromTo("#f06-step3-fill3", { scaleX: 0 }, { scaleX: 1, duration: 0.6, ease: "power2.inOut" }, 0.3);
+    tl.fromTo("#f06-step3-glow", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "power2.out" }, 0.85);
+    tl.to("#f06-step3-glow", { opacity: 0.25, duration: 0.6, ease: "power2.inOut" }, 1.15);
+
+    /* Scene 2 (1.4–2.7): title per word, landing on « cocktail »; cocktail prop rises */
+    tl.fromTo("#f06-step3-w1", { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: "power3.out" }, 1.25);
+    tl.fromTo("#f06-step3-w2", { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: "power3.out" }, 1.42);
+    tl.fromTo("#f06-step3-w3", { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: "power3.out" }, 1.6);
+    tl.fromTo("#f06-step3-propgroup", { y: 140, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease: "power3.out" }, 1.55);
+    tl.fromTo("#f06-step3-cocktail", { y: 30, rotation: -8 }, { y: 0, rotation: 0, duration: 0.9, ease: "back.out(1.6)" }, 1.75);
+
+    /* Scene 3 (2.7–6.4): chips pop on their cues; « Conférence seule » gets checked */
+    tl.fromTo("#f06-step3-chip-vip", { x: 60, scale: 0.6, opacity: 0 }, { x: 0, scale: 1, opacity: 1, duration: 0.45, ease: "back.out(1.8)" }, 2.8);
+    tl.fromTo("#f06-step3-chip-simple", { x: 60, scale: 0.6, opacity: 0 }, { x: 0, scale: 1, opacity: 1, duration: 0.45, ease: "back.out(1.8)" }, 3.78);
+    tl.fromTo("#f06-step3-chip-conf", { x: 60, scale: 0.6, opacity: 0 }, { x: 0, scale: 1, opacity: 1, duration: 0.45, ease: "back.out(1.8)" }, 5.04);
+    tl.fromTo("#f06-step3-chip-conf-ok", { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4, ease: "back.out(2.4)" }, 6.0);
+    tl.to("#f06-step3-chip-conf", { opacity: 0, duration: 0.15, ease: "none" }, 6.05);
+    tl.to("#f06-step3-chip-vip", { opacity: 0.55, duration: 0.3, ease: "power2.out" }, 6.0);
+    tl.to("#f06-step3-chip-simple", { opacity: 0.55, duration: 0.3, ease: "power2.out" }, 6.0);
+    tl.to("#f06-step3-scr-41", { opacity: 1, duration: 0.25, ease: "power2.out" }, 6.0);
+
+    /* Scene 4 (6.4–8.62): screen moves on to the Confirmer state, camera zooms on the button, tap */
+    tl.fromTo("#f06-step3-chip-go", { x: 60, scale: 0.6, opacity: 0 }, { x: 0, scale: 1, opacity: 1, duration: 0.4, ease: "back.out(1.8)" }, 6.35);
+    tl.to("#f06-step3-scr-42", { opacity: 1, duration: 0.3, ease: "power2.out" }, 6.5);
+    tl.set("#f06-step3-btn", { opacity: 1 }, 6.8);
+
+    /* coordinate-target-zoom — button centre on canvas = (399.3, 1366.3);
+       offset from canvas centre (540,960) = (-140.7, +406.3); nested wrappers → T = -offset */
+    var ZOOM_AT = 6.45, ZOOM_DUR = 1.25, ZOOM_SCALE = 2.5;
+    tl.to("#f06-step3-zoom-outer", { scale: ZOOM_SCALE, duration: ZOOM_DUR, ease: "power3.inOut" }, ZOOM_AT);
+    tl.to("#f06-step3-zoom-inner", { x: 140.7, y: -406.3, duration: ZOOM_DUR, ease: "power3.inOut" }, ZOOM_AT);
+
+    /* tap on « Confirmer » @7.88 */
+    tl.fromTo("#f06-step3-tap", { scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.2, ease: "back.out(2)" }, 7.72);
+    tl.fromTo("#f06-step3-ripple", { scale: 1, opacity: 0 }, { scale: 1, opacity: 0.6, duration: 0.01 }, 7.87);
+    tl.to("#f06-step3-ripple", { scale: 2.2, opacity: 0, duration: 0.6, ease: "power2.out" }, 7.88);
+    tl.to("#f06-step3-btn", { scale: 0.94, duration: 0.09, ease: "power2.in" }, 7.84);
+    tl.to("#f06-step3-btn", { scale: 1, duration: 0.35, ease: "power2.out" }, 7.93);
+    tl.to("#f06-step3-tap", { scale: 0.88, duration: 0.09, ease: "power2.in" }, 7.84);
+    tl.to("#f06-step3-tap", { scale: 1, duration: 0.35, ease: "power2.out" }, 7.93);
+
+    /* pad to full duration (hold) */
+    tl.to({}, { duration: 0.01 }, D - 0.01);
+
+    window.__timelines["06-step3"] = tl;
+  })();
+  </script>
+</div>
+</template>

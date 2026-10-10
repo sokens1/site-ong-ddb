@@ -1,0 +1,1158 @@
+{
+  "tts_provider": "heygen",
+  "voice_id": "19034eae6fb84f8b81461d0fe2326be4",
+  "bgm": {
+    "path": "assets/bgm/track.mp3",
+    "volume": 0.12,
+    "query": "upbeat optimistic afro-pop underscore, light percussion, bright and modern",
+    "mode": "retrieve",
+    "duration_s": 32
+  },
+  "bgm_pending": false,
+  "bgm_provider": "heygen",
+  "bgm_pid": null,
+  "bgm_log": null,
+  "bgm_mode": "retrieve",
+  "bgm_target_duration_s": null,
+  "bgm_seed_duration_s": null,
+  "bgm_loop_count": null,
+  "voices": [
+    {
+      "id": "01",
+      "path": "assets/voice/01.wav",
+      "duration_s": 6.792,
+      "words": [
+        {
+          "id": "w0",
+          "text": "Le",
+          "start": 0.2847619047619047,
+          "end": 0.3657142857142857
+        },
+        {
+          "id": "w1",
+          "text": "Déjeuner",
+          "start": 0.4066666666666666,
+          "end": 0.6904761904761905
+        },
+        {
+          "id": "w2",
+          "text": "Environnemental,",
+          "start": 0.7314285714285714,
+          "end": 1.219047619047619
+        },
+        {
+          "id": "w3",
+          "text": "c'est",
+          "start": 1.381904761904762,
+          "end": 1.5847619047619046
+        },
+        {
+          "id": "w4",
+          "text": "le",
+          "start": 1.6257142857142857,
+          "end": 1.6657142857142857
+        },
+        {
+          "id": "w5",
+          "text": "30",
+          "start": 1.7066666666666666,
+          "end": 2.1028571428571428
+        },
+        {
+          "id": "w6",
+          "text": "octobre.",
+          "start": 2.1028571428571428,
+          "end": 2.499047619047619
+        },
+        {
+          "id": "w7",
+          "text": "Votre",
+          "start": 2.722857142857143,
+          "end": 3.0066666666666664
+        },
+        {
+          "id": "w8",
+          "text": "place",
+          "start": 3.0476190476190474,
+          "end": 3.2504761904761903
+        },
+        {
+          "id": "w9",
+          "text": "?",
+          "start": 3.4266666666666663,
+          "end": 3.6028571428571428
+        },
+        {
+          "id": "w10",
+          "text": "Elle",
+          "start": 3.7790476190476188,
+          "end": 3.9416190476190476
+        },
+        {
+          "id": "w11",
+          "text": "se",
+          "start": 3.9819047619047616,
+          "end": 4.103809523809524
+        },
+        {
+          "id": "w12",
+          "text": "réserve",
+          "start": 4.144761904761904,
+          "end": 4.4292380952380945
+        },
+        {
+          "id": "w13",
+          "text": "en",
+          "start": 4.591428571428571,
+          "end": 4.7542857142857144
+        },
+        {
+          "id": "w14",
+          "text": "une",
+          "start": 4.876190476190476,
+          "end": 5.241904761904761
+        },
+        {
+          "id": "w15",
+          "text": "minute.",
+          "start": 5.282857142857142,
+          "end": 5.749523809523809
+        },
+        {
+          "id": "w16",
+          "text": "Chrono.",
+          "start": 6.095238095238095,
+          "end": 6.634285714285714
+        }
+      ]
+    },
+    {
+      "id": "02",
+      "path": "assets/voice/02.wav",
+      "duration_s": 9.117,
+      "words": [
+        {
+          "id": "w0",
+          "text": "Rendez-vous",
+          "start": 0.2438095238095238,
+          "end": 0.7720952380952381
+        },
+        {
+          "id": "w1",
+          "text": "sur",
+          "start": 0.8123809523809523,
+          "end": 0.9752380952380952
+        },
+        {
+          "id": "w2",
+          "text": "ongddb.com,",
+          "start": 1.0561904761904761,
+          "end": 2.031428571428571
+        },
+        {
+          "id": "w3",
+          "text": "rubrique",
+          "start": 2.357142857142857,
+          "end": 2.6409523809523807
+        },
+        {
+          "id": "w4",
+          "text": "Événements.",
+          "start": 2.722857142857143,
+          "end": 3.372380952380952
+        },
+        {
+          "id": "w5",
+          "text": "Trois",
+          "start": 3.698095238095238,
+          "end": 3.9416190476190476
+        },
+        {
+          "id": "w6",
+          "text": "panels,",
+          "start": 3.9819047619047616,
+          "end": 4.51047619047619
+        },
+        {
+          "id": "w7",
+          "text": "des",
+          "start": 4.7542857142857144,
+          "end": 4.876190476190476
+        },
+        {
+          "id": "w8",
+          "text": "jeunes,",
+          "start": 4.917142857142857,
+          "end": 5.383809523809523
+        },
+        {
+          "id": "w9",
+          "text": "des",
+          "start": 5.607619047619047,
+          "end": 5.729523809523809
+        },
+        {
+          "id": "w10",
+          "text": "décideurs…",
+          "start": 5.77047619047619,
+          "end": 6.3999999999999995
+        },
+        {
+          "id": "w11",
+          "text": "et",
+          "start": 6.582857142857143,
+          "end": 6.704761904761904
+        },
+        {
+          "id": "w12",
+          "text": "trois",
+          "start": 6.7457142857142856,
+          "end": 6.907619047619048
+        },
+        {
+          "id": "w13",
+          "text": "cents",
+          "start": 6.948571428571428,
+          "end": 7.111142857142857
+        },
+        {
+          "id": "w14",
+          "text": "places.",
+          "start": 7.151428571428571,
+          "end": 7.659999999999999
+        },
+        {
+          "id": "w15",
+          "text": "Pas",
+          "start": 8.086666666666666,
+          "end": 8.208571428571428
+        },
+        {
+          "id": "w16",
+          "text": "une",
+          "start": 8.248571428571427,
+          "end": 8.37047619047619
+        },
+        {
+          "id": "w17",
+          "text": "de",
+          "start": 8.411428571428571,
+          "end": 8.452095238095238
+        },
+        {
+          "id": "w18",
+          "text": "plus.",
+          "start": 8.492380952380952,
+          "end": 8.956190476190475
+        }
+      ]
+    },
+    {
+      "id": "03",
+      "path": "assets/voice/03.wav",
+      "duration_s": 3.161,
+      "words": [
+        {
+          "id": "w0",
+          "text": "Touchez",
+          "start": 0.2438095238095238,
+          "end": 0.6504761904761905
+        },
+        {
+          "id": "w1",
+          "text": "«",
+          "start": 0.8123809523809523,
+          "end": 0.8533333333333333
+        },
+        {
+          "id": "w2",
+          "text": "S'inscrire",
+          "start": 1.178095238095238,
+          "end": 1.7473333333333332
+        },
+        {
+          "id": "w3",
+          "text": "»…",
+          "start": 1.9095238095238094,
+          "end": 1.9914285714285715
+        },
+        {
+          "id": "w4",
+          "text": "et",
+          "start": 2.031428571428571,
+          "end": 2.397142857142857
+        },
+        {
+          "id": "w5",
+          "text": "c'est",
+          "start": 2.438095238095238,
+          "end": 2.56
+        },
+        {
+          "id": "w6",
+          "text": "parti.",
+          "start": 2.56,
+          "end": 2.8447619047619046
+        }
+      ]
+    },
+    {
+      "id": "04",
+      "path": "assets/voice/04.wav",
+      "duration_s": 6.792,
+      "words": [
+        {
+          "id": "w0",
+          "text": "Étape",
+          "start": 0.2847619047619047,
+          "end": 0.5685714285714285
+        },
+        {
+          "id": "w1",
+          "text": "un",
+          "start": 0.6504761904761905,
+          "end": 0.7314285714285714
+        },
+        {
+          "id": "w2",
+          "text": ":",
+          "start": 0.7723809523809524,
+          "end": 0.9342857142857142
+        },
+        {
+          "id": "w3",
+          "text": "qui",
+          "start": 1.219047619047619,
+          "end": 1.3816190476190477
+        },
+        {
+          "id": "w4",
+          "text": "êtes-vous",
+          "start": 1.421904761904762,
+          "end": 1.7066666666666666
+        },
+        {
+          "id": "w5",
+          "text": "?",
+          "start": 1.8695238095238096,
+          "end": 2.031428571428571
+        },
+        {
+          "id": "w6",
+          "text": "Votre",
+          "start": 2.194285714285714,
+          "end": 2.4787619047619045
+        },
+        {
+          "id": "w7",
+          "text": "nom,",
+          "start": 2.6009523809523807,
+          "end": 2.9257142857142857
+        },
+        {
+          "id": "w8",
+          "text": "votre",
+          "start": 3.1285714285714286,
+          "end": 3.413333333333333
+        },
+        {
+          "id": "w9",
+          "text": "numéro",
+          "start": 3.5352380952380953,
+          "end": 3.900952380952381
+        },
+        {
+          "id": "w10",
+          "text": "WhatsApp,",
+          "start": 3.941904761904762,
+          "end": 4.449523809523809
+        },
+        {
+          "id": "w11",
+          "text": "votre",
+          "start": 4.632380952380952,
+          "end": 4.916857142857142
+        },
+        {
+          "id": "w12",
+          "text": "e-mail.",
+          "start": 4.957142857142857,
+          "end": 5.5876190476190475
+        },
+        {
+          "id": "w13",
+          "text": "Suivant",
+          "start": 6.014285714285714,
+          "end": 6.460952380952381
+        },
+        {
+          "id": "w14",
+          "text": "!",
+          "start": 6.461904761904762,
+          "end": 6.462857142857142
+        }
+      ]
+    },
+    {
+      "id": "05",
+      "path": "assets/voice/05.wav",
+      "duration_s": 8.255,
+      "words": [
+        {
+          "id": "w0",
+          "text": "Étape",
+          "start": 0.2847619047619047,
+          "end": 0.5685714285714285
+        },
+        {
+          "id": "w1",
+          "text": "deux",
+          "start": 0.6504761904761905,
+          "end": 0.8123809523809523
+        },
+        {
+          "id": "w2",
+          "text": ":",
+          "start": 0.8533333333333333,
+          "end": 1.097142857142857
+        },
+        {
+          "id": "w3",
+          "text": "votre",
+          "start": 1.219047619047619,
+          "end": 1.5035238095238095
+        },
+        {
+          "id": "w4",
+          "text": "profil.",
+          "start": 1.5847619047619046,
+          "end": 2.255238095238095
+        },
+        {
+          "id": "w5",
+          "text": "Élève,",
+          "start": 2.56,
+          "end": 2.986666666666667
+        },
+        {
+          "id": "w6",
+          "text": "étudiant,",
+          "start": 3.0476190476190474,
+          "end": 3.6571428571428566
+        },
+        {
+          "id": "w7",
+          "text": "pro",
+          "start": 3.7790476190476188,
+          "end": 3.9416190476190476
+        },
+        {
+          "id": "w8",
+          "text": "ou",
+          "start": 4.063809523809524,
+          "end": 4.185428571428571
+        },
+        {
+          "id": "w9",
+          "text": "entrepreneur",
+          "start": 4.225714285714286,
+          "end": 4.794952380952381
+        },
+        {
+          "id": "w10",
+          "text": ":",
+          "start": 4.998095238095238,
+          "end": 5.079047619047619
+        },
+        {
+          "id": "w11",
+          "text": "cochez.",
+          "start": 5.282857142857142,
+          "end": 5.973333333333334
+        },
+        {
+          "id": "w12",
+          "text": "Et",
+          "start": 6.258095238095238,
+          "end": 6.460952380952381
+        },
+        {
+          "id": "w13",
+          "text": "confirmez",
+          "start": 6.501904761904761,
+          "end": 6.989238095238095
+        },
+        {
+          "id": "w14",
+          "text": "votre",
+          "start": 7.029523809523809,
+          "end": 7.192380952380952
+        },
+        {
+          "id": "w15",
+          "text": "participation.",
+          "start": 7.2733333333333325,
+          "end": 7.922643343051506
+        }
+      ]
+    },
+    {
+      "id": "06",
+      "path": "assets/voice/06.wav",
+      "duration_s": 8.62,
+      "words": [
+        {
+          "id": "w0",
+          "text": "Étape",
+          "start": 0.2847619047619047,
+          "end": 0.5282857142857142
+        },
+        {
+          "id": "w1",
+          "text": "trois",
+          "start": 0.6095238095238095,
+          "end": 0.8123809523809523
+        },
+        {
+          "id": "w2",
+          "text": ":",
+          "start": 0.8533333333333333,
+          "end": 1.097142857142857
+        },
+        {
+          "id": "w3",
+          "text": "le",
+          "start": 1.219047619047619,
+          "end": 1.3816190476190477
+        },
+        {
+          "id": "w4",
+          "text": "cocktail",
+          "start": 1.421904761904762,
+          "end": 1.7066666666666666
+        },
+        {
+          "id": "w5",
+          "text": "dînatoire.",
+          "start": 1.7476190476190474,
+          "end": 2.499047619047619
+        },
+        {
+          "id": "w6",
+          "text": "Ticket",
+          "start": 2.8038095238095235,
+          "end": 3.088285714285714
+        },
+        {
+          "id": "w7",
+          "text": "VIP,",
+          "start": 3.1285714285714286,
+          "end": 3.576190476190476
+        },
+        {
+          "id": "w8",
+          "text": "ticket",
+          "start": 3.7790476190476188,
+          "end": 4.06352380952381
+        },
+        {
+          "id": "w9",
+          "text": "simple,",
+          "start": 4.103809523809524,
+          "end": 4.4085714285714275
+        },
+        {
+          "id": "w10",
+          "text": "ou",
+          "start": 4.551428571428571,
+          "end": 4.876190476190476
+        },
+        {
+          "id": "w11",
+          "text": "la",
+          "start": 4.917142857142857,
+          "end": 4.998095238095238
+        },
+        {
+          "id": "w12",
+          "text": "conférence",
+          "start": 5.039047619047619,
+          "end": 5.40447619047619
+        },
+        {
+          "id": "w13",
+          "text": "seule",
+          "start": 5.485714285714285,
+          "end": 5.688571428571428
+        },
+        {
+          "id": "w14",
+          "text": ":",
+          "start": 5.81047619047619,
+          "end": 5.932380952380952
+        },
+        {
+          "id": "w15",
+          "text": "à",
+          "start": 6.014285714285714,
+          "end": 6.1761904761904765
+        },
+        {
+          "id": "w16",
+          "text": "vous",
+          "start": 6.217142857142856,
+          "end": 6.298095238095238
+        },
+        {
+          "id": "w17",
+          "text": "de",
+          "start": 6.339047619047618,
+          "end": 6.379714285714285
+        },
+        {
+          "id": "w18",
+          "text": "choisir.",
+          "start": 6.419999999999999,
+          "end": 7.029523809523809
+        },
+        {
+          "id": "w19",
+          "text": "Puis",
+          "start": 7.355238095238095,
+          "end": 7.599047619047619
+        },
+        {
+          "id": "w20",
+          "text": ":",
+          "start": 7.639047619047619,
+          "end": 7.842857142857142
+        },
+        {
+          "id": "w21",
+          "text": "Confirmer.",
+          "start": 7.882857142857142,
+          "end": 8.33047619047619
+        }
+      ]
+    },
+    {
+      "id": "07",
+      "path": "assets/voice/07.wav",
+      "duration_s": 5.068,
+      "words": [
+        {
+          "id": "w0",
+          "text": "Et",
+          "start": 0.2438095238095238,
+          "end": 0.3657142857142857
+        },
+        {
+          "id": "w1",
+          "text": "voilà",
+          "start": 0.4066666666666666,
+          "end": 0.6504761904761905
+        },
+        {
+          "id": "w2",
+          "text": ":",
+          "start": 0.6904761904761905,
+          "end": 0.7723809523809524
+        },
+        {
+          "id": "w3",
+          "text": "inscription",
+          "start": 0.8533333333333333,
+          "end": 1.2999999999999998
+        },
+        {
+          "id": "w4",
+          "text": "confirmée",
+          "start": 1.4628571428571429,
+          "end": 1.9095238095238094
+        },
+        {
+          "id": "w5",
+          "text": "!",
+          "start": 2.072380952380952,
+          "end": 2.235238095238095
+        },
+        {
+          "id": "w6",
+          "text": "Votre",
+          "start": 2.397142857142857,
+          "end": 2.7628571428571425
+        },
+        {
+          "id": "w7",
+          "text": "billet",
+          "start": 2.8447619047619046,
+          "end": 3.088285714285714
+        },
+        {
+          "id": "w8",
+          "text": "arrive",
+          "start": 3.2104761904761903,
+          "end": 3.4539999999999997
+        },
+        {
+          "id": "w9",
+          "text": "directement",
+          "start": 3.5352380952380953,
+          "end": 3.9819047619047616
+        },
+        {
+          "id": "w10",
+          "text": "dans",
+          "start": 4.022857142857143,
+          "end": 4.103809523809524
+        },
+        {
+          "id": "w11",
+          "text": "votre",
+          "start": 4.144761904761904,
+          "end": 4.266666666666667
+        },
+        {
+          "id": "w12",
+          "text": "boîte",
+          "start": 4.347619047619048,
+          "end": 4.51047619047619
+        },
+        {
+          "id": "w13",
+          "text": "mail.",
+          "start": 4.551428571428571,
+          "end": 4.726666666666667
+        }
+      ]
+    },
+    {
+      "id": "08",
+      "path": "assets/voice/08.wav",
+      "duration_s": 9.482,
+      "words": [
+        {
+          "id": "w0",
+          "text": "Le",
+          "start": 0.2847619047619047,
+          "end": 0.3657142857142857
+        },
+        {
+          "id": "w1",
+          "text": "bonus",
+          "start": 0.4466666666666666,
+          "end": 0.6904761904761905
+        },
+        {
+          "id": "w2",
+          "text": "?",
+          "start": 0.9209523809523809,
+          "end": 1.1514285714285715
+        },
+        {
+          "id": "w3",
+          "text": "Votre",
+          "start": 1.381904761904762,
+          "end": 1.6657142857142857
+        },
+        {
+          "id": "w4",
+          "text": "visuel",
+          "start": 1.7066666666666666,
+          "end": 2.072380952380952
+        },
+        {
+          "id": "w5",
+          "text": "«",
+          "start": 2.235238095238095,
+          "end": 2.275238095238095
+        },
+        {
+          "id": "w6",
+          "text": "J'y",
+          "start": 2.519047619047619,
+          "end": 2.7628571428571425
+        },
+        {
+          "id": "w7",
+          "text": "serai",
+          "start": 2.8038095238095235,
+          "end": 3.0476190476190474
+        },
+        {
+          "id": "w8",
+          "text": "».",
+          "start": 3.088571428571428,
+          "end": 3.3323809523809524
+        },
+        {
+          "id": "w9",
+          "text": "Ajoutez",
+          "start": 3.372380952380952,
+          "end": 4.185428571428571
+        },
+        {
+          "id": "w10",
+          "text": "votre",
+          "start": 4.225714285714286,
+          "end": 4.347619047619048
+        },
+        {
+          "id": "w11",
+          "text": "photo,",
+          "start": 4.429523809523809,
+          "end": 4.734285714285714
+        },
+        {
+          "id": "w12",
+          "text": "et",
+          "start": 4.917142857142857,
+          "end": 5.12
+        },
+        {
+          "id": "w13",
+          "text": "l'affiche",
+          "start": 5.16095238095238,
+          "end": 5.444761904761904
+        },
+        {
+          "id": "w14",
+          "text": "officielle",
+          "start": 5.485714285714285,
+          "end": 5.851428571428571
+        },
+        {
+          "id": "w15",
+          "text": "est",
+          "start": 5.892380952380952,
+          "end": 5.932380952380952
+        },
+        {
+          "id": "w16",
+          "text": "prête,",
+          "start": 5.973333333333334,
+          "end": 6.278095238095237
+        },
+        {
+          "id": "w17",
+          "text": "à",
+          "start": 6.419999999999999,
+          "end": 6.541904761904761
+        },
+        {
+          "id": "w18",
+          "text": "votre",
+          "start": 6.582857142857143,
+          "end": 6.826666666666666
+        },
+        {
+          "id": "w19",
+          "text": "nom.",
+          "start": 6.907619047619048,
+          "end": 7.436190476190475
+        },
+        {
+          "id": "w20",
+          "text": "Partagez-la",
+          "start": 7.842857142857142,
+          "end": 8.411428571428571
+        },
+        {
+          "id": "w21",
+          "text": "partout",
+          "start": 8.492380952380952,
+          "end": 9.061904761904762
+        },
+        {
+          "id": "w22",
+          "text": "!",
+          "start": 9.10952380952381,
+          "end": 9.1567649281935
+        }
+      ]
+    },
+    {
+      "id": "09",
+      "path": "assets/voice/09.wav",
+      "duration_s": 5.07,
+      "words": [
+        {
+          "id": "w0",
+          "text": "Trois",
+          "start": 0.2438095238095238,
+          "end": 0.5282857142857142
+        },
+        {
+          "id": "w1",
+          "text": "étapes,",
+          "start": 0.5685714285714285,
+          "end": 1.016190476190476
+        },
+        {
+          "id": "w2",
+          "text": "une",
+          "start": 1.178095238095238,
+          "end": 1.340952380952381
+        },
+        {
+          "id": "w3",
+          "text": "place.",
+          "start": 1.381904761904762,
+          "end": 1.8695238095238096
+        },
+        {
+          "id": "w4",
+          "text": "Inscrivez-vous",
+          "start": 2.1533333333333333,
+          "end": 2.9257142857142857
+        },
+        {
+          "id": "w5",
+          "text": "sur",
+          "start": 3.088571428571428,
+          "end": 3.332095238095238
+        },
+        {
+          "id": "w6",
+          "text": "ongddb.com",
+          "start": 3.413333333333333,
+          "end": 4.564761904761904
+        },
+        {
+          "id": "w7",
+          "text": "!",
+          "start": 4.68,
+          "end": 4.794952380952381
+        }
+      ]
+    }
+  ],
+  "sfx": [
+    {
+      "id": "01",
+      "name": "whoosh-soft",
+      "file": "assets/sfx/whoosh-soft.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 1.58,
+      "volume": 0.35
+    },
+    {
+      "id": "01",
+      "name": "impact-soft",
+      "file": "assets/sfx/impact-soft.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 2.758,
+      "volume": 0.35
+    },
+    {
+      "id": "01",
+      "name": "clock-tick",
+      "file": "assets/sfx/clock-tick.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 7.016,
+      "volume": 0.35
+    },
+    {
+      "id": "02",
+      "name": "whoosh",
+      "file": "assets/sfx/whoosh.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 1.58,
+      "volume": 0.35
+    },
+    {
+      "id": "02",
+      "name": "pop-soft",
+      "file": "assets/sfx/pop-soft.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 0.576,
+      "volume": 0.35
+    },
+    {
+      "id": "03",
+      "name": "tap",
+      "file": "assets/sfx/tap.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 0.264,
+      "volume": 0.35
+    },
+    {
+      "id": "03",
+      "name": "swoosh-up",
+      "file": "assets/sfx/swoosh-up.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 1.472,
+      "volume": 0.35
+    },
+    {
+      "id": "04",
+      "name": "pop-soft",
+      "file": "assets/sfx/pop-soft.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 0.576,
+      "volume": 0.35
+    },
+    {
+      "id": "04",
+      "name": "key-type",
+      "file": "assets/sfx/key-type.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 0.264,
+      "volume": 0.35
+    },
+    {
+      "id": "04",
+      "name": "tap",
+      "file": "assets/sfx/tap.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 0.264,
+      "volume": 0.35
+    },
+    {
+      "id": "05",
+      "name": "pop-soft",
+      "file": "assets/sfx/pop-soft.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 0.576,
+      "volume": 0.35
+    },
+    {
+      "id": "05",
+      "name": "check",
+      "file": "assets/sfx/check.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 1.238,
+      "volume": 0.35
+    },
+    {
+      "id": "05",
+      "name": "swipe",
+      "file": "assets/sfx/swipe.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 1.104,
+      "volume": 0.35
+    },
+    {
+      "id": "06",
+      "name": "pop-soft",
+      "file": "assets/sfx/pop-soft.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 0.576,
+      "volume": 0.35
+    },
+    {
+      "id": "06",
+      "name": "check",
+      "file": "assets/sfx/check.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 1.238,
+      "volume": 0.35
+    },
+    {
+      "id": "06",
+      "name": "tap",
+      "file": "assets/sfx/tap.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 0.264,
+      "volume": 0.35
+    },
+    {
+      "id": "07",
+      "name": "success-chime",
+      "file": "assets/sfx/success-chime.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 4.755,
+      "volume": 0.35
+    },
+    {
+      "id": "07",
+      "name": "confetti",
+      "file": "assets/sfx/confetti.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 2.464,
+      "volume": 0.35
+    },
+    {
+      "id": "07",
+      "name": "whoosh",
+      "file": "assets/sfx/whoosh.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 1.58,
+      "volume": 0.35
+    },
+    {
+      "id": "08",
+      "name": "tap",
+      "file": "assets/sfx/tap.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 0.264,
+      "volume": 0.35
+    },
+    {
+      "id": "08",
+      "name": "whoosh",
+      "file": "assets/sfx/whoosh.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 1.58,
+      "volume": 0.35
+    },
+    {
+      "id": "08",
+      "name": "sparkle",
+      "file": "assets/sfx/sparkle.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 3.329,
+      "volume": 0.35
+    },
+    {
+      "id": "08",
+      "name": "pop-soft",
+      "file": "assets/sfx/pop-soft.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 0.576,
+      "volume": 0.35
+    },
+    {
+      "id": "09",
+      "name": "pop-soft",
+      "file": "assets/sfx/pop-soft.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 0.576,
+      "volume": 0.35
+    },
+    {
+      "id": "09",
+      "name": "impact-soft",
+      "file": "assets/sfx/impact-soft.mp3",
+      "source": "heygen",
+      "offset_s": 0,
+      "duration_s": 2.758,
+      "volume": 0.35
+    }
+  ],
+  "total_duration_s": 57.287
+}

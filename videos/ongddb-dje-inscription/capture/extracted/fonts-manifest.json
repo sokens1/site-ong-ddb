@@ -1,0 +1,204 @@
+{
+  "files": [
+    {
+      "file": "If2cXTr6YS-zF4S-kcSWSVi_sxjsohD9F50Ruu7B1i03Rep8hNX6plRPjLo.woff2",
+      "family": "Dancing Script",
+      "rawFamily": "Dancing Script",
+      "subfamily": "Bold",
+      "postscript": "DancingScript-Bold",
+      "weight": 700,
+      "style": "normal",
+      "variationAxes": [],
+      "identified": true,
+      "isIcon": false
+    },
+    {
+      "file": "If2cXTr6YS-zF4S-kcSWSVi_sxjsohD9F50Ruu7B1i03ROp8hNX6plRPjLo.woff2",
+      "family": "Dancing Script",
+      "rawFamily": "Dancing Script",
+      "subfamily": "Bold",
+      "postscript": "DancingScript-Bold",
+      "weight": 700,
+      "style": "normal",
+      "variationAxes": [],
+      "identified": true,
+      "isIcon": false
+    },
+    {
+      "file": "If2cXTr6YS-zF4S-kcSWSVi_sxjsohD9F50Ruu7B1i03Sup8hNX6plRP.woff2",
+      "family": "Dancing Script",
+      "rawFamily": "Dancing Script",
+      "subfamily": "Bold",
+      "postscript": "DancingScript-Bold",
+      "weight": 700,
+      "style": "normal",
+      "variationAxes": [],
+      "identified": true,
+      "isIcon": false
+    },
+    {
+      "file": "pxiByp8kv8JHgFVrLGT9Z11lFd2JQEl8qw.woff2",
+      "family": "Poppins",
+      "rawFamily": "Poppins Medium",
+      "subfamily": "Regular",
+      "postscript": "Poppins-Medium",
+      "weight": 500,
+      "style": "normal",
+      "variationAxes": [],
+      "identified": true,
+      "isIcon": false
+    },
+    {
+      "file": "pxiByp8kv8JHgFVrLGT9Z1JlFd2JQEl8qw.woff2",
+      "family": "Poppins",
+      "rawFamily": "Poppins Medium",
+      "subfamily": "Regular",
+      "postscript": "Poppins-Medium",
+      "weight": 500,
+      "style": "normal",
+      "variationAxes": [],
+      "identified": true,
+      "isIcon": false
+    },
+    {
+      "file": "pxiByp8kv8JHgFVrLGT9Z1xlFd2JQEk.woff2",
+      "family": "Poppins",
+      "rawFamily": "Poppins Medium",
+      "subfamily": "Regular",
+      "postscript": "Poppins-Medium",
+      "weight": 500,
+      "style": "normal",
+      "variationAxes": [],
+      "identified": true,
+      "isIcon": false
+    },
+    {
+      "file": "pxiEyp8kv8JHgFVrJJbecnFHGPezSQ.woff2",
+      "family": "Poppins",
+      "rawFamily": "Poppins",
+      "subfamily": "Regular",
+      "postscript": "Poppins-Regular",
+      "weight": 400,
+      "style": "normal",
+      "variationAxes": [],
+      "identified": true,
+      "isIcon": false
+    },
+    {
+      "file": "pxiEyp8kv8JHgFVrJJfecnFHGPc.woff2",
+      "family": "Poppins",
+      "rawFamily": "Poppins",
+      "subfamily": "Regular",
+      "postscript": "Poppins-Regular",
+      "weight": 400,
+      "style": "normal",
+      "variationAxes": [],
+      "identified": true,
+      "isIcon": false
+    },
+    {
+      "file": "pxiEyp8kv8JHgFVrJJnecnFHGPezSQ.woff2",
+      "family": "Poppins",
+      "rawFamily": "Poppins",
+      "subfamily": "Regular",
+      "postscript": "Poppins-Regular",
+      "weight": 400,
+      "style": "normal",
+      "variationAxes": [],
+      "identified": true,
+      "isIcon": false
+    },
+    {
+      "file": "QGYsz_wNahGAdqQ43Rh_c6DptfpA4cD3.woff2",
+      "family": "Work Sans",
+      "rawFamily": "Work Sans",
+      "subfamily": "Regular",
+      "postscript": "WorkSans-Regular",
+      "weight": 400,
+      "style": "normal",
+      "variationAxes": [
+        "wght"
+      ],
+      "identified": true,
+      "isIcon": false
+    },
+    {
+      "file": "QGYsz_wNahGAdqQ43Rh_cqDptfpA4cD3.woff2",
+      "family": "Work Sans",
+      "rawFamily": "Work Sans",
+      "subfamily": "Regular",
+      "postscript": "WorkSans-Regular",
+      "weight": 400,
+      "style": "normal",
+      "variationAxes": [
+        "wght"
+      ],
+      "identified": true,
+      "isIcon": false
+    },
+    {
+      "file": "QGYsz_wNahGAdqQ43Rh_fKDptfpA4Q.woff2",
+      "family": "Work Sans",
+      "rawFamily": "Work Sans",
+      "subfamily": "Regular",
+      "postscript": "WorkSans-Regular",
+      "weight": 400,
+      "style": "normal",
+      "variationAxes": [
+        "wght"
+      ],
+      "identified": true,
+      "isIcon": false
+    }
+  ],
+  "families": [
+    {
+      "family": "Dancing Script",
+      "weights": [
+        700
+      ],
+      "variable": false,
+      "fileCount": 3,
+      "files": [
+        "If2cXTr6YS-zF4S-kcSWSVi_sxjsohD9F50Ruu7B1i03ROp8hNX6plRPjLo.woff2",
+        "If2cXTr6YS-zF4S-kcSWSVi_sxjsohD9F50Ruu7B1i03Rep8hNX6plRPjLo.woff2",
+        "If2cXTr6YS-zF4S-kcSWSVi_sxjsohD9F50Ruu7B1i03Sup8hNX6plRP.woff2"
+      ]
+    },
+    {
+      "family": "Poppins",
+      "weights": [
+        400,
+        500
+      ],
+      "variable": false,
+      "fileCount": 6,
+      "files": [
+        "pxiByp8kv8JHgFVrLGT9Z11lFd2JQEl8qw.woff2",
+        "pxiByp8kv8JHgFVrLGT9Z1JlFd2JQEl8qw.woff2",
+        "pxiByp8kv8JHgFVrLGT9Z1xlFd2JQEk.woff2",
+        "pxiEyp8kv8JHgFVrJJbecnFHGPezSQ.woff2",
+        "pxiEyp8kv8JHgFVrJJfecnFHGPc.woff2",
+        "pxiEyp8kv8JHgFVrJJnecnFHGPezSQ.woff2"
+      ]
+    },
+    {
+      "family": "Work Sans",
+      "weights": [
+        400
+      ],
+      "variable": true,
+      "fileCount": 3,
+      "files": [
+        "QGYsz_wNahGAdqQ43Rh_c6DptfpA4cD3.woff2",
+        "QGYsz_wNahGAdqQ43Rh_cqDptfpA4cD3.woff2",
+        "QGYsz_wNahGAdqQ43Rh_fKDptfpA4Q.woff2"
+      ]
+    }
+  ],
+  "unidentified": [],
+  "meta": {
+    "generatedAt": "2026-10-10T14:49:24.399Z",
+    "tool": "fontkit"
+  }
+}

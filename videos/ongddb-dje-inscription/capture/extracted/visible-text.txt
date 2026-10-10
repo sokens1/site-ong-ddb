@@ -1,0 +1,72 @@
+[a] À propos
+[a] Nos rapports
+[a] Actualités
+[a] Nos événements
+[a] Rejoignez-nous
+[a] Faire un don
+[span] Détails
+[span] Bientôt
+[h1] LE DEJEUNER ENVIRONNEMENTAL 2026
+[p] Lieu
+[span] Auditorium AGL
+[p] Date
+[span] 30 oct.
+[p] Places
+[span] 300 places
+[a] Retour aux événements
+[span] Bientôt
+[h1] LE DEJEUNER ENVIRONNEMENTAL 2026
+[p] Date
+[div] vendredi 30 octobre 2026
+[p] Lieu
+[p] Auditorium AGL
+[p] Places
+[p] 300 places
+[button] S'inscrire
+[h2] À propos de l'événement
+[p] Bienvenue à la deuxième Edition du Déjeuner Environnemental!
+[p] Le Déjeuner environnemental est un rendez-vous annuel qui rassemble des jeunes, des élèves, des étudiants, des leaders associatifs, des décideurs, des représentants du secteur privé ainsi que divers acteurs du changement autour des enjeux environnementaux et du développement durable au Gabon.
+[p] Pour cette deuxième édition, les échanges porteront sur des thématiques stratégiques, notamment le leadership féminin, l’entrepreneuriat, l’emploi des jeunes et la promotion d’une logistique durable. Cette initiative vise à favoriser le dialogue entre les différents acteurs, à encourager le partage d’expériences et à mettre en lumière des solutions concrètes en faveur d’un développement plus responsable et inclusif.
+[p] La rencontre s’articulera autour de trois panels thématiques consacrés à la place de la jeunesse, à la promotion du leadership féminin, à l’innovation et au développement de l’entrepreneuriat dans le secteur de la logistique verte.
+[p] La conférence inaugurale se tiendra à l’auditorium de l’immeuble AGL, de 8 h 30 à 13 h 30.
+[p] AU PROGRAMME : TROIS PANELS THÉMATIQUES
+[p] PANEL 1 — Jeunesse, leadership féminin et emploi dans la logistique verte :
+[p] Ce panel sera consacré aux perspectives d’insertion professionnelle des jeunes, à la promotion du leadership féminin et aux opportunités d’emploi offertes par le secteur de la logistique verte.
+[p] PANEL 2 — Innovation et logistique urbaine durable :
+[p] Ce panel mettra l’accent sur les innovations, les pratiques et les solutions susceptibles de contribuer à une logistique urbaine plus performante et respectueuse de l’environnement. Les échanges permettront d’examiner les pistes d’amélioration des pratiques logistiques au regard des impératifs de durabilité et de responsabilité environnementale.
+[p] PANEL 3 — Entrepreneuriat féminin dans le transport et la logistique verte :
+[p] Ce panel mettra en évidence les perspectives de création et de développement d’entreprises portées par les femmes dans les secteurs du transport et de la logistique verte. Il abordera également les enjeux liés à l’accès aux opportunités économiques, à l’innovation et au renforcement de la participation des femmes à la transition vers une économie plus durable.
+[p] À travers cette deuxième édition, le Déjeuner environnemental entend contribuer au renforcement du dialogue entre les acteurs publics, privés et associatifs, tout en encourageant l’émergence d’initiatives porteuses de solutions durables pour le Gabon.
+[span] Lire toute la description
+[h3] Programme de l'événement
+[span] étape
+[p] Consultez le déroulement détaillé, les horaires et téléchargez le PDF officiel.
+[span] Voir le programme
+[button] S'inscrire
+[button] Déjà inscrit ? Récupérez votre affiche J'y serai
+[h3] Autres événements
+[h4] COCKTAIL DINATOIRE DU DEJEUNER ENVIRONNEMENTAL 2026
+[span] 30 oct.
+[span] Bientôt
+[h4] LCOY GABON 2026
+[span] 30 juil.
+[span] Terminé
+[h4] FINANCEMENT DE L'ADAPTATION CLIMATIQUE EN AFRIQUE
+[span] 5 mars
+[span] Terminé
+[p] ONG Développement Durable et Bien-Être, engagée à former les leaders jeunesse pour la protection de l'environnement et l'avenir de la planète.
+[a] +241 077 65 00 15
+[a] ongddb@gmail.com
+[h3] Liens utiles
+[button] À propos
+[button] Nos rapports
+[button] Actualités
+[button] Rejoignez-nous
+[h3] Suivez-nous
+[a] Facebook
+[a] Instagram
+[a] Twitter (X)
+[h3] Newsletter
+[p] Recevez nos actualités directement dans votre boîte email.
+[button] S'abonner
+[p] ONG Développement Durable et Bien-Être. Tous droits réservés.

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, FileText, Download, Loader2, Eye, ArrowLeft, X } from 'lucide-react';
+import { Search, FileText, Download, Loader2, Eye, ArrowLeft, X, ExternalLink } from 'lucide-react';
 import { fetchReports } from '../data/reports';
 import EditableText from '../components/site-content/EditableText';
 
@@ -17,12 +17,20 @@ interface Report {
 // Petites pastilles de couleur décoratives sur les cartes, on tourne dessus
 const BLOB_COLORS = ['bg-ddb-400', 'bg-amber-400', 'bg-ddb-600', 'bg-sky-400'];
 
-// Google Drive ne peut pas être affiché tel quel dans un <iframe> : il faut
-// convertir le lien de partage en lien "/preview".
+// Prépare l'URL pour un affichage web sans blocage navigateur (CORS / X-Frame-Options) :
+// 1. Pour Google Drive : convertir en "/preview"
+// 2. Pour les PDF (Supabase Storage) : utiliser le visualiseur Google Docs afin d'éviter le blocage Chrome des PDF externes
 const getEmbedUrl = (url: string) => {
+  if (!url) return '';
   if (url.includes('drive.google.com')) {
-    const fileId = url.split('/d/')[1]?.split('/')[0];
+    const fileId = url.split('/d/')[1]?.split('/')[0]?.split('?')[0];
     if (fileId) return `https://drive.google.com/file/d/${fileId}/preview`;
+    return url;
+  }
+  // Les navigateurs modernes bloquent souvent l'affichage brut de fichiers PDF externes dans un <iframe>.
+  // Google Docs Viewer les restitue en HTML/Canvas sans restriction.
+  if (url.toLowerCase().includes('.pdf') || url.includes('/storage/v1/object/')) {
+    return `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
   }
   return url;
 };
@@ -372,8 +380,17 @@ const ActionsPage: React.FC = () => {
                       className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-ddb-700 px-6 py-3 font-heading font-bold text-ddb-700 transition-colors hover:bg-ddb-50"
                     >
                       <Eye className="h-4 w-4" />
-                      Visualiser
+                      Visualiser en ligne
                     </button>
+                    <a
+                      href={activeReport.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 rounded-full border border-ddb-950/20 bg-white px-5 py-3 font-heading font-bold text-ddb-900 transition-colors hover:bg-gray-50"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Ouvrir dans un onglet
+                    </a>
                     <button
                       type="button"
                       onClick={() => handleDownload(activeReport)}
@@ -476,28 +493,61 @@ const ActionsPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* ── Colonne document — seule visible sur mobile ── */}
-                <div className="relative flex flex-1 flex-col bg-ddb-50/60">
-                  <div className="flex items-center justify-between gap-3 border-b border-ddb-950/10 bg-white p-4 pr-14 lg:hidden">
-                    <p className="truncate font-heading text-sm font-bold text-ddb-950">{activeReport.title}</p>
-                    <button
-                      type="button"
-                      onClick={() => handleDownload(activeReport)}
-                      disabled={downloadingId === activeReport.id}
-                      aria-label="Télécharger"
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ddb-50 text-ddb-700 transition-colors hover:bg-ddb-100 disabled:opacity-60"
-                    >
-                      {downloadingId === activeReport.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Download className="h-4 w-4" />
-                      )}
-                    </button>
+                {/* ── Colonne document — visible sur mobile et desktop ── */}
+                <div className="relative flex flex-1 flex-col bg-slate-100 overflow-hidden">
+                  {/* Barre d'outils du visualiseur */}
+                  <div className="flex items-center justify-between gap-3 border-b border-ddb-950/10 bg-white px-4 py-3 pr-14">
+                    <p className="truncate font-heading text-sm font-bold text-ddb-950">
+                      {activeReport.title}
+                    </p>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <a
+                        href={activeReport.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-ddb-700 bg-ddb-50 hover:bg-ddb-100 transition-colors"
+                        title="Ouvrir dans un nouvel onglet"
+                      >
+                        <ExternalLink size={14} />
+                        <span className="hidden sm:inline">Plein écran</span>
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => handleDownload(activeReport)}
+                        disabled={downloadingId === activeReport.id}
+                        aria-label="Télécharger"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white bg-ddb-700 hover:bg-ddb-800 transition-colors disabled:opacity-60"
+                      >
+                        {downloadingId === activeReport.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Download size={14} />
+                        )}
+                        <span className="hidden sm:inline">Télécharger</span>
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Bandeau d'aide au secours si le navigateur restreint l'iframe */}
+                  <div className="flex items-center justify-between gap-2 bg-amber-50/90 border-b border-amber-200/80 px-4 py-1.5 text-xs text-amber-900">
+                    <span className="truncate">
+                      Si l'aperçu est restreint par votre navigateur :
+                    </span>
+                    <a
+                      href={activeReport.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold underline text-amber-900 hover:text-amber-950 whitespace-nowrap inline-flex items-center gap-1"
+                    >
+                      Ouvrir en direct <ExternalLink size={12} />
+                    </a>
+                  </div>
+
+                  {/* Visualiseur intégré */}
                   <iframe
                     src={getEmbedUrl(activeReport.fileUrl)}
                     title={`Document : ${activeReport.title}`}
-                    className="w-full flex-1 border-0"
+                    className="w-full flex-1 border-0 bg-white"
                     allow="fullscreen"
                   />
                 </div>

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "name": "tutoriel-inscription-evenement",
+  "workflow": "product-launch-video",
+  "approved_at": "2026-10-10T16:03:29.485Z",
+  "source_project": "ongddb-dje-inscription",
+  "destination": "reels-tiktok-shorts",
+  "aspect": "1080x1920",
+  "language": "fr",
+  "voice": "19034eae6fb84f8b81461d0fe2326be4",
+  "style_preset": "capsule"
+}

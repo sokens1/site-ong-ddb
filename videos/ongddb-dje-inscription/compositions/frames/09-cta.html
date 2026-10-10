@@ -1,0 +1,255 @@
+<template id="09-cta-template">
+<div data-hf-id="hf-l62j" id="root" data-composition-id="09-cta" data-start="0" data-duration="6.57" data-width="1080" data-height="1920">
+<style>
+@font-face{font-family:'Poppins';font-style:normal;font-weight:400;font-display:block;src:url("assets/fonts/Poppins-400.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:500;font-display:block;src:url("assets/fonts/Poppins-500.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:600;font-display:block;src:url("assets/fonts/Poppins-600.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:700;font-display:block;src:url("assets/fonts/Poppins-700.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:800;font-display:block;src:url("assets/fonts/Poppins-800.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:900;font-display:block;src:url("assets/fonts/Poppins-900.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:400;font-display:block;src:url("assets/fonts/WorkSans-400.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:500;font-display:block;src:url("assets/fonts/WorkSans-500.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:600;font-display:block;src:url("assets/fonts/WorkSans-600.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:700;font-display:block;src:url("assets/fonts/WorkSans-700.woff2") format('woff2');}
+
+#root{position:relative;width:1080px;height:1920px;overflow:hidden;container-type:size}
+
+/* atmosphere (full-bleed background clip) */
+[id="09-cta-bg"]{position:absolute;inset:0;background:#0B3D22;overflow:hidden}
+[id="09-cta-bg"] [class~="09-cta-glow"]{position:absolute;inset:0;
+  background:radial-gradient(ellipse 620px 560px at 540px 1150px,rgba(134,239,172,.16),rgba(134,239,172,0) 70%),
+             radial-gradient(ellipse 560px 380px at 540px 620px,rgba(134,239,172,.10),rgba(134,239,172,0) 70%)}
+[id="09-cta-bg"] [class~="09-cta-grid"]{position:absolute;inset:0;opacity:.07;
+  background:repeating-linear-gradient(30deg,#86EFAC 0 1px,transparent 1px 64px),
+             repeating-linear-gradient(-30deg,#86EFAC 0 1px,transparent 1px 64px)}
+[class~="09-cta-leaf"]{position:absolute;width:60px;height:40px;opacity:.75}
+
+/* stage */
+[id="09-cta-stage"]{position:absolute;inset:0}
+[class~="09-cta-prop"]{position:absolute;overflow:visible}
+[id="09-cta-island"]{position:absolute;left:0;top:0;width:1080px;height:960px;transform-origin:540px 600px}
+[class~="09-cta-tile"]{position:absolute;width:367px;height:238px}
+[class~="09-cta-tile"] svg{position:absolute;left:0;top:0;width:100%;height:100%}
+[class~="09-cta-tshadow"]{position:absolute;width:380px;height:114px}
+[class~="09-cta-tglow"]{position:absolute;width:520px;height:320px;border-radius:50%;
+  background:radial-gradient(ellipse at center,rgba(134,239,172,.42),rgba(134,239,172,0) 68%)}
+[class~="09-cta-badge"]{position:absolute;width:112px;height:112px;border-radius:50%;background:#F2B632;
+  display:flex;align-items:center;justify-content:center;font-family:'Poppins';font-weight:900;font-size:68px;
+  line-height:1;color:#0B2416;box-shadow:8px 12px 0 rgba(2,20,10,.4)}
+
+[class~="09-cta-disp"]{position:absolute;left:86px;font-family:'Poppins';font-weight:800;font-size:124px;line-height:.95;
+  letter-spacing:-.03em;text-transform:uppercase;color:#FFFFFF;white-space:nowrap;transform-origin:0% 60%}
+[id="09-cta-l1"]{top:118px}
+[id="09-cta-l2"]{top:238px;color:#F2B632}
+
+[id="09-cta-poster"]{position:absolute;left:800px;top:752px;width:230px;height:230px;border-radius:18px;
+  border:8px solid #F4F1E8;overflow:hidden;box-shadow:10px 16px 0 rgba(2,20,10,.4);background:#F4F1E8}
+[id="09-cta-poster"] img{display:block;width:100%;height:100%;object-fit:cover}
+
+[id="09-cta-card"]{position:absolute;left:86px;top:870px;width:908px;box-sizing:border-box;padding:50px 52px 54px;
+  background:#F4F1E8;border-radius:44px;box-shadow:13px 19px 0 rgba(2,20,10,.45)}
+[class~="09-cta-label"]{font-family:'Poppins';font-weight:700;font-size:30px;letter-spacing:.16em;text-transform:uppercase;color:#16A34A;line-height:1.2}
+[class~="09-cta-url"]{margin-top:16px;font-family:'Poppins';font-weight:700;font-size:64px;line-height:1.05;letter-spacing:-.01em;color:#0B2416}
+[class~="09-cta-uline"]{display:block;white-space:nowrap;height:68px}
+[class~="09-cta-ch"]{display:none}
+[class~="09-cta-caret"]{display:inline-block;width:6px;height:58px;margin-left:4px;vertical-align:-6px;background:#16A34A;border-radius:3px;opacity:0}
+[class~="09-cta-chips"]{margin-top:30px;display:flex;gap:22px;align-items:center}
+[class~="09-cta-chip"]{display:inline-block;border-radius:9999px;padding:16px 34px;font-family:'Work Sans';font-weight:600;font-size:34px;
+  line-height:1.15;white-space:nowrap;box-shadow:6px 10px 0 rgba(2,20,10,.35)}
+[class~="09-cta-chip-orange"]{background:#F97316;color:#FFFFFF}
+[class~="09-cta-chip-mint"]{background:#86EFAC;color:#0B2416}
+
+[id="09-cta-logo"]{position:absolute;left:86px;top:1290px;width:908px;height:124px;box-sizing:border-box;padding:12px 22px;
+  display:flex;align-items:center;justify-content:center;gap:30px;background:#F4F1E8;border-radius:28px;box-shadow:6px 10px 0 rgba(2,20,10,.35)}
+[id="09-cta-logo"] img{display:block;object-fit:contain}
+[id="09-cta-logo"] [class~="09-cta-dje"]{height:116px;width:auto;mix-blend-mode:multiply}
+[id="09-cta-logo"] [class~="09-cta-sep"]{width:2px;height:84px;background:#D9D3C2;flex:none}
+[id="09-cta-logo"] [class~="09-cta-by"]{font-family:'Poppins';font-weight:700;font-size:20px;letter-spacing:.14em;text-transform:uppercase;color:#15803D;line-height:1.15;white-space:nowrap}
+[id="09-cta-logo"] [class~="09-cta-org"]{height:104px;width:104px;border-radius:18px}
+
+[id="09-cta-partners"]{position:absolute;left:86px;top:1436px;width:908px;height:144px;box-sizing:border-box;padding:14px 20px 16px;
+  background:#FFFFFF;border-radius:28px;box-shadow:6px 10px 0 rgba(2,20,10,.35);display:flex;flex-direction:column;align-items:center;gap:8px}
+[id="09-cta-partners"] [class~="09-cta-plabel"]{font-family:'Poppins';font-weight:700;font-size:18px;letter-spacing:.16em;text-transform:uppercase;color:#15803D;line-height:1.2}
+[id="09-cta-partners"] [class~="09-cta-prow"]{display:flex;align-items:center;justify-content:center;gap:10px;height:86px;max-width:868px}
+[id="09-cta-partners"] [class~="09-cta-prow"] img{display:block;height:48px;width:auto;max-width:150px;object-fit:contain;flex:none}
+[id="09-cta-fade"]{position:absolute;inset:0;background:#0B3D22;opacity:0;pointer-events:none}
+</style>
+
+<svg data-hf-id="hf-30au" width="0" height="0" style="position:absolute" aria-hidden="true"><defs data-hf-id="hf-mh0t">
+<symbol data-hf-id="hf-6vud" id="09-cta-tile-cream" viewBox="0 0 200 130"><polygon data-hf-id="hf-xt60" points="100,0 200,50 100,100 0,50" fill="#F4F1E8" /><polygon data-hf-id="hf-5aha" points="0,50 100,100 100,130 0,80" fill="#D9D3C2" /><polygon data-hf-id="hf-48dr" points="100,100 200,50 200,80 100,130" fill="#BDB59F" /></symbol>
+<symbol data-hf-id="hf-jyjv" id="09-cta-tile-mint" viewBox="0 0 200 130"><polygon data-hf-id="hf-aziu" points="100,0 200,50 100,100 0,50" fill="#D1FAE5" /><polygon data-hf-id="hf-5bf4" points="0,50 100,100 100,130 0,80" fill="#86EFAC" /><polygon data-hf-id="hf-wra7" points="100,100 200,50 200,80 100,130" fill="#4ADE80" /></symbol>
+<symbol data-hf-id="hf-a6te" id="09-cta-tile-green" viewBox="0 0 200 130"><polygon data-hf-id="hf-qhhs" points="100,0 200,50 100,100 0,50" fill="#22C55E" /><polygon data-hf-id="hf-jhd1" points="0,50 100,100 100,130 0,80" fill="#16A34A" /><polygon data-hf-id="hf-8dm6" points="100,100 200,50 200,80 100,130" fill="#15803D" /></symbol>
+<symbol data-hf-id="hf-prqq" id="09-cta-shadow" viewBox="0 0 200 60"><ellipse data-hf-id="hf-8qr0" cx="110" cy="30" rx="95" ry="22" fill="rgba(2,20,10,.45)" /></symbol>
+<symbol data-hf-id="hf-otdq" id="09-cta-tree" viewBox="0 0 80 130"><rect data-hf-id="hf-v82c" x="36" y="80" width="10" height="40" fill="#7C4A2D" /><polygon data-hf-id="hf-3t03" points="40,0 78,70 40,92 2,70" fill="#22C55E" /><polygon data-hf-id="hf-uqct" points="40,0 78,70 40,92" fill="#15803D" /></symbol>
+<symbol data-hf-id="hf-pyc4" id="09-cta-leaf" viewBox="0 0 60 40"><path data-hf-id="hf-oivg" d="M2 38C10 8 40 0 58 2 54 24 30 40 2 38z" fill="#86EFAC" /><path data-hf-id="hf-0k69" d="M2 38C20 26 36 14 58 2" stroke="#15803D" stroke-width="2" fill="none" /></symbol>
+</defs></svg>
+
+<!-- Track 0: atmosphere -->
+<div data-hf-id="hf-32sq" id="09-cta-bg" class="clip" data-start="0" data-duration="6.57" data-track-index="0">
+  <div data-hf-id="hf-7o3m" class="09-cta-glow"></div>
+  <div data-hf-id="hf-8rzx" class="09-cta-grid"></div>
+  <svg data-hf-id="hf-xl2c" class="09-cta-leaf" id="09-cta-leaf-0" style="left:-60px;top:420px"><use data-hf-id="hf-zo9h" href="#09-cta-leaf" /></svg>
+  <svg data-hf-id="hf-3hg8" class="09-cta-leaf" id="09-cta-leaf-1" style="left:1000px;top:760px"><use data-hf-id="hf-lmmh" href="#09-cta-leaf" /></svg>
+  <svg data-hf-id="hf-2vqy" class="09-cta-leaf" id="09-cta-leaf-2" style="left:120px;top:1500px"><use data-hf-id="hf-mtjk" href="#09-cta-leaf" /></svg>
+  <svg data-hf-id="hf-twle" class="09-cta-leaf" id="09-cta-leaf-3" style="left:900px;top:300px"><use data-hf-id="hf-mf8j" href="#09-cta-leaf" /></svg>
+  <svg data-hf-id="hf-d78z" class="09-cta-leaf" id="09-cta-leaf-4" style="left:40px;top:930px"><use data-hf-id="hf-kfpe" href="#09-cta-leaf" /></svg>
+</div>
+
+<!-- Track 1: content -->
+<div data-hf-id="hf-sjl6" id="09-cta-stage" class="clip" data-start="0" data-duration="6.57" data-track-index="1">
+
+  <div data-hf-id="hf-uxe9" id="09-cta-island">
+    <!-- tile 1 (mint) -->
+    <div data-hf-id="hf-78ax" class="09-cta-tglow" id="09-cta-glow-1" style="left:-15px;top:432px"></div>
+    <svg data-hf-id="hf-s0iz" class="09-cta-tshadow" style="left:70px;top:640px" viewBox="0 0 200 60"><use data-hf-id="hf-35v5" href="#09-cta-shadow" /></svg>
+    <div data-hf-id="hf-fln8" class="09-cta-tile" id="09-cta-tile-1" style="left:43px;top:475px"><svg data-hf-id="hf-v1rr" viewBox="0 0 200 130"><use data-hf-id="hf-s2cu" href="#09-cta-tile-mint" /></svg></div>
+    <!-- tile 2 (cream) -->
+    <div data-hf-id="hf-f2aq" class="09-cta-tglow" id="09-cta-glow-2" style="left:298px;top:519px"></div>
+    <svg data-hf-id="hf-sxsi" class="09-cta-tshadow" style="left:383px;top:727px" viewBox="0 0 200 60"><use data-hf-id="hf-jz39" href="#09-cta-shadow" /></svg>
+    <div data-hf-id="hf-2blb" class="09-cta-tile" id="09-cta-tile-2" style="left:356px;top:562px"><svg data-hf-id="hf-wfcn" viewBox="0 0 200 130"><use data-hf-id="hf-cjnk" href="#09-cta-tile-cream" /></svg></div>
+    <!-- tile 3 (green) -->
+    <div data-hf-id="hf-eif7" class="09-cta-tglow" id="09-cta-glow-3" style="left:612px;top:605px"></div>
+    <svg data-hf-id="hf-r42a" class="09-cta-tshadow" style="left:697px;top:813px" viewBox="0 0 200 60"><use data-hf-id="hf-l60c" href="#09-cta-shadow" /></svg>
+    <div data-hf-id="hf-im6y" class="09-cta-tile" id="09-cta-tile-3" style="left:670px;top:648px"><svg data-hf-id="hf-w11m" viewBox="0 0 200 130"><use data-hf-id="hf-kg3f" href="#09-cta-tile-green" /></svg></div>
+    <!-- small trees for the island feel -->
+    <svg data-hf-id="hf-l8l3" class="09-cta-prop" style="left:66px;top:470px;width:46px;height:75px" viewBox="0 0 80 130"><use data-hf-id="hf-fmd9" href="#09-cta-tree" /></svg>
+    <svg data-hf-id="hf-9p1b" class="09-cta-prop" style="left:960px;top:640px;width:46px;height:75px" viewBox="0 0 80 130"><use data-hf-id="hf-ewwh" href="#09-cta-tree" /></svg>
+
+    <div data-hf-id="hf-ipoy" class="09-cta-badge" id="09-cta-badge-1" style="left:170px;top:394px">1</div>
+    <div data-hf-id="hf-l1aa" class="09-cta-badge" id="09-cta-badge-2" style="left:483px;top:481px">2</div>
+    <div data-hf-id="hf-qwxr" class="09-cta-badge" id="09-cta-badge-3" style="left:797px;top:567px">3</div>
+  </div>
+
+  <div data-hf-id="hf-w1n2" class="09-cta-disp" id="09-cta-l1">3 ÉTAPES</div>
+  <div data-hf-id="hf-n0d6" class="09-cta-disp" id="09-cta-l2">1 PLACE</div>
+
+  <div data-hf-id="hf-cunh" id="09-cta-poster"><img data-hf-id="hf-2hns" src="assets/62-poster-jy-serai.png" alt=""></div>
+
+  <div data-hf-id="hf-0eqk" id="09-cta-card">
+    <div data-hf-id="hf-h5fl" class="09-cta-label" id="09-cta-label">Inscrivez-vous</div>
+    <div data-hf-id="hf-ttws" class="09-cta-url">
+      <span data-hf-id="hf-w9k5" class="09-cta-uline" id="09-cta-u1" data-text="ongddb.com/events/"></span>
+      <span data-hf-id="hf-09oa" class="09-cta-uline" id="09-cta-u2" data-text="dje-2026"></span>
+    </div>
+    <div data-hf-id="hf-eife" class="09-cta-chips">
+      <span data-hf-id="hf-lw91" class="09-cta-chip 09-cta-chip-orange" id="09-cta-chip-date">30 OCT.</span>
+      <span data-hf-id="hf-rcgo" class="09-cta-chip 09-cta-chip-mint" id="09-cta-chip-place">Auditorium AGL</span>
+    </div>
+  </div>
+
+  <div data-hf-id="hf-0cgb" id="09-cta-logo">
+    <img class="09-cta-dje" src="assets/logo-dje.png" alt="Le Déjeuner Environnemental">
+    <i class="09-cta-sep"></i>
+    <div class="09-cta-by">Organisé<br>par</div>
+    <img data-hf-id="hf-0p5o" class="09-cta-org" src="assets/ong-ddb.png" alt="ONG DDB">
+    <img class="09-cta-org" src="assets/logo-org2.jpg" alt="Women in Logistics – Africa">
+  </div>
+  <div id="09-cta-partners"><div class="09-cta-plabel">Nos partenaires</div><div class="09-cta-prow"><img class="09-cta-plogo" src="assets/partner-1.png" alt=""><img class="09-cta-plogo" src="assets/partner-2.png" alt=""><img class="09-cta-plogo" src="assets/partner-3.png" alt=""><img class="09-cta-plogo" src="assets/partner-4.png" alt=""><img class="09-cta-plogo" src="assets/partner-5.png" alt=""><img class="09-cta-plogo" src="assets/partner-6.png" alt=""><img class="09-cta-plogo" src="assets/partner-7.png" alt=""><img class="09-cta-plogo" src="assets/partner-8.png" alt=""></div></div>
+</div>
+
+<!-- Track 2: final settle to forest -->
+<div data-hf-id="hf-ax6n" id="09-cta-fade" class="clip" data-start="0" data-duration="6.57" data-track-index="2"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+
+  // Build type-on characters (static text, deterministic)
+  var lines = [$("09-cta-u1"), $("09-cta-u2")];
+  var chars = [], carets = [];
+  lines.forEach(function(line){
+    var txt = line.getAttribute("data-text");
+    line.textContent = "";
+    for (var i = 0; i < txt.length; i++){
+      var s = document.createElement("span");
+      s.className = "09-cta-ch";
+      s.textContent = txt[i];
+      line.appendChild(s);
+      chars.push(s);
+    }
+    var c = document.createElement("span");
+    c.className = "09-cta-caret";
+    line.appendChild(c);
+    carets.push(c);
+  });
+
+  var tl = gsap.timeline({ paused: true });
+
+  // ---- Atmosphere: leaves drift once across the frame (finite)
+  [[220, -140, 40], [-240, 120, -35], [260, -180, 25], [-200, 160, -30], [240, 90, 45]].forEach(function(d, i){
+    tl.fromTo($("09-cta-leaf-" + i), { x: 0, y: 0, rotation: 0 },
+      { x: d[0], y: d[1], rotation: d[2], duration: 6.57, ease: "none" }, 0);
+  });
+
+  // ---- Scene 1 (0.0–1.1): island zooms out, tiles light 1 → 2 → 3, « 3 ÉTAPES » slams
+  tl.fromTo($("09-cta-island"), { scale: 1.24, y: 40 }, { scale: 1, y: 0, duration: 1.1, ease: "power2.out" }, 0);
+  ["1", "2", "3"].forEach(function(n){
+    tl.fromTo($("09-cta-tile-" + n), { opacity: 0.38 }, { opacity: 0.38, duration: 0.01 }, 0);
+    tl.fromTo($("09-cta-glow-" + n), { opacity: 0 }, { opacity: 0, duration: 0.01 }, 0);
+    tl.fromTo($("09-cta-badge-" + n), { scale: 0, opacity: 0 }, { scale: 0, opacity: 0, duration: 0.01 }, 0);
+  });
+  [0.28, 0.5, 0.72].forEach(function(t, i){
+    var n = i + 1;
+    tl.to($("09-cta-tile-" + n), { opacity: 1, y: -14, duration: 0.3, ease: "power2.out" }, t);
+    tl.to($("09-cta-glow-" + n), { opacity: 1, duration: 0.35, ease: "power2.out" }, t);
+    tl.to($("09-cta-badge-" + n), { scale: 1, opacity: 1, y: -14, duration: 0.42, ease: "back.out(2.4)" }, t + 0.06);
+  });
+
+  tl.fromTo($("09-cta-l1"), { scale: 1.7, opacity: 0, y: -30 },
+    { scale: 1, opacity: 1, y: 0, duration: 0.34, ease: "power4.out" }, 0.22);
+
+  // ---- Scene 2 (1.1–2.1): « 1 PLACE » slams under it (sun)
+  tl.fromTo($("09-cta-l2"), { scale: 1.7, opacity: 0, x: -60 },
+    { scale: 1, opacity: 1, x: 0, duration: 0.34, ease: "power4.out" }, 1.16);
+  tl.fromTo($("09-cta-l1"), { y: 0 }, { y: -8, duration: 0.08, ease: "power2.out", immediateRender: false }, 1.4);
+  tl.to($("09-cta-l1"), { y: 0, duration: 0.3, ease: "back.out(3)" }, 1.48);
+
+  // ---- Scene 3 (2.1–4.0): CTA card rises, URL types on, chips pop, poster peeks
+  tl.fromTo($("09-cta-card"), { y: 300, opacity: 0, scale: 0.94 },
+    { y: 0, opacity: 1, scale: 1, duration: 0.6, ease: "power3.out" }, 2.12);
+  tl.fromTo($("09-cta-label"), { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.3, ease: "power2.out" }, 2.36);
+  tl.fromTo($("09-cta-poster"), { y: 160, rotation: -6, opacity: 0 },
+    { y: 0, rotation: 8, opacity: 1, duration: 0.55, ease: "back.out(1.6)" }, 2.42);
+  tl.fromTo($("09-cta-chip-date"), { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.38, ease: "back.out(2.2)" }, 2.6);
+  tl.fromTo($("09-cta-chip-place"), { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.38, ease: "back.out(2.2)" }, 2.72);
+
+  // caret: line 1 caret visible and blinking while waiting, then typing (discrete steps)
+  var typeStart = 3.0, step = 0.036;
+  [2.66, 2.94].forEach(function(t, k){ tl.set(carets[0], { opacity: k % 2 === 0 ? 1 : 0 }, t); });
+  tl.set(carets[0], { opacity: 1 }, typeStart);
+  var line1Len = lines[0].getAttribute("data-text").length;
+  chars.forEach(function(ch, i){
+    tl.set(ch, { display: "inline" }, typeStart + i * step);
+  });
+  var line2Start = typeStart + line1Len * step;
+  tl.set(carets[0], { opacity: 0 }, line2Start);
+  tl.set(carets[1], { opacity: 1 }, line2Start);
+  var typeEnd = typeStart + chars.length * step;
+  // brief blink after typing completes, then caret off
+  tl.set(carets[1], { opacity: 0 }, typeEnd + 0.12);
+  tl.set(carets[1], { opacity: 1 }, typeEnd + 0.26);
+  tl.set(carets[1], { opacity: 0 }, typeEnd + 0.40);
+
+  // « ongddb.com » lands (cue 3.41): soft card pulse
+  tl.to($("09-cta-card"), { scale: 1.025, duration: 0.14, ease: "power2.out" }, 3.41);
+  tl.to($("09-cta-card"), { scale: 1, duration: 0.3, ease: "power2.inOut" }, 3.55);
+
+  // gentle continuous drift on the display lines (life under the hold)
+  tl.to([$("09-cta-l1"), $("09-cta-l2")], { x: 10, duration: 3.2, ease: "sine.inOut" }, 1.6);
+
+  // ---- Scene 4 (4.0–5.07): logo signs off, final hold, gentle fade to forest
+  tl.fromTo($("09-cta-logo"), { opacity: 0, y: 60 },
+    { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 3.95);
+  tl.fromTo($("09-cta-partners"), { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 4.35);
+  Array.prototype.forEach.call(document.querySelectorAll('[class~="09-cta-plogo"]'), function(el, i){
+    tl.fromTo(el, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, 4.55 + i * 0.07);
+  });
+  tl.fromTo($("09-cta-fade"), { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power1.in" }, 6.17);
+
+  window.__timelines = window.__timelines || {};
+  window.__timelines["09-cta"] = tl;
+})();
+</script>
+</div>
+</template>

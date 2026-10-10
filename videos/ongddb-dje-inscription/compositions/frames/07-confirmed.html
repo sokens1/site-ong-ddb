@@ -1,0 +1,195 @@
+<template>
+<style>
+@font-face{font-family:'Poppins';font-style:normal;font-weight:400;font-display:block;src:url("assets/fonts/Poppins-400.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:500;font-display:block;src:url("assets/fonts/Poppins-500.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:600;font-display:block;src:url("assets/fonts/Poppins-600.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:700;font-display:block;src:url("assets/fonts/Poppins-700.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:800;font-display:block;src:url("assets/fonts/Poppins-800.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:900;font-display:block;src:url("assets/fonts/Poppins-900.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:400;font-display:block;src:url("assets/fonts/WorkSans-400.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:500;font-display:block;src:url("assets/fonts/WorkSans-500.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:600;font-display:block;src:url("assets/fonts/WorkSans-600.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:700;font-display:block;src:url("assets/fonts/WorkSans-700.woff2") format('woff2');}
+
+#root{position:absolute;inset:0;width:1080px;height:1920px;overflow:hidden;container-type:size;color:#fff}
+
+/* 7 · Atmosphere — full-bleed background clip */
+.\30 7-confirmed-bg{position:absolute;inset:0;background:#0B3D22;overflow:hidden}
+.\30 7-confirmed-glow{position:absolute;left:-60px;top:160px;width:1300px;height:1300px;border-radius:50%;
+  background:radial-gradient(circle at 50% 50%,rgba(134,239,172,.16) 0%,rgba(134,239,172,.07) 38%,rgba(134,239,172,0) 66%)}
+.\30 7-confirmed-grid{position:absolute;inset:0;opacity:.07;
+  background-image:repeating-linear-gradient(30deg,#86EFAC 0 1px,transparent 1px 64px),repeating-linear-gradient(-30deg,#86EFAC 0 1px,transparent 1px 64px)}
+
+.\30 7-confirmed-stage{position:absolute;inset:0;overflow:hidden}
+.\30 7-confirmed-prop{position:absolute;overflow:visible;display:block}
+
+/* 1 · iPhone */
+.\30 7-confirmed-phone{position:absolute;width:500px;aspect-ratio:1170/2532;border-radius:66px;background:#0A0F0C;padding:14px;box-sizing:border-box;
+  box-shadow:0 40px 80px rgba(0,0,0,.45),inset 0 0 0 3px #26302B}
+.\30 7-confirmed-screen{position:relative;width:100%;height:100%;border-radius:52px;overflow:hidden;background:#fff}
+.\30 7-confirmed-screen img{position:absolute;left:0;top:0;width:100%;display:block}
+.\30 7-confirmed-island{position:absolute;top:30px;left:50%;margin-left:-70px;width:140px;height:36px;border-radius:20px;background:#0A0F0C}
+
+/* display */
+.\30 7-confirmed-disp{position:absolute;font-family:'Poppins';font-weight:800;text-transform:uppercase;letter-spacing:-.03em;line-height:.92;color:#fff;white-space:nowrap;
+  text-shadow:0 10px 0 rgba(2,20,10,.35)}
+
+/* 4 · Chip */
+.\30 7-confirmed-chip{position:absolute;font-family:'Work Sans';font-weight:600;font-size:34px;line-height:1.15;background:#F4F1E8;color:#0B2416;border-radius:9999px;
+  padding:16px 34px;white-space:nowrap;box-shadow:6px 10px 0 rgba(2,20,10,.35)}
+
+.\30 7-confirmed-ring{position:absolute;border-radius:50%;border:8px solid #86EFAC;box-sizing:border-box}
+</style>
+
+<div data-hf-id="hf-5560" id="root" data-composition-id="07-confirmed" data-start="0" data-duration="5.568" data-width="1080" data-height="1920">
+
+  <svg data-hf-id="hf-30au" width="0" height="0" style="position:absolute" aria-hidden="true"><defs data-hf-id="hf-mh0t">
+  <symbol data-hf-id="hf-3dk8" id="07-confirmed-tile-cream" viewBox="0 0 200 130"><polygon data-hf-id="hf-xt60" points="100,0 200,50 100,100 0,50" fill="#F4F1E8" /><polygon data-hf-id="hf-5aha" points="0,50 100,100 100,130 0,80" fill="#D9D3C2" /><polygon data-hf-id="hf-48dr" points="100,100 200,50 200,80 100,130" fill="#BDB59F" /></symbol>
+  <symbol data-hf-id="hf-f34p" id="07-confirmed-shadow" viewBox="0 0 200 60"><ellipse data-hf-id="hf-8qr0" cx="110" cy="30" rx="95" ry="22" fill="rgba(2,20,10,.45)" /></symbol>
+  <symbol data-hf-id="hf-ocpl" id="07-confirmed-sym-envelope" viewBox="0 0 160 120"><polygon data-hf-id="hf-swss" points="10,50 90,10 150,40 70,80" fill="#FFFFFF" /><polygon data-hf-id="hf-f86m" points="10,50 70,80 70,94 10,64" fill="#D9D3C2" /><polygon data-hf-id="hf-wp0z" points="70,80 150,40 150,54 70,94" fill="#BDB59F" /><polygon data-hf-id="hf-glr2" points="10,50 90,10 150,40 82,47" fill="#F4F1E8" stroke="#BDB59F" stroke-width="2" stroke-linejoin="round" /><circle data-hf-id="hf-ldnw" cx="82" cy="47" r="11" fill="#16A34A" /><path data-hf-id="hf-xg8d" d="M77 47 L81 51 L88 43" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /></symbol>
+  <symbol data-hf-id="hf-dpgp" id="07-confirmed-sym-check" viewBox="0 0 120 120"><circle data-hf-id="hf-obm1" cx="64" cy="64" r="54" fill="#15803D" /><circle data-hf-id="hf-8kbl" cx="58" cy="58" r="54" fill="#86EFAC" /><path data-hf-id="hf-qbvl" d="M32 60 L52 80 L86 40" fill="none" stroke="#0B3D22" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" /></symbol>
+  <symbol data-hf-id="hf-z2v5" id="07-confirmed-leaf" viewBox="0 0 60 40"><path data-hf-id="hf-oivg" d="M2 38C10 8 40 0 58 2 54 24 30 40 2 38z" fill="#86EFAC" /><path data-hf-id="hf-0k69" d="M2 38C20 26 36 14 58 2" stroke="#15803D" stroke-width="2" fill="none" /></symbol>
+  </defs></svg>
+
+  <!-- Atmosphere (full-bleed background clip, lowest track) -->
+  <div data-hf-id="hf-zlo8" class="07-confirmed-bg clip" id="07-confirmed-bg" data-start="0" data-duration="5.568" data-track-index="0">
+    <div data-hf-id="hf-hl6o" class="07-confirmed-glow" id="07-confirmed-glow"></div>
+    <div data-hf-id="hf-buf0" class="07-confirmed-grid"></div>
+    <svg data-hf-id="hf-inrx" class="07-confirmed-prop 07-confirmed-drift" data-i="0" style="left:130px;top:281px;width:65px;height:43px"><use data-hf-id="hf-lulo" href="#07-confirmed-leaf" /></svg>
+    <svg data-hf-id="hf-s2me" class="07-confirmed-prop 07-confirmed-drift" data-i="1" style="left:929px;top:670px;width:65px;height:43px"><use data-hf-id="hf-wwck" href="#07-confirmed-leaf" /></svg>
+    <svg data-hf-id="hf-noli" class="07-confirmed-prop 07-confirmed-drift" data-i="2" style="left:880px;top:1250px;width:54px;height:36px"><use data-hf-id="hf-vpfh" href="#07-confirmed-leaf" /></svg>
+    <svg data-hf-id="hf-dyn5" class="07-confirmed-prop 07-confirmed-drift" data-i="3" style="left:520px;top:1470px;width:48px;height:32px"><use data-hf-id="hf-w3qi" href="#07-confirmed-leaf" /></svg>
+    <svg data-hf-id="hf-prah" class="07-confirmed-prop 07-confirmed-drift" data-i="4" style="left:60px;top:760px;width:50px;height:34px"><use data-hf-id="hf-y39n" href="#07-confirmed-leaf" /></svg>
+  </div>
+
+  <div data-hf-id="hf-x31t" class="07-confirmed-stage clip" data-start="0" data-duration="5.568" data-track-index="1">
+
+    <!-- Leaf confetti burst (behind the badge) -->
+    <div data-hf-id="hf-1pt3" id="07-confirmed-confetti">
+      <svg data-hf-id="hf-92a8" class="07-confirmed-prop 07-confirmed-conf" data-i="0" style="left:791px;top:369px;width:60px;height:40px"><use data-hf-id="hf-yhko" href="#07-confirmed-leaf" /></svg>
+      <svg data-hf-id="hf-oec9" class="07-confirmed-prop 07-confirmed-conf" data-i="1" style="left:791px;top:369px;width:60px;height:40px"><use data-hf-id="hf-xanl" href="#07-confirmed-leaf" /></svg>
+      <svg data-hf-id="hf-b7te" class="07-confirmed-prop 07-confirmed-conf" data-i="2" style="left:791px;top:369px;width:60px;height:40px"><use data-hf-id="hf-xoym" href="#07-confirmed-leaf" /></svg>
+      <svg data-hf-id="hf-5ptn" class="07-confirmed-prop 07-confirmed-conf" data-i="3" style="left:791px;top:369px;width:60px;height:40px"><use data-hf-id="hf-zohr" href="#07-confirmed-leaf" /></svg>
+      <svg data-hf-id="hf-ieh0" class="07-confirmed-prop 07-confirmed-conf" data-i="4" style="left:791px;top:369px;width:60px;height:40px"><use data-hf-id="hf-02ss" href="#07-confirmed-leaf" /></svg>
+      <svg data-hf-id="hf-338t" class="07-confirmed-prop 07-confirmed-conf" data-i="5" style="left:791px;top:369px;width:60px;height:40px"><use data-hf-id="hf-ywpo" href="#07-confirmed-leaf" /></svg>
+      <svg data-hf-id="hf-rzxi" class="07-confirmed-prop 07-confirmed-conf" data-i="6" style="left:791px;top:369px;width:60px;height:40px"><use data-hf-id="hf-yien" href="#07-confirmed-leaf" /></svg>
+      <svg data-hf-id="hf-9qtb" class="07-confirmed-prop 07-confirmed-conf" data-i="7" style="left:791px;top:369px;width:60px;height:40px"><use data-hf-id="hf-y43m" href="#07-confirmed-leaf" /></svg>
+      <svg data-hf-id="hf-4l6g" class="07-confirmed-prop 07-confirmed-conf" data-i="8" style="left:791px;top:369px;width:60px;height:40px"><use data-hf-id="hf-xpsl" href="#07-confirmed-leaf" /></svg>
+      <svg data-hf-id="hf-mo8x" class="07-confirmed-prop 07-confirmed-conf" data-i="9" style="left:791px;top:369px;width:60px;height:40px"><use data-hf-id="hf-0hxs" href="#07-confirmed-leaf" /></svg>
+      <svg data-hf-id="hf-x62h" class="07-confirmed-prop 07-confirmed-conf" data-i="10" style="left:791px;top:369px;width:60px;height:40px"><use data-hf-id="hf-03mr" href="#07-confirmed-leaf" /></svg>
+      <svg data-hf-id="hf-mrw0" class="07-confirmed-prop 07-confirmed-conf" data-i="11" style="left:791px;top:369px;width:60px;height:40px"><use data-hf-id="hf-zpbq" href="#07-confirmed-leaf" /></svg>
+      <svg data-hf-id="hf-7hi3" class="07-confirmed-prop 07-confirmed-conf" data-i="12" style="left:791px;top:369px;width:60px;height:40px"><use data-hf-id="hf-zb0p" href="#07-confirmed-leaf" /></svg>
+      <svg data-hf-id="hf-37si" class="07-confirmed-prop 07-confirmed-conf" data-i="13" style="left:791px;top:369px;width:60px;height:40px"><use data-hf-id="hf-vq9g" href="#07-confirmed-leaf" /></svg>
+    </div>
+
+    <!-- Hero: iPhone with the real confirmation screen -->
+    <div data-hf-id="hf-tl5h" class="07-confirmed-phone" id="07-confirmed-phone" style="left:290px;top:324px">
+      <div data-hf-id="hf-d8rk" class="07-confirmed-screen"><img data-hf-id="hf-j6is" src="assets/50-success-top.png" alt=""></div>
+      <i data-hf-id="hf-ahs7" class="07-confirmed-island"></i>
+    </div>
+
+    <!-- Stamp ring + check badge (upper right) -->
+    <div data-hf-id="hf-6i1n" class="07-confirmed-ring" id="07-confirmed-ring" style="left:648px;top:216px;width:346px;height:346px"></div>
+    <svg data-hf-id="hf-hsev" class="07-confirmed-prop" id="07-confirmed-check" style="left:648px;top:216px;width:346px;height:346px"><use data-hf-id="hf-ptou" href="#07-confirmed-sym-check" /></svg>
+
+    <!-- Display -->
+    <div data-hf-id="hf-h0k2" class="07-confirmed-disp" id="07-confirmed-disp" style="left:86px;top:108px;font-size:100px">Confirmée !</div>
+
+    <!-- Landing tile (lower left) -->
+    <svg data-hf-id="hf-lk2v" class="07-confirmed-prop" id="07-confirmed-tileshadow" style="left:80px;top:1460px;width:360px;height:96px"><use data-hf-id="hf-lk8w" href="#07-confirmed-shadow" /></svg>
+    <svg data-hf-id="hf-yuc0" class="07-confirmed-prop" id="07-confirmed-tile" style="left:60px;top:1300px;width:340px;height:221px"><use data-hf-id="hf-yhvd" href="#07-confirmed-tile-cream" /></svg>
+
+    <!-- Envelope + motion-blur ghosts (path B: text-free silhouettes) -->
+    <svg data-hf-id="hf-6849" class="07-confirmed-prop 07-confirmed-ghost" data-i="3" aria-hidden="true" data-layout-allow-overlap="" style="left:70px;top:1185px;width:320px;height:240px"><use data-hf-id="hf-nopy" href="#07-confirmed-sym-envelope" /></svg>
+    <svg data-hf-id="hf-4y9i" class="07-confirmed-prop 07-confirmed-ghost" data-i="2" aria-hidden="true" data-layout-allow-overlap="" style="left:70px;top:1185px;width:320px;height:240px"><use data-hf-id="hf-20kq" href="#07-confirmed-sym-envelope" /></svg>
+    <svg data-hf-id="hf-316j" class="07-confirmed-prop 07-confirmed-ghost" data-i="1" aria-hidden="true" data-layout-allow-overlap="" style="left:70px;top:1185px;width:320px;height:240px"><use data-hf-id="hf-2evr" href="#07-confirmed-sym-envelope" /></svg>
+    <svg data-hf-id="hf-i3qn" class="07-confirmed-prop" id="07-confirmed-envelope" style="left:70px;top:1185px;width:320px;height:240px"><use data-hf-id="hf-2t6s" href="#07-confirmed-sym-envelope" /></svg>
+
+    <!-- Chip -->
+    <div data-hf-id="hf-2h3e" class="07-confirmed-chip" id="07-confirmed-chip" style="left:60px;top:1500px">Billet → boîte mail</div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script>
+(function () {
+  var ID = "07-confirmed";
+  var DUR = 5.068;
+  var $ = function (s) { return document.getElementById(ID + "-" + s); };
+  var tl = gsap.timeline({ paused: true });
+
+  // ---- Atmosphere: glow breath + leaves drifting once (finite, index-derived) ----
+  tl.fromTo($("glow"), { scale: 0.9, opacity: 0.7 }, { scale: 1.06, opacity: 1, duration: DUR, ease: "sine.inOut" }, 0);
+  var drifts = document.getElementsByClassName(ID + "-drift");
+  for (var d = 0; d < drifts.length; d++) {
+    var di = Number(drifts[d].getAttribute("data-i"));
+    var rot0 = [40, -20, 15, -35, 60][di];
+    tl.fromTo(drifts[d],
+      { x: 0, y: 0, rotation: rot0, opacity: 0.55 + (di % 2) * 0.2 },
+      { x: (di % 2 ? -1 : 1) * (60 + di * 18), y: 70 + di * 22, rotation: rot0 + (di % 2 ? -50 : 50), duration: DUR, ease: "none" }, 0);
+  }
+
+  // ---- Scene 1 (0.0–2.0): phone lands, badge stamps on « confirmée », confetti, display slams ----
+  tl.fromTo($("phone"), { scale: 0.9, y: 30, opacity: 0 }, { scale: 1, y: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 0);
+  tl.to($("phone"), { y: -10, duration: 2.2, ease: "sine.inOut" }, 0.6);
+
+  var STAMP = 0.85;
+  tl.fromTo($("check"), { scale: 2.6, rotation: -24, opacity: 0, transformOrigin: "50% 50%" },
+    { scale: 1, rotation: 0, opacity: 1, duration: 0.42, ease: "back.out(2.4)" }, STAMP);
+  tl.fromTo($("ring"), { scale: 0.6, opacity: 0.85, transformOrigin: "50% 50%" },
+    { scale: 1.55, opacity: 0, duration: 0.7, ease: "power2.out" }, STAMP + 0.18);
+
+  var angles = [-170, -150, -128, -108, -90, -72, -54, -36, -18, -2, 14, 30, 46, 62];
+  var confs = document.getElementsByClassName(ID + "-conf");
+  for (var c = 0; c < confs.length; c++) {
+    var ci = Number(confs[c].getAttribute("data-i"));
+    var a = angles[ci] * Math.PI / 180;
+    var r = [300, 390, 250][ci % 3] - (angles[ci] > 20 ? 70 : 0);
+    var tx = Math.cos(a) * r, ty = Math.sin(a) * r;
+    var spin = (ci % 2 ? -1 : 1) * (160 + ci * 23);
+    var t0 = STAMP + 0.08 + (ci % 4) * 0.02;
+    tl.fromTo(confs[c],
+      { x: 0, y: 0, scale: 0.3, rotation: ci * 26, opacity: 0 },
+      { x: tx, y: ty, scale: 0.8 + (ci % 3) * 0.2, rotation: ci * 26 + spin, opacity: 1, duration: 0.85, ease: "power3.out" }, t0);
+    tl.to(confs[c], { y: ty + 60 + (ci % 3) * 20, rotation: "+=" + (ci % 2 ? -40 : 40), opacity: 0.55, duration: DUR - t0 - 0.85, ease: "sine.inOut" }, t0 + 0.85);
+  }
+
+  tl.fromTo($("disp"), { scale: 1.7, opacity: 0, transformOrigin: "0% 50%" },
+    { scale: 1, opacity: 1, duration: 0.34, ease: "power4.out" }, 1.0);
+  tl.to($("disp"), { y: 6, duration: 0.12, ease: "power2.out" }, 1.3);
+
+  // ---- Scene 2 (2.0–4.3): yield + envelope streaks out of the phone onto the tile ----
+  tl.fromTo($("tileshadow"), { opacity: 0, scale: 0.6, transformOrigin: "50% 50%" }, { opacity: 1, scale: 1, duration: 0.4, ease: "power3.out" }, 2.5);
+  tl.fromTo($("tile"), { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "back.out(1.6)" }, 2.5);
+
+  var LAUNCH = 2.84, MOVE = 0.55, EASE = "power4.out";
+  var SX = 310, SY = -370;               // start offset: from inside the phone
+  var UX = 0.64, UY = -0.77;             // unit vector back along the path
+  // phone yields a touch (weight transfer to the envelope)
+  tl.to($("phone"), { x: 22, scale: 0.97, duration: 0.6, ease: "power3.out" }, LAUNCH);
+  tl.fromTo($("envelope"), { x: SX, y: SY, scale: 0.45, rotation: 18, opacity: 0, transformOrigin: "50% 50%" },
+    { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1, duration: MOVE, ease: EASE }, LAUNCH);
+  var ghosts = document.getElementsByClassName(ID + "-ghost");
+  for (var g = 0; g < ghosts.length; g++) {
+    var gi = Number(ghosts[g].getAttribute("data-i"));
+    tl.fromTo(ghosts[g],
+      { x: SX + UX * gi * 34, y: SY + UY * gi * 34, scale: 0.45, rotation: 18, opacity: 0.45 / gi, transformOrigin: "50% 50%" },
+      { x: 0, y: 0, scale: 1, rotation: 0, opacity: 0, duration: MOVE, ease: EASE }, LAUNCH);
+  }
+  // landing squash
+  tl.to($("envelope"), { scaleY: 0.94, duration: 0.08, ease: "power2.out" }, LAUNCH + MOVE);
+  tl.to($("envelope"), { scaleY: 1, duration: 0.25, ease: "back.out(2)" }, LAUNCH + MOVE + 0.08);
+  tl.to($("envelope"), { y: -8, duration: DUR - (LAUNCH + MOVE + 0.33), ease: "sine.inOut" }, LAUNCH + MOVE + 0.33);
+
+  // chip on « boîte mail »
+  tl.fromTo($("chip"), { y: 40, scale: 0.85, opacity: 0, transformOrigin: "20% 50%" },
+    { y: 0, scale: 1, opacity: 1, duration: 0.38, ease: "back.out(1.8)" }, 4.3);
+
+  // ---- Scene 3 (4.3–5.07): hold ----
+  tl.set({}, {}, DUR);
+
+  window.__timelines = window.__timelines || {};
+  window.__timelines[ID] = tl;
+})();
+</script>
+</template>

@@ -1,0 +1,246 @@
+<template>
+<div data-hf-id="hf-izqb" id="root" data-composition-id="01-hook" data-start="0" data-duration="7.192" data-width="1080" data-height="1920">
+<style>
+@font-face{font-family:'Poppins';font-style:normal;font-weight:400;font-display:block;src:url("assets/fonts/Poppins-400.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:500;font-display:block;src:url("assets/fonts/Poppins-500.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:600;font-display:block;src:url("assets/fonts/Poppins-600.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:700;font-display:block;src:url("assets/fonts/Poppins-700.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:800;font-display:block;src:url("assets/fonts/Poppins-800.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:900;font-display:block;src:url("assets/fonts/Poppins-900.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:400;font-display:block;src:url("assets/fonts/WorkSans-400.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:500;font-display:block;src:url("assets/fonts/WorkSans-500.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:600;font-display:block;src:url("assets/fonts/WorkSans-600.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:700;font-display:block;src:url("assets/fonts/WorkSans-700.woff2") format('woff2');}
+
+#root{position:relative;width:1080px;height:1920px;overflow:hidden;container-type:size}
+#root *{box-sizing:border-box}
+
+/* atmosphere (full-bleed background clip) */
+.\30 1-hook-bg{position:absolute;inset:0;background:#0B3D22;overflow:hidden}
+.\30 1-hook-glow{position:absolute;inset:0;background:radial-gradient(circle at 50% 56%,rgba(134,239,172,.16),rgba(134,239,172,0) 52%)}
+.\30 1-hook-grid{position:absolute;inset:0;opacity:.07;
+  background:repeating-linear-gradient(30deg,#86EFAC 0 1px,transparent 1px 64px),repeating-linear-gradient(-30deg,#86EFAC 0 1px,transparent 1px 64px)}
+.\30 1-hook-leaf{position:absolute;overflow:visible}
+
+/* content layer */
+.\30 1-hook-layer{position:absolute;inset:0}
+.\30 1-hook-stage{position:absolute;inset:0;transform-origin:540px 1300px}
+.\30 1-hook-prop{position:absolute;overflow:visible}
+
+.\30 1-hook-logo{position:absolute;left:86px;top:64px;width:908px;height:132px;box-sizing:border-box;padding:12px 22px;
+  display:flex;align-items:center;justify-content:center;gap:30px;background:#F4F1E8;border-radius:28px;box-shadow:6px 10px 0 rgba(2,20,10,.35)}
+.\30 1-hook-logo img{display:block;object-fit:contain}
+.\30 1-hook-logo .\30 1-hook-dje{height:116px;width:auto;mix-blend-mode:multiply}
+.\30 1-hook-logo .\30 1-hook-sep{width:2px;height:84px;background:#D9D3C2;flex:none}
+.\30 1-hook-logo .\30 1-hook-by{font-family:'Poppins';font-weight:700;font-size:20px;letter-spacing:.14em;text-transform:uppercase;color:#15803D;line-height:1.15;white-space:nowrap}
+.\30 1-hook-logo .\30 1-hook-org{height:104px;width:104px;border-radius:18px}
+
+.\30 1-hook-label{position:absolute;left:86px;top:216px;font-family:'Poppins';font-weight:700;font-size:30px;
+  letter-spacing:.16em;text-transform:uppercase;color:#86EFAC;white-space:nowrap;line-height:1.2}
+.\30 1-hook-w{display:inline-block;margin-right:.32em}
+
+.\30 1-hook-disp{position:absolute;left:86px;font-family:'Poppins';font-weight:800;text-transform:uppercase;
+  letter-spacing:-.03em;line-height:.95;color:#FFFFFF;white-space:nowrap}
+.\30 1-hook-date{top:300px;font-size:184px;transform-origin:0% 60%}
+.\30 1-hook-minute{top:512px;font-size:140px;color:#F2B632}
+
+/* chip (frame.md component 4) */
+.\30 1-hook-chiprow{position:absolute;left:0;right:0;display:flex;justify-content:center}
+.\30 1-hook-chip{display:inline-flex;align-items:center;gap:14px;border-radius:9999px;padding:16px 34px;
+  font-family:'Work Sans';font-weight:600;font-size:34px;line-height:1.2;white-space:nowrap;
+  background:#F4F1E8;color:#0B2416;box-shadow:6px 10px 0 rgba(2,20,10,.35)}
+.\30 1-hook-chip.\30 1-hook-mint{background:#86EFAC}
+.\30 1-hook-chipicon{width:38px;height:40px;display:block}
+
+/* stopwatch: positioned box scaled from the symbol's 120x130 units */
+.\30 1-hook-swpos{position:absolute;left:324px;top:784px;width:120px;height:130px;transform:scale(3.6);transform-origin:0 0}
+.\30 1-hook-sw{position:absolute;inset:0;transform-origin:50% 100%}
+.\30 1-hook-sw svg{position:absolute;inset:0;width:120px;height:130px;overflow:visible}
+.\30 1-hook-hand{position:absolute;width:6px;border-radius:3px;transform-origin:50% 100%}
+.\30 1-hook-hand-min{left:53px;top:34px;height:34px;background:#0B2416}
+.\30 1-hook-hand-sec{left:53px;top:42px;height:26px;background:#16A34A}
+.\30 1-hook-hub{position:absolute;left:50px;top:62px;width:12px;height:12px;border-radius:50%;background:#0B2416}
+</style>
+
+<svg data-hf-id="hf-30au" width="0" height="0" style="position:absolute" aria-hidden="true"><defs data-hf-id="hf-mh0t">
+<symbol data-hf-id="hf-8cto" id="01-hook-tile-cream" viewBox="0 0 200 130"><polygon data-hf-id="hf-xt60" points="100,0 200,50 100,100 0,50" fill="#F4F1E8" /><polygon data-hf-id="hf-5aha" points="0,50 100,100 100,130 0,80" fill="#D9D3C2" /><polygon data-hf-id="hf-48dr" points="100,100 200,50 200,80 100,130" fill="#BDB59F" /></symbol>
+<symbol data-hf-id="hf-3ii8" id="01-hook-tile-mint" viewBox="0 0 200 130"><polygon data-hf-id="hf-aziu" points="100,0 200,50 100,100 0,50" fill="#D1FAE5" /><polygon data-hf-id="hf-5bf4" points="0,50 100,100 100,130 0,80" fill="#86EFAC" /><polygon data-hf-id="hf-wra7" points="100,100 200,50 200,80 100,130" fill="#4ADE80" /></symbol>
+<symbol data-hf-id="hf-fydf" id="01-hook-tile-green" viewBox="0 0 200 130"><polygon data-hf-id="hf-qhhs" points="100,0 200,50 100,100 0,50" fill="#22C55E" /><polygon data-hf-id="hf-jhd1" points="0,50 100,100 100,130 0,80" fill="#16A34A" /><polygon data-hf-id="hf-8dm6" points="100,100 200,50 200,80 100,130" fill="#15803D" /></symbol>
+<symbol data-hf-id="hf-zwxh" id="01-hook-shadow" viewBox="0 0 200 60"><ellipse data-hf-id="hf-8qr0" cx="110" cy="30" rx="95" ry="22" fill="rgba(2,20,10,.45)" /></symbol>
+<symbol data-hf-id="hf-fail" id="01-hook-stopwatch" viewBox="0 0 120 130"><rect data-hf-id="hf-3a9f" x="52" y="0" width="16" height="14" rx="3" fill="#F2B632" /><circle data-hf-id="hf-8e7u" cx="60" cy="72" r="54" fill="#D9A21F" /><circle data-hf-id="hf-cdmm" cx="56" cy="68" r="54" fill="#F2B632" /><circle data-hf-id="hf-40os" cx="56" cy="68" r="42" fill="#F4F1E8" /><circle data-hf-id="hf-fy9z" cx="56" cy="68" r="6" fill="#0B2416" /></symbol>
+<symbol data-hf-id="hf-s3vh" id="01-hook-tree" viewBox="0 0 80 130"><rect data-hf-id="hf-v82c" x="36" y="80" width="10" height="40" fill="#7C4A2D" /><polygon data-hf-id="hf-3t03" points="40,0 78,70 40,92 2,70" fill="#22C55E" /><polygon data-hf-id="hf-uqct" points="40,0 78,70 40,92" fill="#15803D" /></symbol>
+<symbol data-hf-id="hf-v4ml" id="01-hook-leaf" viewBox="0 0 60 40"><path data-hf-id="hf-oivg" d="M2 38C10 8 40 0 58 2 54 24 30 40 2 38z" fill="#86EFAC" /><path data-hf-id="hf-0k69" d="M2 38C20 26 36 14 58 2" stroke="#15803D" stroke-width="2" fill="none" /></symbol>
+</defs></svg>
+
+<!-- Track 0: atmosphere -->
+<div data-hf-id="hf-2yj6" class="clip 01-hook-bg" data-start="0" data-duration="7.192" data-track-index="0">
+  <div data-hf-id="hf-o4ij" class="01-hook-glow"></div>
+  <div data-hf-id="hf-uipk" class="01-hook-grid"></div>
+  <svg data-hf-id="hf-08md" class="01-hook-leaf" id="01-hook-leaf-0" style="left:842px;top:324px;width:130px;height:86px"><use data-hf-id="hf-f5fk" href="#01-hook-leaf" /></svg>
+  <svg data-hf-id="hf-sc6t" class="01-hook-leaf" id="01-hook-leaf-1" style="left:65px;top:756px;width:97px;height:65px"><use data-hf-id="hf-eo8o" href="#01-hook-leaf" /></svg>
+  <svg data-hf-id="hf-ts07" class="01-hook-leaf" id="01-hook-leaf-2" style="left:930px;top:820px;width:80px;height:54px"><use data-hf-id="hf-dhbl" href="#01-hook-leaf" /></svg>
+  <svg data-hf-id="hf-7mbp" class="01-hook-leaf" id="01-hook-leaf-3" style="left:120px;top:1420px;width:70px;height:47px"><use data-hf-id="hf-dvmm" href="#01-hook-leaf" /></svg>
+  <svg data-hf-id="hf-nngj" class="01-hook-leaf" id="01-hook-leaf-4" style="left:880px;top:1300px;width:90px;height:60px"><use data-hf-id="hf-copj" href="#01-hook-leaf" /></svg>
+</div>
+
+<!-- Track 1: content -->
+<div data-hf-id="hf-a9o9" class="clip 01-hook-layer" data-start="0" data-duration="7.192" data-track-index="1">
+  <div data-hf-id="hf-gtf6" class="01-hook-stage" id="01-hook-stage">
+
+    <!-- island (mint tile) + its ground shadow -->
+    <svg data-hf-id="hf-ax0z" class="01-hook-prop" id="01-hook-island-shadow" style="left:190px;top:1400px;width:840px;height:150px"><use data-hf-id="hf-rh3o" href="#01-hook-shadow" /></svg>
+    <svg data-hf-id="hf-2nqc" class="01-hook-prop" id="01-hook-island" style="left:130px;top:957px;width:821px;height:540px"><use data-hf-id="hf-e6qx" href="#01-hook-tile-mint" /></svg>
+
+    <!-- trees on the island -->
+    <svg data-hf-id="hf-zd2q" class="01-hook-prop" id="01-hook-tree-0" style="left:151px;top:1000px;width:97px;height:162px;transform-origin:50% 100%"><use data-hf-id="hf-k7ko" href="#01-hook-tree" /></svg>
+    <svg data-hf-id="hf-bt76" class="01-hook-prop" id="01-hook-tree-1" style="left:821px;top:1043px;width:86px;height:140px;transform-origin:50% 100%"><use data-hf-id="hf-vlps" href="#01-hook-tree" /></svg>
+
+    <!-- stopwatch shadow + stopwatch (lands at « une minute ») -->
+    <svg data-hf-id="hf-edog" class="01-hook-prop" id="01-hook-sw-shadow" style="left:350px;top:1200px;width:420px;height:110px"><use data-hf-id="hf-9cvg" href="#01-hook-shadow" /></svg>
+    <div data-hf-id="hf-8k8w" class="01-hook-swpos">
+      <div data-hf-id="hf-tpmy" class="01-hook-sw" id="01-hook-sw">
+        <svg data-hf-id="hf-7byq" viewBox="0 0 120 130"><use data-hf-id="hf-527t" href="#01-hook-stopwatch" /></svg>
+        <div data-hf-id="hf-b0xa" class="01-hook-hand 01-hook-hand-sec" id="01-hook-hand-sec" style="transform:rotate(117deg)"></div>
+        <div data-hf-id="hf-bw07" class="01-hook-hand 01-hook-hand-min" id="01-hook-hand-min"></div>
+        <div data-hf-id="hf-e2b1" class="01-hook-hub"></div>
+      </div>
+    </div>
+
+    <!-- third tree, front of the island -->
+    <svg data-hf-id="hf-7h97" class="01-hook-prop" id="01-hook-tree-2" style="left:640px;top:1190px;width:72px;height:118px;transform-origin:50% 100%"><use data-hf-id="hf-uesp" href="#01-hook-tree" /></svg>
+
+    <!-- chip « Votre place ? » above the island -->
+    <div data-hf-id="hf-v64j" class="01-hook-chiprow" style="top:860px">
+      <div data-hf-id="hf-r5eu" class="01-hook-chip" id="01-hook-chip-place">Votre place ?</div>
+    </div>
+
+    <!-- chip « chrono lancé » under the island -->
+    <div data-hf-id="hf-r9v3" class="01-hook-chiprow" style="top:1506px">
+      <div data-hf-id="hf-799u" class="01-hook-chip 01-hook-mint" id="01-hook-chip-chrono">
+        <svg data-hf-id="hf-j2td" class="01-hook-chipicon" viewBox="0 0 120 130" aria-hidden="true"><rect data-hf-id="hf-au45" x="52" y="0" width="16" height="14" rx="3" fill="#0B2416" /><circle data-hf-id="hf-z44a" cx="60" cy="72" r="50" fill="none" stroke="#0B2416" stroke-width="12" /><path data-hf-id="hf-7rvy" d="M60 72 L60 42" stroke="#0B2416" stroke-width="12" stroke-linecap="round" /></svg>
+        <span data-hf-id="hf-3t2l">chrono lancé</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- type (outside the push so it stays crisp and anchored) -->
+  <div data-hf-id="hf-wtet" class="01-hook-logo" id="01-hook-logo">
+    <img class="01-hook-dje" src="assets/logo-dje.png" alt="Le Déjeuner Environnemental">
+    <i class="01-hook-sep"></i>
+    <div class="01-hook-by">Organisé<br>par</div>
+    <img class="01-hook-org" src="assets/ong-ddb.png" alt="ONG DDB">
+    <img class="01-hook-org" src="assets/logo-org2.jpg" alt="Women in Logistics – Africa">
+  </div>
+  <div data-hf-id="hf-96xe" class="01-hook-label" id="01-hook-label"><span data-hf-id="hf-hjs7" class="01-hook-w">Le</span><span data-hf-id="hf-r2e2" class="01-hook-w">Déjeuner</span><span data-hf-id="hf-wexh" class="01-hook-w">Environnemental</span></div>
+  <div data-hf-id="hf-bbrv" class="01-hook-disp 01-hook-date" id="01-hook-date">30 OCT.</div>
+  <div data-hf-id="hf-dqak" class="01-hook-disp 01-hook-minute" id="01-hook-minute">UNE<br data-hf-id="hf-x5px">MINUTE</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<script>
+(function () {
+  var P = "01-hook-";
+  function $(id) { return document.getElementById(P + id); }
+  var DUR = 6.792;
+
+  // One cue array — every reveal reads from the voiceover word cues.
+  var CUE = {
+    le: 0.28, dejeuner: 0.41, env: 0.73,
+    trente: 1.71, place: 2.72, minute: 4.88, chrono: 6.10
+  };
+
+  var tl = gsap.timeline({ paused: true });
+
+  // ---------- Atmosphere: leaves drift once (finite, index-derived) ----------
+  for (var i = 0; i < 5; i++) {
+    var dir = i % 2 === 0 ? -1 : 1;
+    tl.fromTo($("leaf-" + i),
+      { x: 0, y: 0, rotation: -20 + i * 14, opacity: 0.55 },
+      { x: dir * (40 + i * 12), y: -(60 + i * 18), rotation: 10 + i * 9, opacity: 0.8, duration: DUR, ease: "sine.inOut" },
+      0);
+  }
+
+  // Slow push-in underneath the whole shot (macro camera)
+  tl.fromTo($("stage"), { scale: 1 }, { scale: 1.035, duration: DUR, ease: "none" }, 0);
+
+  // ---------- Scene 1 (0.0–1.6): logo + kicker per-word rise ----------
+  tl.fromTo($("logo"), { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 0.1);
+  var words = $("label").children;
+  var wordCues = [CUE.le, CUE.dejeuner, CUE.env];
+  for (var w = 0; w < words.length; w++) {
+    tl.fromTo(words[w],
+      { y: 36, opacity: 0, filter: "blur(6px)" },
+      { y: 0, opacity: 1, filter: "blur(0px)", duration: 0.42, ease: "power3.out" },
+      wordCues[w]);
+  }
+
+  // ---------- Scene 2 (1.6–2.7): « 30 OCT. » slams (scale + blur slam) ----------
+  tl.fromTo($("date"),
+    { scale: 1.5, opacity: 0, filter: "blur(16px)" },
+    { scale: 1, opacity: 1, filter: "blur(0px)", duration: 0.5, ease: "power4.out" },
+    CUE.trente - 0.06);
+
+  // ---------- Scene 3 (2.7–4.8): island rises — shadow, tile, trees, chip ----------
+  tl.fromTo($("island-shadow"),
+    { scaleX: 0.2, scaleY: 0.4, opacity: 0, transformOrigin: "50% 50%" },
+    { scaleX: 1, scaleY: 1, opacity: 1, duration: 0.6, ease: "power3.out" },
+    CUE.place);
+  tl.fromTo($("island"),
+    { y: 260, opacity: 0 },
+    { y: 0, opacity: 1, duration: 0.8, ease: "power3.out" },
+    CUE.place + 0.1);
+  tl.fromTo($("chip-place"),
+    { scale: 0.4, y: 20, opacity: 0 },
+    { scale: 1, y: 0, opacity: 1, duration: 0.45, ease: "back.out(2)" },
+    CUE.place + 0.25);
+  var treeCues = [3.25, 3.55, 3.85];
+  for (var t = 0; t < 3; t++) {
+    tl.fromTo($("tree-" + t),
+      { scale: 0, opacity: 0 },
+      { scale: 1, opacity: 1, duration: 0.5, ease: "power3.out" },
+      treeCues[t]);
+  }
+
+  // ---------- Scene 4 (4.8–6.0): hard-cut swap chip -> « UNE MINUTE »; stopwatch lands ----------
+  // Discrete state swap: instant, no tween between states.
+  tl.set($("chip-place"), { opacity: 0 }, CUE.minute);
+  tl.fromTo($("minute"),
+    { x: -320, opacity: 0 },
+    { x: 0, opacity: 1, duration: 0.45, ease: "expo.out" },
+    CUE.minute);
+  tl.fromTo($("sw-shadow"),
+    { scaleX: 0.2, scaleY: 0.4, opacity: 0, transformOrigin: "50% 50%" },
+    { scaleX: 1, scaleY: 1, opacity: 1, duration: 0.45, ease: "power3.out" },
+    CUE.minute - 0.04);
+  tl.fromTo($("sw"),
+    { y: 40, scale: 0.55, opacity: 0 },
+    { y: 0, scale: 1, opacity: 1, duration: 0.6, ease: "circ.out" },
+    CUE.minute + 0.06);
+
+  // ---------- Scene 5 (6.0–6.79): « Chrono. » — hand sweeps with ticks, chip pops ----------
+  tl.fromTo($("hand-min"),
+    { rotation: 0 },
+    { rotation: 72, duration: 0.66, ease: "steps(6)" },
+    CUE.chrono);
+  tl.fromTo($("hand-sec"),
+    { rotation: 117 },
+    { rotation: 177, duration: 0.66, ease: "none" },
+    CUE.chrono);
+  tl.fromTo($("sw"),
+    { scale: 1.07 },
+    { scale: 1, duration: 0.22, ease: "power2.out", immediateRender: false },
+    CUE.chrono);
+  tl.fromTo($("chip-chrono"),
+    { scale: 0.4, y: 16, opacity: 0 },
+    { scale: 1, y: 0, opacity: 1, duration: 0.4, ease: "back.out(2)" },
+    CUE.chrono + 0.08);
+
+  // pad to full duration
+  tl.set({}, {}, DUR);
+
+  window.__timelines = window.__timelines || {};
+  window.__timelines["01-hook"] = tl;
+})();
+</script>
+</div>
+</template>

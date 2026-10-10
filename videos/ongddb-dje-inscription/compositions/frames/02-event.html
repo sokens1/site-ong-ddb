@@ -1,0 +1,235 @@
+<template>
+<div data-hf-id="hf-slzv" id="root" data-composition-id="02-event" data-width="1080" data-height="1920" data-start="0" data-duration="9.617">
+<style>
+@font-face{font-family:'Poppins';font-style:normal;font-weight:400;font-display:block;src:url("assets/fonts/Poppins-400.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:500;font-display:block;src:url("assets/fonts/Poppins-500.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:600;font-display:block;src:url("assets/fonts/Poppins-600.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:700;font-display:block;src:url("assets/fonts/Poppins-700.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:800;font-display:block;src:url("assets/fonts/Poppins-800.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:900;font-display:block;src:url("assets/fonts/Poppins-900.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:400;font-display:block;src:url("assets/fonts/WorkSans-400.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:500;font-display:block;src:url("assets/fonts/WorkSans-500.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:600;font-display:block;src:url("assets/fonts/WorkSans-600.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:700;font-display:block;src:url("assets/fonts/WorkSans-700.woff2") format('woff2');}
+
+#root{position:relative;width:1080px;height:1920px;overflow:hidden;container-type:size}
+
+/* atmosphere (full-bleed background clip) */
+.\30 2-event-bg{position:absolute;left:0;top:0;width:1080px;height:1920px;overflow:hidden;background:#0B3D22}
+.\30 2-event-glow{position:absolute;left:0;top:0;width:1080px;height:1920px;
+  background:radial-gradient(circle at 50% 46%,rgba(134,239,172,.16) 0,rgba(134,239,172,0) 52%)}
+.\30 2-event-grid{position:absolute;left:0;top:0;width:1080px;height:1920px;opacity:.07;
+  background:repeating-linear-gradient(30deg,#86EFAC 0 1px,transparent 1px 64px),repeating-linear-gradient(-30deg,#86EFAC 0 1px,transparent 1px 64px)}
+.\30 2-event-leaf{position:absolute;width:72px;height:48px;overflow:visible}
+
+/* content layer + camera world */
+.\30 2-event-stage{position:absolute;left:0;top:0;width:1080px;height:1920px;overflow:hidden}
+.\30 2-event-world{position:absolute;left:0;top:0;width:1080px;height:1920px;transform-origin:0 0;will-change:transform}
+.\30 2-event-prop{position:absolute;overflow:visible;display:block}
+
+/* iPhone (shared component) */
+.\30 2-event-phone{position:absolute;width:500px;aspect-ratio:1170/2532;border-radius:66px;background:#0A0F0C;padding:14px;
+  box-shadow:0 40px 80px rgba(0,0,0,.45),inset 0 0 0 3px #26302B;box-sizing:border-box}
+.\30 2-event-screen{position:relative;width:100%;height:100%;border-radius:52px;overflow:hidden;background:#fff}
+.\30 2-event-screen img{position:absolute;left:0;top:0;width:100%;display:block}
+.\30 2-event-island{position:absolute;top:30px;left:50%;margin-left:-70px;width:140px;height:36px;border-radius:20px;background:#0A0F0C}
+
+/* chip (shared component) */
+.\30 2-event-chip{position:absolute;border-radius:9999px;padding:16px 34px;font-family:'Work Sans';font-weight:600;font-size:34px;line-height:1.2;
+  background:#F4F1E8;color:#0B2416;white-space:nowrap;box-shadow:6px 10px 0 rgba(2,20,10,.35);overflow:hidden}
+.\30 2-event-chip-sm{padding:12px 28px;font-size:30px}
+.\30 2-event-sunbar{position:absolute;left:0;top:0;width:100%;height:100%;background:#F2B632;transform-origin:0 50%}
+.\30 2-event-chiptxt{position:relative}
+
+/* people tokens */
+.\30 2-event-token{position:absolute;width:64px;height:120px}
+.\30 2-event-token-shadow{position:absolute;left:-6px;top:96px;width:90px;height:28px;border-radius:50%;background:rgba(2,20,10,.4)}
+.\30 2-event-token-body{position:absolute;left:4px;top:40px;width:56px;height:72px;border-radius:40% / 30%}
+.\30 2-event-token-head{position:absolute;left:12px;top:0;width:40px;height:40px;border-radius:50%;background:#F4F1E8;box-shadow:inset -6px -4px 0 #D9D3C2}
+
+/* poster card */
+.\30 2-event-poster{position:absolute;left:812px;top:420px;width:236px;height:118px;border-radius:14px;overflow:hidden;
+  border:6px solid #F4F1E8;box-shadow:6px 10px 0 rgba(2,20,10,.35);background:#F4F1E8}
+.\30 2-event-poster img{display:block;width:100%;height:100%;object-fit:cover}
+
+/* URL pill (HUD, outside the camera) */
+.\30 2-event-url{position:absolute;left:86px;top:160px;width:908px;height:104px;border-radius:9999px;background:#FFFFFF;
+  box-shadow:6px 10px 0 rgba(2,20,10,.35);display:flex;align-items:center;padding:0 40px;box-sizing:border-box;
+  font-family:'Poppins';font-weight:700;font-size:54px;letter-spacing:-.01em;color:#0B2416;white-space:nowrap}
+.\30 2-event-url-dot{display:inline-block;width:22px;height:22px;border-radius:50%;background:#16A34A;margin-right:22px;flex:none}
+.\30 2-event-url-wrap{display:inline-flex;align-items:center;min-width:760px;white-space:pre}
+.\30 2-event-cursor{display:inline-block;width:6px;height:56px;margin-left:6px;background:#16A34A;border-radius:3px}
+</style>
+
+<!-- shared iso symbols -->
+<svg data-hf-id="hf-30au" width="0" height="0" style="position:absolute" aria-hidden="true"><defs data-hf-id="hf-mh0t">
+<symbol data-hf-id="hf-gy8u" id="02-event-tile-cream" viewBox="0 0 200 130"><polygon data-hf-id="hf-xt60" points="100,0 200,50 100,100 0,50" fill="#F4F1E8" /><polygon data-hf-id="hf-5aha" points="0,50 100,100 100,130 0,80" fill="#D9D3C2" /><polygon data-hf-id="hf-48dr" points="100,100 200,50 200,80 100,130" fill="#BDB59F" /></symbol>
+<symbol data-hf-id="hf-fy9e" id="02-event-tile-mint" viewBox="0 0 200 130"><polygon data-hf-id="hf-aziu" points="100,0 200,50 100,100 0,50" fill="#D1FAE5" /><polygon data-hf-id="hf-5bf4" points="0,50 100,100 100,130 0,80" fill="#86EFAC" /><polygon data-hf-id="hf-wra7" points="100,100 200,50 200,80 100,130" fill="#4ADE80" /></symbol>
+<symbol data-hf-id="hf-f95l" id="02-event-tile-green" viewBox="0 0 200 130"><polygon data-hf-id="hf-qhhs" points="100,0 200,50 100,100 0,50" fill="#22C55E" /><polygon data-hf-id="hf-jhd1" points="0,50 100,100 100,130 0,80" fill="#16A34A" /><polygon data-hf-id="hf-8dm6" points="100,100 200,50 200,80 100,130" fill="#15803D" /></symbol>
+<symbol data-hf-id="hf-jm6n" id="02-event-shadow" viewBox="0 0 200 60"><ellipse data-hf-id="hf-8qr0" cx="110" cy="30" rx="95" ry="22" fill="rgba(2,20,10,.45)" /></symbol>
+<symbol data-hf-id="hf-p3bs" id="02-event-calendar" viewBox="0 0 120 130"><polygon data-hf-id="hf-ci0c" points="10,30 70,0 110,20 50,50" fill="#F4F1E8" /><polygon data-hf-id="hf-730k" points="10,30 50,50 50,128 10,108" fill="#D9D3C2" /><polygon data-hf-id="hf-mhq8" points="50,50 110,20 110,98 50,128" fill="#fff" /><polygon data-hf-id="hf-044r" points="50,50 110,20 110,40 50,70" fill="#16A34A" /><g data-hf-id="hf-y5dh" transform="matrix(1,-0.5,0,1,50,75)"><text data-hf-id="hf-k9np" x="30" y="34" font-family="Poppins" font-weight="900" font-size="30" fill="#0B2416" text-anchor="middle">30</text><text data-hf-id="hf-2c3i" x="30" y="50" font-family="Poppins" font-weight="700" font-size="11" fill="#16A34A" text-anchor="middle">OCT.</text></g></symbol>
+<symbol data-hf-id="hf-zyo3" id="02-event-pin" viewBox="0 0 80 120"><path data-hf-id="hf-7nxn" d="M40 0c22 0 38 16 38 37 0 26-38 63-38 63S2 63 2 37C2 16 18 0 40 0z" fill="#F97316" /><path data-hf-id="hf-3hvm" d="M40 0c22 0 38 16 38 37 0 26-38 63-38 63z" fill="#EA580C" /><circle data-hf-id="hf-wdzz" cx="40" cy="36" r="14" fill="#fff" /><ellipse data-hf-id="hf-zips" cx="40" cy="110" rx="22" ry="8" fill="rgba(2,20,10,.4)" /></symbol>
+<symbol data-hf-id="hf-sghx" id="02-event-seat" viewBox="0 0 60 70"><polygon data-hf-id="hf-f5ge" points="5,30 35,15 55,25 25,40" fill="#86EFAC" /><polygon data-hf-id="hf-y7s3" points="5,30 25,40 25,62 5,52" fill="#16A34A" /><polygon data-hf-id="hf-tzqu" points="25,40 55,25 55,47 25,62" fill="#15803D" /><polygon data-hf-id="hf-sp6k" points="35,15 55,25 55,0 35,-10" fill="#4ADE80" /></symbol>
+<symbol data-hf-id="hf-e84f" id="02-event-leaf" viewBox="0 0 60 40"><path data-hf-id="hf-oivg" d="M2 38C10 8 40 0 58 2 54 24 30 40 2 38z" fill="#86EFAC" /><path data-hf-id="hf-0k69" d="M2 38C20 26 36 14 58 2" stroke="#15803D" stroke-width="2" fill="none" /></symbol>
+</defs></svg>
+
+<!-- atmosphere background clip -->
+<div data-hf-id="hf-f7dl" class="clip 02-event-bg" id="02-event-bg" data-start="0" data-duration="9.617" data-track-index="0">
+  <div data-hf-id="hf-7oed" class="02-event-glow"></div>
+  <div data-hf-id="hf-6uha" class="02-event-grid"></div>
+  <svg data-hf-id="hf-pizf" class="02-event-leaf" id="02-event-leaf-0" style="left:0;top:0"><use data-hf-id="hf-psde" href="#02-event-leaf" /></svg>
+  <svg data-hf-id="hf-biw8" class="02-event-leaf" id="02-event-leaf-1" style="left:0;top:0"><use data-hf-id="hf-gxc6" href="#02-event-leaf" /></svg>
+  <svg data-hf-id="hf-cpop" class="02-event-leaf" id="02-event-leaf-2" style="left:0;top:0"><use data-hf-id="hf-hbn7" href="#02-event-leaf" /></svg>
+  <svg data-hf-id="hf-mezy" class="02-event-leaf" id="02-event-leaf-3" style="left:0;top:0"><use data-hf-id="hf-hpy8" href="#02-event-leaf" /></svg>
+  <svg data-hf-id="hf-w90n" class="02-event-leaf" id="02-event-leaf-4" style="left:0;top:0"><use data-hf-id="hf-ext1" href="#02-event-leaf" /></svg>
+</div>
+
+<!-- content -->
+<div data-hf-id="hf-vp4s" class="clip 02-event-stage" id="02-event-stage" data-start="0" data-duration="9.617" data-track-index="1">
+  <div data-hf-id="hf-aqk2" class="02-event-world" id="02-event-world">
+    <!-- island platform -->
+    <svg data-hf-id="hf-7c2s" class="02-event-prop" style="left:60px;top:970px;width:960px;height:624px" viewBox="0 0 200 130" preserveAspectRatio="none"><use data-hf-id="hf-g8cr" href="#02-event-tile-cream" /></svg>
+    <svg data-hf-id="hf-37yc" class="02-event-prop" style="left:330px;top:1418px;width:440px;height:90px" viewBox="0 0 200 60" preserveAspectRatio="none"><use data-hf-id="hf-he0m" href="#02-event-shadow" /></svg>
+
+    <!-- people tokens (jeunes / décideurs) -->
+    <div data-hf-id="hf-hiej" class="02-event-token" id="02-event-token-a" style="left:118px;top:1128px">
+      <i data-hf-id="hf-kdpi" class="02-event-token-shadow"></i><i data-hf-id="hf-wigf" class="02-event-token-body" style="background:#86EFAC;box-shadow:inset -14px 0 0 #4ADE80"></i><i data-hf-id="hf-w03w" class="02-event-token-head"></i>
+    </div>
+    <div data-hf-id="hf-y8s9" class="02-event-token" id="02-event-token-b" style="left:198px;top:1172px">
+      <i data-hf-id="hf-gaga" class="02-event-token-shadow"></i><i data-hf-id="hf-oxm9" class="02-event-token-body" style="background:#16A34A;box-shadow:inset -14px 0 0 #15803D"></i><i data-hf-id="hf-vlb8" class="02-event-token-head"></i>
+    </div>
+
+    <!-- seats cluster -->
+    <svg data-hf-id="hf-ky3p" class="02-event-prop" id="02-event-seatsh-0" style="left:742px;top:1222px;width:110px;height:34px" viewBox="0 0 200 60" preserveAspectRatio="none"><use data-hf-id="hf-9u3e" href="#02-event-shadow" /></svg>
+    <svg data-hf-id="hf-9wum" class="02-event-prop" id="02-event-seatsh-1" style="left:812px;top:1192px;width:110px;height:34px" viewBox="0 0 200 60" preserveAspectRatio="none"><use data-hf-id="hf-a8ef" href="#02-event-shadow" /></svg>
+    <svg data-hf-id="hf-du63" class="02-event-prop" id="02-event-seatsh-2" style="left:777px;top:1257px;width:110px;height:34px" viewBox="0 0 200 60" preserveAspectRatio="none"><use data-hf-id="hf-ampg" href="#02-event-shadow" /></svg>
+    <svg data-hf-id="hf-cv1d" class="02-event-prop" id="02-event-seat-1" style="left:830px;top:1150px;width:86px;height:97px" viewBox="0 0 60 70"><use data-hf-id="hf-50jx" href="#02-event-seat" /></svg>
+    <svg data-hf-id="hf-yjef" class="02-event-prop" id="02-event-seat-0" style="left:760px;top:1180px;width:86px;height:97px" viewBox="0 0 60 70"><use data-hf-id="hf-zk1t" href="#02-event-seat" /></svg>
+    <svg data-hf-id="hf-z1x2" class="02-event-prop" id="02-event-seat-2" style="left:795px;top:1215px;width:86px;height:97px" viewBox="0 0 60 70"><use data-hf-id="hf-0qyw" href="#02-event-seat" /></svg>
+
+    <!-- the phone with the real event page -->
+    <div data-hf-id="hf-iib2" class="02-event-phone" id="02-event-phone" style="left:290px;top:389px"><div data-hf-id="hf-qnhm" class="02-event-screen"><img data-hf-id="hf-miby" src="assets/10-event-hero.png" alt=""></div><i data-hf-id="hf-9k4x" class="02-event-island"></i></div>
+
+    <!-- poster card -->
+    <div data-hf-id="hf-rwm0" class="02-event-poster" id="02-event-poster"><img data-hf-id="hf-h6k0" src="assets/le-dejeuner-environnemental-2026.jpg" alt=""></div>
+
+    <!-- panels -->
+    <div data-hf-id="hf-i6hk" class="02-event-chip 02-event-chip-sm" id="02-event-panel-0" style="left:43px;top:430px">Panel 1</div>
+    <div data-hf-id="hf-acb4" class="02-event-chip 02-event-chip-sm" id="02-event-panel-1" style="left:43px;top:502px">Panel 2</div>
+    <div data-hf-id="hf-l23z" class="02-event-chip 02-event-chip-sm" id="02-event-panel-2" style="left:43px;top:574px">Panel 3</div>
+
+    <!-- calendar -->
+    <svg data-hf-id="hf-ko89" class="02-event-prop" id="02-event-calendar" style="left:54px;top:670px;width:238px;height:259px" viewBox="0 0 120 130"><use data-hf-id="hf-7yjo" href="#02-event-calendar" /></svg>
+    <div data-hf-id="hf-9gyh" class="02-event-chip" id="02-event-date" style="left:43px;top:950px">30 octobre 2026</div>
+
+    <!-- map pin -->
+    <svg data-hf-id="hf-5d2b" class="02-event-prop" id="02-event-pin" style="left:832px;top:605px;width:151px;height:227px" viewBox="0 0 80 120"><use data-hf-id="hf-17jv" href="#02-event-pin" /></svg>
+    <div data-hf-id="hf-flvk" class="02-event-chip" id="02-event-agl" style="left:626px;top:864px">Auditorium AGL</div>
+
+    <!-- 300 places -->
+    <div data-hf-id="hf-pduf" class="02-event-chip" id="02-event-places" style="left:626px;top:1469px"><i data-hf-id="hf-ajys" class="02-event-sunbar" id="02-event-sunbar"></i><span data-hf-id="hf-orw6" class="02-event-chiptxt">300 places</span></div>
+  </div>
+
+  <!-- URL pill (HUD) -->
+  <div data-hf-id="hf-8equ" class="02-event-url" id="02-event-url">
+    <i data-hf-id="hf-z83z" class="02-event-url-dot"></i>
+    <span data-hf-id="hf-gg9p" class="02-event-url-wrap"><span data-hf-id="hf-m74t" id="02-event-url-text"></span><span data-hf-id="hf-owqb" class="02-event-cursor" id="02-event-cursor"></span></span>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+(function () {
+  var D = 9.117;
+  var $ = function (id) { return document.getElementById(id); };
+  var tl = gsap.timeline({ paused: true });
+
+  /* ---------- camera: tight on the phone -> one decelerating pull-back -> LOCK ---------- */
+  var world = $("02-event-world");
+  tl.fromTo(world, { x: -270, y: -315, scale: 1.5 },
+    { x: -243, y: -273.5, scale: 1.45, duration: 2.6, ease: "sine.inOut" }, 0);
+  tl.to(world, { x: 0, y: 0, scale: 1, duration: 1.1, ease: "expo.out" }, 2.6);
+  /* no camera tweens after 3.7s */
+
+  /* ---------- Scene 1: URL pill types in ---------- */
+  tl.fromTo($("02-event-url"), { y: -30, scale: 0.92, opacity: 0 },
+    { y: 0, scale: 1, opacity: 1, duration: 0.35, ease: "back.out(1.6)" }, 0.05);
+
+  var FULL = "ongddb.com › Événements";
+  var SEQ = [
+    { t: 0.0, text: "" },
+    { t: 0.30, text: "o" }, { t: 0.40, text: "on" }, { t: 0.48, text: "ong" },
+    { t: 0.58, text: "ongd" }, { t: 0.68, text: "ongdd" }, { t: 0.78, text: "ongddb" },
+    { t: 0.95, text: "ongddb." }, { t: 1.06, text: "ongddb.c" }, { t: 1.14, text: "ongddb.co" },
+    { t: 1.22, text: "ongddb.com" },
+    { t: 2.30, text: "ongddb.com ›" },
+    { t: 2.72, text: FULL }
+  ];
+  function textAt(time) {
+    for (var i = SEQ.length - 1; i >= 0; i--) { if (time >= SEQ[i].t) return SEQ[i].text; }
+    return "";
+  }
+  var textEl = $("02-event-url-text"), cursorEl = $("02-event-cursor");
+  var driver = { t: 0 };
+  tl.to(driver, {
+    t: D, duration: D, ease: "none",
+    onUpdate: function () {
+      textEl.textContent = textAt(driver.t);
+      var on = Math.sin(driver.t * Math.PI * 2 / 0.7) > 0;
+      if (driver.t < 1.25 || (driver.t > 2.2 && driver.t < 2.75)) on = true; /* solid while typing */
+      cursorEl.style.opacity = (driver.t < 3.4 && on) ? "1" : "0";
+    }
+  }, 0);
+
+  /* ---------- poster card lands as the wide locks ---------- */
+  tl.fromTo($("02-event-poster"), { y: -40, rotation: -8, scale: 0.8, opacity: 0 },
+    { y: 0, rotation: 5, scale: 1, opacity: 1, duration: 0.5, ease: "back.out(1.7)" }, 3.2);
+
+  /* ---------- Scene 3: panels + people tokens ---------- */
+  ["02-event-panel-0", "02-event-panel-1", "02-event-panel-2"].forEach(function (id, i) {
+    tl.fromTo($(id), { x: -60, scale: 0.6, opacity: 0 },
+      { x: 0, scale: 1, opacity: 1, duration: 0.42, ease: "back.out(1.8)" }, 3.70 + i * 0.32);
+  });
+  tl.fromTo($("02-event-token-a"), { y: 40, scale: 0, opacity: 0, transformOrigin: "50% 100%" },
+    { y: 0, scale: 1, opacity: 1, duration: 0.45, ease: "back.out(2.2)" }, 4.92);
+  tl.fromTo($("02-event-token-b"), { y: 40, scale: 0, opacity: 0, transformOrigin: "50% 100%" },
+    { y: 0, scale: 1, opacity: 1, duration: 0.45, ease: "back.out(2.2)" }, 5.77);
+
+  /* ---------- Scene 4: calendar rises, pin drops, seats rise, 300 places ---------- */
+  tl.fromTo($("02-event-calendar"), { y: 90, opacity: 0 },
+    { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, 6.75);
+  tl.fromTo($("02-event-date"), { y: 30, opacity: 0 },
+    { y: 0, opacity: 1, duration: 0.45, ease: "power3.out" }, 6.95);
+  tl.fromTo($("02-event-pin"), { y: -240, opacity: 0 },
+    { y: 0, opacity: 1, duration: 0.55, ease: "back.out(1.4)" }, 6.85);
+  tl.fromTo($("02-event-agl"), { y: 30, opacity: 0 },
+    { y: 0, opacity: 1, duration: 0.45, ease: "power3.out" }, 7.05);
+  [0, 1, 2].forEach(function (i) {
+    var at = 7.0 + i * 0.12;
+    tl.fromTo($("02-event-seatsh-" + i), { scale: 0.3, opacity: 0, transformOrigin: "50% 50%" },
+      { scale: 1, opacity: 1, duration: 0.4, ease: "power2.out" }, at);
+    tl.fromTo($("02-event-seat-" + i), { y: 60, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, at + 0.05);
+  });
+  tl.fromTo($("02-event-places"), { y: 50, scale: 0.85, opacity: 0 },
+    { y: 0, scale: 1, opacity: 1, duration: 0.5, ease: "power3.out" }, 7.3);
+
+  /* ---------- Scene 5: sun highlight sweep on « 300 places » ---------- */
+  tl.fromTo($("02-event-sunbar"), { scaleX: 0 },
+    { scaleX: 1, duration: 0.45, ease: "power2.inOut" }, 8.09);
+
+  /* ---------- atmosphere: leaves drift once across ---------- */
+  for (var i = 0; i < 5; i++) {
+    var y0 = 300 + i * 260, dir = (i % 2 === 0) ? 1 : -1;
+    var x0 = dir > 0 ? -100 + i * 40 : 1100 - i * 40;
+    tl.fromTo($("02-event-leaf-" + i),
+      { x: x0, y: y0, rotation: -20 + i * 15, opacity: 0.55 },
+      { x: x0 + dir * (520 + i * 60), y: y0 + 140 - i * 30, rotation: 40 + i * 20, opacity: 0.55, duration: D, ease: "none" }, 0);
+  }
+
+  window.__timelines = window.__timelines || {};
+  window.__timelines["02-event"] = tl;
+})();
+</script>
+</div>
+</template>

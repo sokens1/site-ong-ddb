@@ -1,0 +1,283 @@
+<template>
+<div data-hf-id="hf-07dj" id="root" data-composition-id="04-step1" data-width="1080" data-height="1920" data-duration="7.292">
+<style>
+@font-face{font-family:'Poppins';font-style:normal;font-weight:400;font-display:block;src:url("assets/fonts/Poppins-400.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:500;font-display:block;src:url("assets/fonts/Poppins-500.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:600;font-display:block;src:url("assets/fonts/Poppins-600.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:700;font-display:block;src:url("assets/fonts/Poppins-700.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:800;font-display:block;src:url("assets/fonts/Poppins-800.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:900;font-display:block;src:url("assets/fonts/Poppins-900.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:400;font-display:block;src:url("assets/fonts/WorkSans-400.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:500;font-display:block;src:url("assets/fonts/WorkSans-500.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:600;font-display:block;src:url("assets/fonts/WorkSans-600.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:700;font-display:block;src:url("assets/fonts/WorkSans-700.woff2") format('woff2');}
+
+#root{position:relative;width:1080px;height:1920px;overflow:hidden;container-type:size;font-family:'Work Sans',sans-serif}
+
+/* atmosphere */
+.\30 4-step1-bg{position:absolute;inset:0;background:#0B3D22}
+#\30 4-step1-glow{position:absolute;inset:0;background:radial-gradient(circle at 31% 48%,rgba(134,239,172,.16),transparent 52%)}
+#\30 4-step1-grid{position:absolute;inset:0;opacity:.07;
+  background:repeating-linear-gradient(30deg,#86EFAC 0 1px,transparent 1px 64px),repeating-linear-gradient(-30deg,#86EFAC 0 1px,transparent 1px 64px)}
+.\30 4-step1-leaf{position:absolute;width:72px;height:48px;overflow:visible}
+
+.\30 4-step1-stage{position:absolute;inset:0}
+#\30 4-step1-camera{position:absolute;inset:0}
+.\30 4-step1-prop{position:absolute;overflow:visible}
+#\30 4-step1-envglow{position:absolute;left:-200px;top:500px;width:1100px;height:1100px;border-radius:50%;
+  background:radial-gradient(circle,rgba(134,239,172,.55),transparent 62%);opacity:0}
+
+/* step header */
+#\30 4-step1-badge{position:absolute;left:80px;top:150px;width:120px;height:120px;border-radius:50%;background:#F2B632;
+  display:flex;align-items:center;justify-content:center;font-family:'Poppins';font-weight:900;font-size:72px;line-height:1;color:#0B2416;
+  box-shadow:8px 12px 0 rgba(2,20,10,.4)}
+#\30 4-step1-title{position:absolute;left:230px;top:160px;font-family:'Poppins';font-weight:700;font-size:64px;line-height:1.05;letter-spacing:-.01em;color:#fff;white-space:nowrap}
+.\30 4-step1-word{display:inline-block}
+#\30 4-step1-progress{position:absolute;left:230px;top:250px;display:flex;gap:16px}
+.\30 4-step1-seg{position:relative;width:170px;height:36px;border-radius:10px;background:#052E16;box-shadow:inset 0 -8px 0 rgba(0,0,0,.3);overflow:hidden}
+#\30 4-step1-seg1fill{position:absolute;inset:0;width:100%;border-radius:10px;background:#86EFAC;box-shadow:inset 0 -8px 0 #16A34A;transform-origin:left center}
+
+/* phone */
+.\30 4-step1-phone{position:absolute;width:500px;aspect-ratio:1170/2532;border-radius:66px;background:#0A0F0C;padding:14px;
+  box-shadow:0 40px 80px rgba(0,0,0,.45),inset 0 0 0 3px #26302B;box-sizing:border-box}
+.\30 4-step1-screen{position:relative;width:100%;height:100%;border-radius:52px;overflow:hidden;background:#fff}
+.\30 4-step1-screen img{position:absolute;left:0;top:0;width:100%;display:block}
+.\30 4-step1-island{position:absolute;top:30px;left:50%;margin-left:-70px;width:140px;height:36px;border-radius:20px;background:#0A0F0C}
+
+/* field crops (filled screenshot revealed region by region) */
+.\30 4-step1-crop{position:absolute;overflow:hidden}
+.\30 4-step1-crop.field{background:#F9FAFB}
+.\30 4-step1-rv{position:absolute;inset:0;overflow:hidden}
+.\30 4-step1-crop img,.\30 4-step1-rv img{position:absolute;display:block;max-width:none}
+#\30 4-step1-burst{position:absolute;left:27.43px;top:932.71px;width:417.13px;height:61.32px;border-radius:30px;
+  background:radial-gradient(ellipse,#15803D 0%,rgba(21,128,61,0) 70%);filter:blur(18px);opacity:0}
+
+/* source highlights + connector */
+.\30 4-step1-hl{position:absolute;left:123px;width:425px;border-radius:16px;border:6px solid #86EFAC;box-sizing:border-box;
+  box-shadow:0 0 0 6px rgba(134,239,172,.25)}
+#\30 4-step1-wires{position:absolute;left:0;top:0;width:1080px;height:1920px;overflow:visible}
+
+/* zoom lens */
+#\30 4-step1-lens{position:absolute;left:440px;top:690px;width:600px;height:260px;border-radius:28px;background:#fff;border:8px solid #86EFAC;
+  box-sizing:border-box;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,.4)}
+#\30 4-step1-lensworld{position:absolute;left:0;top:0;width:849.65px;height:1838.74px}
+#\30 4-step1-lensworld > img{position:absolute;left:0;top:0;width:849.65px;display:block}
+.\30 4-step1-caret{position:absolute;left:90.05px;width:4px;height:32px;border-radius:2px;background:#0B2416}
+
+/* chips */
+.\30 4-step1-chip{position:absolute;left:626px;border-radius:9999px;padding:16px 34px;font-family:'Work Sans';font-weight:600;font-size:34px;line-height:1.2;
+  background:#F4F1E8;color:#0B2416;white-space:nowrap;box-shadow:6px 10px 0 rgba(2,20,10,.35)}
+.\30 4-step1-chip.mint{background:#86EFAC}
+
+/* tap ring */
+.\30 4-step1-tap{position:absolute;left:276px;top:1297px;width:120px;height:120px;border-radius:50%;border:8px solid #F2B632;box-sizing:border-box}
+</style>
+
+<svg data-hf-id="hf-30au" width="0" height="0" style="position:absolute" aria-hidden="true"><defs data-hf-id="hf-mh0t">
+<symbol data-hf-id="hf-t58n" id="04-step1-tile-mint" viewBox="0 0 200 130"><polygon data-hf-id="hf-aziu" points="100,0 200,50 100,100 0,50" fill="#D1FAE5" /><polygon data-hf-id="hf-5bf4" points="0,50 100,100 100,130 0,80" fill="#86EFAC" /><polygon data-hf-id="hf-wra7" points="100,100 200,50 200,80 100,130" fill="#4ADE80" /></symbol>
+<symbol data-hf-id="hf-1hee" id="04-step1-shadow" viewBox="0 0 200 60"><ellipse data-hf-id="hf-8qr0" cx="110" cy="30" rx="95" ry="22" fill="rgba(2,20,10,.45)" /></symbol>
+<symbol data-hf-id="hf-8v4q" id="04-step1-tree" viewBox="0 0 80 130"><rect data-hf-id="hf-v82c" x="36" y="80" width="10" height="40" fill="#7C4A2D" /><polygon data-hf-id="hf-3t03" points="40,0 78,70 40,92 2,70" fill="#22C55E" /><polygon data-hf-id="hf-uqct" points="40,0 78,70 40,92" fill="#15803D" /></symbol>
+<symbol data-hf-id="hf-yemg" id="04-step1-leaf" viewBox="0 0 60 40"><path data-hf-id="hf-oivg" d="M2 38C10 8 40 0 58 2 54 24 30 40 2 38z" fill="#86EFAC" /><path data-hf-id="hf-0k69" d="M2 38C20 26 36 14 58 2" stroke="#15803D" stroke-width="2" fill="none" /></symbol>
+</defs></svg>
+
+<!-- full-bleed atmosphere -->
+<div data-hf-id="hf-uxgc" class="04-step1-bg clip" data-start="0" data-duration="7.292" data-track-index="0">
+  <div data-hf-id="hf-xl45" id="04-step1-glow"></div>
+  <div data-hf-id="hf-5mem" id="04-step1-grid"></div>
+  <svg data-hf-id="hf-1zon" class="04-step1-leaf" id="04-step1-leaf0" style="left:960px;top:420px"><use data-hf-id="hf-bctd" href="#04-step1-leaf" /></svg>
+  <svg data-hf-id="hf-8cvr" class="04-step1-leaf" id="04-step1-leaf1" style="left:760px;top:560px"><use data-hf-id="hf-zgl1" href="#04-step1-leaf" /></svg>
+  <svg data-hf-id="hf-418y" class="04-step1-leaf" id="04-step1-leaf2" style="left:960px;top:1440px"><use data-hf-id="hf-0ni4" href="#04-step1-leaf" /></svg>
+  <svg data-hf-id="hf-2w4e" class="04-step1-leaf" id="04-step1-leaf3" style="left:30px;top:1180px"><use data-hf-id="hf-0973" href="#04-step1-leaf" /></svg>
+  <svg data-hf-id="hf-ith6" class="04-step1-leaf" id="04-step1-leaf4" style="left:760px;top:1480px"><use data-hf-id="hf-1g46" href="#04-step1-leaf" /></svg>
+</div>
+
+<!-- content -->
+<div data-hf-id="hf-bn2u" class="04-step1-stage clip" data-start="0" data-duration="7.292" data-track-index="1">
+  <div data-hf-id="hf-ueo3" id="04-step1-camera">
+    <div data-hf-id="hf-qxnw" id="04-step1-envglow"></div>
+
+    <!-- platform -->
+    <svg data-hf-id="hf-8eu2" class="04-step1-prop" id="04-step1-tileshadow" style="left:80px;top:1440px;width:620px;height:160px"><use data-hf-id="hf-kgod" href="#04-step1-shadow" /></svg>
+    <svg data-hf-id="hf-6smh" class="04-step1-prop" id="04-step1-tile" style="left:36px;top:1205px;width:600px;height:390px"><use data-hf-id="hf-uktu" href="#04-step1-tile-mint" /></svg>
+    <svg data-hf-id="hf-v15l" class="04-step1-prop" id="04-step1-tree" style="left:590px;top:1250px;width:56px;height:91px"><use data-hf-id="hf-nqy1" href="#04-step1-tree" /></svg>
+
+    <!-- phone: empty step-1 screen, filled screen revealed field by field -->
+    <div data-hf-id="hf-oyga" class="04-step1-phone" id="04-step1-phone" style="left:86px;top:380px">
+      <div data-hf-id="hf-04l5" class="04-step1-screen">
+        <img data-hf-id="hf-s95d" src="assets/20-step1-empty.png" alt="">
+        <div data-hf-id="hf-l6tz" class="04-step1-crop field" id="04-step1-pc-name" style="left:40.34px;top:455.06px;width:391.32px;height:67.37px">
+          <div data-hf-id="hf-cfsg" class="04-step1-rv" id="04-step1-prv-name"><img data-hf-id="hf-hzx3" src="assets/21-step1-filled-top.png" alt="" style="left:-40.34px;top:-455.06px;width:472px"></div>
+        </div>
+        <div data-hf-id="hf-cfkv" class="04-step1-crop field" id="04-step1-pc-tel" style="left:40.34px;top:589.80px;width:391.32px;height:47.60px">
+          <div data-hf-id="hf-w6t0" class="04-step1-rv" id="04-step1-prv-tel"><img data-hf-id="hf-99pn" src="assets/21-step1-filled-top.png" alt="" style="left:-40.34px;top:-589.80px;width:472px"></div>
+        </div>
+        <div data-hf-id="hf-6p0x" class="04-step1-crop field" id="04-step1-pc-mail" style="left:40.34px;top:696.30px;width:391.32px;height:47.60px">
+          <div data-hf-id="hf-l3ik" class="04-step1-rv" id="04-step1-prv-mail"><img data-hf-id="hf-uqlz" src="assets/21-step1-filled-top.png" alt="" style="left:-40.34px;top:-696.30px;width:472px"></div>
+        </div>
+        <div data-hf-id="hf-a18d" class="04-step1-crop" id="04-step1-pc-rest" style="left:24.21px;top:796.77px;width:427.62px;height:112.96px">
+          <img data-hf-id="hf-z65b" src="assets/21-step1-filled-top.png" alt="" style="left:-24.21px;top:-796.77px;width:472px">
+        </div>
+        <div data-hf-id="hf-cvc0" id="04-step1-burst"></div>
+        <div data-hf-id="hf-xtpc" class="04-step1-crop" id="04-step1-btn" style="left:27.43px;top:932.71px;width:417.13px;height:61.32px">
+          <img data-hf-id="hf-1mws" src="assets/21-step1-filled-top.png" alt="" style="left:-27.43px;top:-932.71px;width:472px">
+        </div>
+      </div>
+      <i data-hf-id="hf-ae8e" class="04-step1-island"></i>
+    </div>
+    <div data-hf-id="hf-jwaa" class="04-step1-tap" id="04-step1-tap"></div>
+    <div data-hf-id="hf-ais9" class="04-step1-tap" id="04-step1-ripple"></div>
+
+    <!-- header -->
+    <div data-hf-id="hf-0we6" id="04-step1-badge">1</div>
+    <div data-hf-id="hf-vklo" id="04-step1-title"><span data-hf-id="hf-xacq" class="04-step1-word" id="04-step1-w1">Qui</span> <span data-hf-id="hf-cdo8" class="04-step1-word" id="04-step1-w2">êtes-vous</span>&#160;<span data-hf-id="hf-l4l8" class="04-step1-word" id="04-step1-w3">?</span></div>
+    <div data-hf-id="hf-ui1j" id="04-step1-progress">
+      <div data-hf-id="hf-90x8" class="04-step1-seg"><div data-hf-id="hf-19s5" id="04-step1-seg1fill"></div></div>
+      <div data-hf-id="hf-16ys" class="04-step1-seg"></div>
+      <div data-hf-id="hf-001p" class="04-step1-seg"></div>
+    </div>
+
+    <!-- source-field highlights on the phone -->
+    <div data-hf-id="hf-rva7" class="04-step1-hl" id="04-step1-hl-name" style="top:842px;height:82px"></div>
+    <div data-hf-id="hf-cplo" class="04-step1-hl" id="04-step1-hl-tel" style="top:975px;height:64px"></div>
+    <div data-hf-id="hf-ua1u" class="04-step1-hl" id="04-step1-hl-mail" style="top:1082px;height:64px"></div>
+
+    <!-- connector -->
+    <svg data-hf-id="hf-8e0v" id="04-step1-wires" viewBox="0 0 1080 1920">
+      <line data-hf-id="hf-dk4x" id="04-step1-wire" x1="330" y1="842" x2="444" y2="820" stroke="#86EFAC" stroke-width="4" stroke-linecap="round" />
+      <circle data-hf-id="hf-jmt9" id="04-step1-dot" cx="330" cy="842" r="9" fill="#86EFAC" />
+    </svg>
+
+    <!-- zoom lens (~1.8x of the phone screen) -->
+    <div data-hf-id="hf-92qi" id="04-step1-lens">
+      <div data-hf-id="hf-v6m7" id="04-step1-lensworld" data-layout-allow-overflow="">
+        <img data-hf-id="hf-unr9" src="assets/20-step1-empty.png" alt="">
+        <div data-hf-id="hf-swxy" class="04-step1-crop field" id="04-step1-lc-name" style="left:72.62px;top:819.15px;width:704.41px;height:121.28px">
+          <div data-hf-id="hf-5k5w" class="04-step1-rv" id="04-step1-lrv-name"><img data-hf-id="hf-zv5e" src="assets/21-step1-filled-top.png" alt="" style="left:-72.62px;top:-819.15px;width:849.65px"></div>
+        </div>
+        <div data-hf-id="hf-9vs3" class="04-step1-crop field" id="04-step1-lc-tel" style="left:72.62px;top:1061.70px;width:704.41px;height:85.69px">
+          <div data-hf-id="hf-p5jk" class="04-step1-rv" id="04-step1-lrv-tel"><img data-hf-id="hf-gxwj" src="assets/21-step1-filled-top.png" alt="" style="left:-72.62px;top:-1061.70px;width:849.65px"></div>
+        </div>
+        <div data-hf-id="hf-w5sx" class="04-step1-crop field" id="04-step1-lc-mail" style="left:72.62px;top:1253.42px;width:704.41px;height:85.69px">
+          <div data-hf-id="hf-6jzs" class="04-step1-rv" id="04-step1-lrv-mail"><img data-hf-id="hf-cyvr" src="assets/21-step1-filled-top.png" alt="" style="left:-72.62px;top:-1253.42px;width:849.65px"></div>
+        </div>
+        <i data-hf-id="hf-xpn8" class="04-step1-caret" id="04-step1-caret-name" style="top:843.84px"></i>
+        <i data-hf-id="hf-nhgq" class="04-step1-caret" id="04-step1-caret-tel" style="top:1088.57px"></i>
+        <i data-hf-id="hf-y2er" class="04-step1-caret" id="04-step1-caret-mail" style="top:1280.29px"></i>
+      </div>
+    </div>
+
+    <!-- chips -->
+    <div data-hf-id="hf-n6b3" class="04-step1-chip" id="04-step1-chip0" data-layout-allow-overlap="" style="top:1100px">Nom</div>
+    <div data-hf-id="hf-frrb" class="04-step1-chip mint" id="04-step1-chip0on" data-layout-allow-overlap="" style="top:1100px">✓ Nom</div>
+    <div data-hf-id="hf-qo5s" class="04-step1-chip" id="04-step1-chip1" data-layout-allow-overlap="" style="top:1205px">WhatsApp</div>
+    <div data-hf-id="hf-ecxk" class="04-step1-chip mint" id="04-step1-chip1on" data-layout-allow-overlap="" style="top:1205px">✓ WhatsApp</div>
+    <div data-hf-id="hf-bf6x" class="04-step1-chip" id="04-step1-chip2" data-layout-allow-overlap="" style="top:1310px">E-mail</div>
+    <div data-hf-id="hf-gc21" class="04-step1-chip mint" id="04-step1-chip2on" data-layout-allow-overlap="" style="top:1310px">✓ E-mail</div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script>
+(function(){
+  var ID = "04-step1";
+  var q = function(s){ return document.getElementById(ID + "-" + s); };
+  window.__timelines = window.__timelines || {};
+  var tl = gsap.timeline({ paused: true });
+  var D = 6.792;
+
+  /* camera micro-drift (static-tour floor) */
+  tl.fromTo(q("camera"), { scale: 1, transformOrigin: "50% 45%" }, { scale: 1.02, duration: D, ease: "none" }, 0);
+
+  /* atmosphere leaves: one finite drift each, index-derived */
+  for (var i = 0; i < 5; i++) {
+    tl.fromTo(q("leaf" + i),
+      { x: 0, y: 0, rotation: -20 + i * 14, opacity: 0.55 },
+      { x: (i % 2 ? 50 : -60) - i * 6, y: 80 + i * 20, rotation: 10 + i * 18, opacity: 0.55, duration: D, ease: "none" }, 0);
+  }
+
+  /* Scene 1 (0–1.2): phone on its tile, badge pops, segment 1 fills */
+  tl.fromTo(q("tile"), { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 0);
+  tl.fromTo(q("tileshadow"), { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.out" }, 0.05);
+  tl.fromTo(q("tree"), { scale: 0, transformOrigin: "50% 100%" }, { scale: 1, duration: 0.5, ease: "back.out(2)" }, 0.35);
+  tl.fromTo(q("phone"), { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "power3.out" }, 0);
+  tl.fromTo(q("badge"), { scale: 0, rotation: -25 }, { scale: 1, rotation: 0, duration: 0.55, ease: "back.out(2.4)" }, 0.12);
+  tl.fromTo(q("progress"), { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.35, ease: "power2.out" }, 0.3);
+  tl.fromTo(q("seg1fill"), { scaleX: 0 }, { scaleX: 1, duration: 0.9, ease: "power2.out" }, 0.45);
+
+  /* Scene 2 (1.2–2.4): title per-word reveal on « qui êtes-vous » */
+  tl.fromTo([q("w1"), q("w2"), q("w3")], { y: 44, opacity: 0 },
+    { y: 0, opacity: 1, duration: 0.42, ease: "power3.out", stagger: 0.16 }, 1.22);
+
+  /* Scene 3 (2.4–5.6): lens field by field */
+  var LENS_Y = { name: 0, tel: 60, mail: 120 };
+  var WORLD_Y = { name: -734.92, tel: -960.04, mail: -1152.48 };
+  var WIRE = {
+    name: { x1: 330, y1: 842, y2: 820 },
+    tel:  { x1: 330, y1: 975, y2: 880 },
+    mail: { x1: 330, y1: 1082, y2: 940 }
+  };
+  tl.set(q("lensworld"), { x: -36.24, y: WORLD_Y.name }, 0);
+  tl.fromTo(q("lens"), { scale: 0.5, opacity: 0, transformOrigin: "0% 50%" },
+    { scale: 1, opacity: 1, duration: 0.4, ease: "back.out(1.6)" }, 2.42);
+  tl.fromTo(q("wires"), { opacity: 0 }, { opacity: 1, duration: 0.25, ease: "power2.out" }, 2.5);
+
+  var FIELDS = [
+    { k: "name", glide: null, type: 2.62, tdur: 0.8, steps: 13, inset: 61.5, dx: 245.45, chip: 0, cue: 2.60 },
+    { k: "tel",  glide: 3.66, type: 3.98, tdur: 0.6, steps: 12, inset: 70,   dx: 186.63, chip: 1, cue: 3.94 },
+    { k: "mail", glide: 4.62, type: 4.98, tdur: 0.56, steps: 29, inset: 22,  dx: 532.30, chip: 2, cue: 4.96 }
+  ];
+  FIELDS.forEach(function(f, idx){
+    var hl = q("hl-" + f.k);
+    if (f.glide !== null) {
+      var prev = FIELDS[idx - 1].k;
+      tl.to(q("lens"), { y: LENS_Y[f.k], duration: 0.4, ease: "power2.inOut" }, f.glide);
+      tl.to(q("lensworld"), { y: WORLD_Y[f.k], duration: 0.4, ease: "power2.inOut" }, f.glide);
+      tl.to(q("wire"), { attr: { y1: WIRE[f.k].y1, y2: WIRE[f.k].y2 }, duration: 0.4, ease: "power2.inOut" }, f.glide);
+      tl.to(q("dot"), { attr: { cy: WIRE[f.k].y1 }, duration: 0.4, ease: "power2.inOut" }, f.glide);
+      tl.to(q("hl-" + prev), { opacity: 0, duration: 0.25, ease: "power1.out" }, f.glide);
+    }
+    tl.fromTo(hl, { opacity: 0, scale: 1.08 }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2)" }, (f.glide !== null ? f.glide + 0.15 : 2.48));
+
+    /* field background covers the placeholder, then the filled text types in */
+    var crops = [q("pc-" + f.k), q("lc-" + f.k)];
+    var rvs = [q("prv-" + f.k), q("lrv-" + f.k)];
+    tl.fromTo(crops, { opacity: 0 }, { opacity: 1, duration: 0.05, ease: "none" }, f.type - 0.06);
+    tl.fromTo(rvs, { clipPath: "inset(0% 100% 0% 0%)" },
+      { clipPath: "inset(0% " + f.inset + "% 0% 0%)", duration: f.tdur, ease: "steps(" + f.steps + ")" }, f.type);
+
+    var caret = q("caret-" + f.k);
+    tl.fromTo(caret, { opacity: 0 }, { opacity: 1, duration: 0.01 }, f.type - 0.06);
+    tl.fromTo(caret, { x: 0 }, { x: f.dx, duration: f.tdur, ease: "steps(" + f.steps + ")" }, f.type);
+    tl.to(caret, { opacity: 0, duration: 0.01 }, f.type + f.tdur + 0.12);
+
+    /* chip pops on the spoken word, ticks mint when the field is filled */
+    tl.fromTo(q("chip" + f.chip), { x: 40, scale: 0.6, opacity: 0, transformOrigin: "0% 50%" },
+      { x: 0, scale: 1, opacity: 1, duration: 0.4, ease: "back.out(2)" }, f.cue);
+    tl.fromTo(q("chip" + f.chip + "on"), { opacity: 0, scale: 0.7, transformOrigin: "0% 50%" },
+      { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2.6)" }, f.type + f.tdur + 0.02);
+  });
+
+  /* Scene 4 (5.6–6.79): lens shrinks away, rest of the form fills, tap on « Suivant » */
+  tl.to(q("lens"), { scale: 0.4, opacity: 0, duration: 0.35, ease: "power2.in" }, 5.62);
+  tl.to(q("wires"), { opacity: 0, duration: 0.3, ease: "power1.out" }, 5.62);
+  tl.to(q("hl-mail"), { opacity: 0, duration: 0.3, ease: "power1.out" }, 5.62);
+  tl.fromTo([q("pc-rest"), q("btn")], { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "power1.out" }, 5.58);
+
+  tl.fromTo(q("tap"), { scale: 0.4, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.2, ease: "power2.out" }, 5.78);
+  tl.fromTo(q("ripple"), { scale: 1, opacity: 0 }, { scale: 2.2, opacity: 0, duration: 0.01 }, 0);
+  tl.fromTo(q("ripple"), { scale: 1, opacity: 0.6 }, { scale: 2.2, opacity: 0, duration: 0.55, ease: "power2.out" }, 6.05);
+  tl.to(q("tap"), { scale: 0.94, duration: 0.08, ease: "power1.in" }, 6.01);
+  tl.to(q("tap"), { scale: 1, opacity: 0, duration: 0.45, ease: "power2.out" }, 6.09);
+
+  /* press-release-spring on the green « Suivant » button */
+  tl.fromTo(q("btn"), { scale: 1, transformOrigin: "50% 50%" }, { scale: 0.92, duration: 0.12, ease: "power1.in" }, 6.01);
+  tl.to(q("btn"), { scale: 1, duration: 0.55, ease: "back.out(2)" }, 6.13);
+  tl.fromTo(q("burst"), { scale: 1, opacity: 0 }, { scale: 3, opacity: 0.7, duration: 0.4, ease: "power2.out" }, 6.13);
+  tl.to(q("burst"), { opacity: 0, duration: 0.25, ease: "power2.in" }, 6.5);
+  tl.to(q("envglow"), { opacity: 0.25, duration: 0.6, ease: "power2.out" }, 6.13);
+
+  window.__timelines[ID] = tl;
+})();
+</script>
+</div>
+</template>

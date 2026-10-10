@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2fbf71"/>
+      <stop offset="1" stop-color="#0f5a32"/>
+    </linearGradient>
+    <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8a5a3c"/>
+      <stop offset="1" stop-color="#6e4329"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="800" fill="url(#bg)"/>
+  <!-- feuilles décoratives -->
+  <g opacity="0.25" fill="#c8f7d9">
+    <path d="M90 140c80-60 170-40 200 30-90 40-170 30-200-30z"/>
+    <path d="M610 90c70 10 120 70 100 150-80-20-120-80-100-150z"/>
+    <path d="M660 560c60 40 80 110 30 170-60-50-70-110-30-170z"/>
+  </g>
+  <!-- buste -->
+  <path d="M170 800c10-170 110-250 230-250s220 80 230 250z" fill="#f4f1e8"/>
+  <path d="M330 560l70 90 70-90z" fill="url(#skin)"/>
+  <path d="M250 610c40 40 90 60 150 60s110-20 150-60l20 190H230z" fill="#1d7a46"/>
+  <!-- cou -->
+  <rect x="355" y="470" width="90" height="110" rx="40" fill="#6e4329"/>
+  <!-- cheveux arrière -->
+  <ellipse cx="400" cy="330" rx="185" ry="190" fill="#1b1410"/>
+  <!-- visage -->
+  <ellipse cx="400" cy="360" rx="122" ry="148" fill="url(#skin)"/>
+  <!-- foulard / headwrap -->
+  <path d="M265 300c0-120 70-190 140-190s135 60 135 180c-40-60-90-85-135-85s-100 25-140 95z" fill="#f2b632"/>
+  <path d="M300 160c40-40 160-50 210 10-60-10-150 0-210-10z" fill="#e09a14"/>
+  <circle cx="470" cy="140" r="34" fill="#f2b632"/>
+  <!-- oreilles + boucles -->
+  <ellipse cx="280" cy="370" rx="18" ry="28" fill="#6e4329"/>
+  <ellipse cx="520" cy="370" rx="18" ry="28" fill="#6e4329"/>
+  <circle cx="280" cy="412" r="11" fill="#f2b632"/>
+  <circle cx="520" cy="412" r="11" fill="#f2b632"/>
+  <!-- yeux -->
+  <path d="M335 352c15-14 40-14 55 0" stroke="#1b1410" stroke-width="9" fill="none" stroke-linecap="round"/>
+  <path d="M410 352c15-14 40-14 55 0" stroke="#1b1410" stroke-width="9" fill="none" stroke-linecap="round"/>
+  <path d="M332 318c18-10 40-10 58-2" stroke="#1b1410" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <path d="M410 316c18-8 40-8 58 2" stroke="#1b1410" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <!-- nez + sourire -->
+  <path d="M392 380c-6 22-4 34 14 36" stroke="#4e2e1b" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path d="M355 440c28 30 62 30 90 0" fill="#fff" stroke="#4e2e1b" stroke-width="7" stroke-linecap="round"/>
+  <ellipse cx="335" cy="410" rx="22" ry="12" fill="#c46a55" opacity="0.45"/>
+  <ellipse cx="465" cy="410" rx="22" ry="12" fill="#c46a55" opacity="0.45"/>
+</svg>

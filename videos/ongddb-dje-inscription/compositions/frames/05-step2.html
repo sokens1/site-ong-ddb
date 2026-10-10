@@ -1,0 +1,200 @@
+<template>
+<div data-hf-id="hf-kbmm" id="root" data-composition-id="05-step2" data-width="1080" data-height="1920" data-duration="8.755">
+<style>
+@font-face{font-family:'Poppins';font-style:normal;font-weight:400;font-display:block;src:url("assets/fonts/Poppins-400.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:500;font-display:block;src:url("assets/fonts/Poppins-500.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:600;font-display:block;src:url("assets/fonts/Poppins-600.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:700;font-display:block;src:url("assets/fonts/Poppins-700.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:800;font-display:block;src:url("assets/fonts/Poppins-800.woff2") format('woff2');}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:900;font-display:block;src:url("assets/fonts/Poppins-900.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:400;font-display:block;src:url("assets/fonts/WorkSans-400.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:500;font-display:block;src:url("assets/fonts/WorkSans-500.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:600;font-display:block;src:url("assets/fonts/WorkSans-600.woff2") format('woff2');}
+@font-face{font-family:'Work Sans';font-style:normal;font-weight:700;font-display:block;src:url("assets/fonts/WorkSans-700.woff2") format('woff2');}
+
+#root{position:relative;width:1080px;height:1920px;overflow:hidden;container-type:size;font-family:'Work Sans',sans-serif}
+
+/* atmosphere */
+.\30 5-step2-bg{position:absolute;inset:0;background:#0B3D22}
+#\30 5-step2-glow{position:absolute;inset:0;background:radial-gradient(circle at 70% 42%,rgba(134,239,172,.16),transparent 52%)}
+#\30 5-step2-grid{position:absolute;inset:0;opacity:.07;
+  background:repeating-linear-gradient(30deg,#86EFAC 0 1px,transparent 1px 64px),repeating-linear-gradient(-30deg,#86EFAC 0 1px,transparent 1px 64px)}
+.\30 5-step2-leaf{position:absolute;width:72px;height:48px;overflow:visible}
+
+.\30 5-step2-stage{position:absolute;inset:0}
+#\30 5-step2-camera{position:absolute;inset:0}
+.\30 5-step2-prop{position:absolute;overflow:visible}
+
+/* step header */
+#\30 5-step2-badge{position:absolute;left:80px;top:150px;width:120px;height:120px;border-radius:50%;background:#F2B632;
+  display:flex;align-items:center;justify-content:center;font-family:'Poppins';font-weight:900;font-size:72px;line-height:1;color:#0B2416;
+  box-shadow:8px 12px 0 rgba(2,20,10,.4)}
+#\30 5-step2-title{position:absolute;left:230px;top:160px;font-family:'Poppins';font-weight:700;font-size:64px;line-height:1.05;letter-spacing:-.01em;color:#fff;white-space:nowrap}
+.\30 5-step2-word{display:inline-block}
+#\30 5-step2-progress{position:absolute;left:230px;top:250px;display:flex;gap:16px}
+.\30 5-step2-seg{position:relative;width:170px;height:36px;border-radius:10px;background:#052E16;box-shadow:inset 0 -8px 0 rgba(0,0,0,.3);overflow:hidden}
+.\30 5-step2-seg.on{background:#86EFAC;box-shadow:inset 0 -8px 0 #16A34A}
+#\30 5-step2-seg2fill{position:absolute;inset:0;border-radius:10px;background:#86EFAC;box-shadow:inset 0 -8px 0 #16A34A;transform-origin:left center}
+
+/* phone */
+.\30 5-step2-phone{position:absolute;width:500px;aspect-ratio:1170/2532;border-radius:66px;background:#0A0F0C;padding:14px;
+  box-shadow:0 40px 80px rgba(0,0,0,.45),inset 0 0 0 3px #26302B;box-sizing:border-box}
+.\30 5-step2-screen{position:relative;width:100%;height:100%;border-radius:52px;overflow:hidden;background:#fff}
+.\30 5-step2-screen img{position:absolute;left:0;top:0;width:100%;display:block}
+.\30 5-step2-island{position:absolute;top:30px;left:50%;margin-left:-70px;width:140px;height:36px;border-radius:20px;background:#0A0F0C}
+/* scroll layer: content region below the sticky form header (header ends at y=546 of 2532) */
+#\30 5-step2-scrollwin{position:absolute;left:0;top:220.3px;width:472px;height:801.2px;overflow:hidden;background:#fff;opacity:0}
+#\30 5-step2-scroller{position:absolute;left:0;top:0;width:472px;height:900px}
+#\30 5-step2-scroller img.a{position:absolute;left:0;top:-220.3px;width:472px}
+#\30 5-step2-crop32{position:absolute;left:0;top:99.2px;width:472px;height:801.2px;overflow:hidden;background:#fff}
+#\30 5-step2-crop32 img{position:absolute;left:0;top:-220.3px;width:472px}
+
+/* chips */
+.\30 5-step2-chip{position:absolute;left:54px;border-radius:9999px;padding:16px 34px;font-family:'Work Sans';font-weight:600;font-size:34px;line-height:1.2;
+  background:#F4F1E8;color:#0B2416;white-space:nowrap;box-shadow:6px 10px 0 rgba(2,20,10,.35)}
+.\30 5-step2-chip.mint{background:#86EFAC}
+
+/* tap ring */
+.\30 5-step2-tap{position:absolute;width:120px;height:120px;border-radius:50%;border:8px solid #F2B632;box-sizing:border-box}
+
+/* field ring + lens */
+#\30 5-step2-fieldring{position:absolute;left:536px;top:1148px;width:428px;height:126px;border-radius:18px;border:6px solid #86EFAC;box-sizing:border-box;
+  box-shadow:0 0 0 6px rgba(134,239,172,.25)}
+#\30 5-step2-connector{position:absolute;left:748px;top:1274px;width:4px;height:46px;background:#86EFAC;transform-origin:top center}
+#\30 5-step2-lens{position:absolute;left:60px;top:1320px;width:860px;height:240px;border-radius:28px;background:#fff;border:8px solid #86EFAC;box-sizing:border-box;
+  overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,.4)}
+#\30 5-step2-lens img{position:absolute;left:-34.3px;top:-1428.5px;width:912.6px;display:block}
+</style>
+
+<svg data-hf-id="hf-30au" width="0" height="0" style="position:absolute" aria-hidden="true"><defs data-hf-id="hf-mh0t">
+<symbol data-hf-id="hf-4pyn" id="05-step2-tile-cream" viewBox="0 0 200 130"><polygon data-hf-id="hf-xt60" points="100,0 200,50 100,100 0,50" fill="#F4F1E8" /><polygon data-hf-id="hf-5aha" points="0,50 100,100 100,130 0,80" fill="#D9D3C2" /><polygon data-hf-id="hf-48dr" points="100,100 200,50 200,80 100,130" fill="#BDB59F" /></symbol>
+<symbol data-hf-id="hf-ir4s" id="05-step2-shadow" viewBox="0 0 200 60"><ellipse data-hf-id="hf-8qr0" cx="110" cy="30" rx="95" ry="22" fill="rgba(2,20,10,.45)" /></symbol>
+<symbol data-hf-id="hf-x3z6" id="05-step2-gradcap" viewBox="0 0 140 100"><polygon data-hf-id="hf-vzt2" points="70,5 135,35 70,65 5,35" fill="#0B2416" /><polygon data-hf-id="hf-7w6j" points="35,48 70,64 105,48 105,72 70,88 35,72" fill="#1F3B2B" /><line data-hf-id="hf-8uvn" x1="120" y1="40" x2="120" y2="78" stroke="#F2B632" stroke-width="5" /><circle data-hf-id="hf-ifel" cx="120" cy="80" r="6" fill="#F2B632" /></symbol>
+<symbol data-hf-id="hf-w212" id="05-step2-leaf" viewBox="0 0 60 40"><path data-hf-id="hf-oivg" d="M2 38C10 8 40 0 58 2 54 24 30 40 2 38z" fill="#86EFAC" /><path data-hf-id="hf-0k69" d="M2 38C20 26 36 14 58 2" stroke="#15803D" stroke-width="2" fill="none" /></symbol>
+</defs></svg>
+
+<!-- full-bleed atmosphere -->
+<div data-hf-id="hf-y66f" class="05-step2-bg clip" data-start="0" data-duration="8.755" data-track-index="0">
+  <div data-hf-id="hf-ocjf" id="05-step2-glow"></div>
+  <div data-hf-id="hf-jnx4" id="05-step2-grid"></div>
+  <svg data-hf-id="hf-eaig" class="05-step2-leaf" id="05-step2-leaf0" style="left:840px;top:330px"><use data-hf-id="hf-4wzb" href="#05-step2-leaf" /></svg>
+  <svg data-hf-id="hf-e34t" class="05-step2-leaf" id="05-step2-leaf1" style="left:120px;top:520px"><use data-hf-id="hf-37xz" href="#05-step2-leaf" /></svg>
+  <svg data-hf-id="hf-jgmi" class="05-step2-leaf" id="05-step2-leaf2" style="left:420px;top:880px"><use data-hf-id="hf-2tmy" href="#05-step2-leaf" /></svg>
+  <svg data-hf-id="hf-pgig" class="05-step2-leaf" id="05-step2-leaf3" style="left:940px;top:1180px"><use data-hf-id="hf-2fbx" href="#05-step2-leaf" /></svg>
+  <svg data-hf-id="hf-ip5a" class="05-step2-leaf" id="05-step2-leaf4" style="left:300px;top:1420px"><use data-hf-id="hf-57h4" href="#05-step2-leaf" /></svg>
+</div>
+
+<!-- content -->
+<div data-hf-id="hf-k4o5" class="05-step2-stage clip" data-start="0" data-duration="8.755" data-track-index="1">
+  <div data-hf-id="hf-02ql" id="05-step2-camera">
+    <!-- platform -->
+    <svg data-hf-id="hf-bugm" class="05-step2-prop" id="05-step2-tileshadow" style="left:470px;top:1450px;width:580px;height:150px"><use data-hf-id="hf-fmer" href="#05-step2-shadow" /></svg>
+    <svg data-hf-id="hf-yfxu" class="05-step2-prop" id="05-step2-tile" style="left:470px;top:1220px;width:560px;height:364px"><use data-hf-id="hf-91xa" href="#05-step2-tile-cream" /></svg>
+
+    <!-- phone -->
+    <div data-hf-id="hf-d5t8" class="05-step2-phone" id="05-step2-phone" style="left:500px;top:400px">
+      <div data-hf-id="hf-f4f7" class="05-step2-screen">
+        <img data-hf-id="hf-adr6" id="05-step2-img30" src="assets/30-step2-empty.png" alt="">
+        <img data-hf-id="hf-zhtm" id="05-step2-img31" src="assets/31-step2-filled-top.png" alt="" style="opacity:0">
+        <div data-hf-id="hf-fp53" id="05-step2-scrollwin">
+          <div data-hf-id="hf-up3t" id="05-step2-scroller" data-layout-allow-overflow="">
+            <img data-hf-id="hf-z71z" class="a" src="assets/31-step2-filled-top.png" alt="">
+            <div data-hf-id="hf-55yt" id="05-step2-crop32"><img data-hf-id="hf-dy54" src="assets/32-step2-filled-bottom.png" alt=""></div>
+          </div>
+        </div>
+      </div>
+      <i data-hf-id="hf-rbx4" class="05-step2-island"></i>
+    </div>
+    <div data-hf-id="hf-d9yp" class="05-step2-tap" id="05-step2-tap" style="left:507px;top:730px"></div>
+    <div data-hf-id="hf-qwmw" class="05-step2-tap" id="05-step2-ripple" style="left:507px;top:730px"></div>
+
+    <!-- header -->
+    <div data-hf-id="hf-k1o1" id="05-step2-badge">2</div>
+    <div data-hf-id="hf-iqwq" id="05-step2-title"><span data-hf-id="hf-pg1r" class="05-step2-word" id="05-step2-w1">Votre</span> <span data-hf-id="hf-1mf0" class="05-step2-word" id="05-step2-w2">profil</span></div>
+    <div data-hf-id="hf-syl5" id="05-step2-progress">
+      <div data-hf-id="hf-54jd" class="05-step2-seg on"></div>
+      <div data-hf-id="hf-e49m" class="05-step2-seg"><div data-hf-id="hf-1qh8" id="05-step2-seg2fill"></div></div>
+      <div data-hf-id="hf-3wou" class="05-step2-seg"></div>
+    </div>
+
+    <!-- left column -->
+    <svg data-hf-id="hf-tw1f" class="05-step2-prop" id="05-step2-gradcap" style="left:60px;top:610px;width:300px;height:214px"><use data-hf-id="hf-h2yl" href="#05-step2-gradcap" /></svg>
+    <div data-hf-id="hf-2jmw" class="05-step2-chip" id="05-step2-chip0" style="top:900px">Élève</div>
+    <div data-hf-id="hf-fab8" class="05-step2-chip" id="05-step2-chip1" style="top:1010px">Étudiant(e)</div>
+    <div data-hf-id="hf-nx7o" class="05-step2-chip mint" id="05-step2-chip1on" style="top:1010px">✓ Étudiant(e)</div>
+    <div data-hf-id="hf-89l2" class="05-step2-chip" id="05-step2-chip2" style="top:1120px">Pro</div>
+    <div data-hf-id="hf-jes7" class="05-step2-chip" id="05-step2-chip3" style="top:1230px">Entrepreneur(e)</div>
+
+    <!-- confirm callout -->
+    <div data-hf-id="hf-gqze" id="05-step2-fieldring"></div>
+    <div data-hf-id="hf-ukcx" id="05-step2-connector"></div>
+    <div data-hf-id="hf-7ll8" id="05-step2-lens"><img data-hf-id="hf-3j3k" src="assets/32-step2-filled-bottom.png" alt=""></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script>
+(function(){
+  var ID = "05-step2";
+  var q = function(s){ return document.getElementById(ID + "-" + s); };
+  window.__timelines = window.__timelines || {};
+  var tl = gsap.timeline({ paused: true });
+  var D = 8.255;
+
+  /* camera micro-drift (static-tour floor + slow push) */
+  tl.fromTo(q("camera"), { scale: 1, transformOrigin: "50% 40%" }, { scale: 1.03, duration: D, ease: "none" }, 0);
+
+  /* atmosphere leaves: one finite drift each, index-derived */
+  for (var i = 0; i < 5; i++) {
+    tl.fromTo(q("leaf" + i),
+      { x: 0, y: 0, rotation: -20 + i * 14, opacity: 0.55 },
+      { x: (i % 2 ? 60 : -50) - i * 6, y: 90 + i * 22, rotation: 10 + i * 18, opacity: 0.55, duration: D, ease: "none" }, 0);
+  }
+
+  /* Scene 1 (0–1.6): platform, phone, badge, progress, title */
+  tl.fromTo(q("tile"), { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, 0);
+  tl.fromTo(q("tileshadow"), { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "power2.out" }, 0.1);
+  tl.fromTo(q("phone"), { y: 70, opacity: 0 }, { y: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 0.05);
+  tl.fromTo(q("badge"), { scale: 0, rotation: -25 }, { scale: 1, rotation: 0, duration: 0.5, ease: "back.out(2.2)" }, 0.12);
+  tl.fromTo(q("w1"), { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: "power3.out" }, 0.28);
+  tl.fromTo(q("progress"), { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "power2.out" }, 0.3);
+  tl.fromTo(q("seg2fill"), { scaleX: 0 }, { scaleX: 1, duration: 0.8, ease: "power2.inOut" }, 0.5);
+  tl.fromTo(q("w2"), { y: 40, opacity: 0, scale: 0.9 }, { y: 0, opacity: 1, scale: 1, duration: 0.45, ease: "back.out(1.8)" }, 1.58);
+
+  /* Scene 2 (2.5–5.0): option chips sequenced on the spoken word cues */
+  var CHIPS = [
+    { el: "chip0", cue: 2.56 },
+    { el: "chip1", cue: 3.05 },
+    { el: "chip2", cue: 3.78 },
+    { el: "chip3", cue: 4.23 }
+  ];
+  CHIPS.forEach(function(c){
+    tl.fromTo(q(c.el), { x: -60, scale: 0.7, opacity: 0, transformOrigin: "0% 50%" },
+      { x: 0, scale: 1, opacity: 1, duration: 0.42, ease: "back.out(1.9)" }, c.cue);
+  });
+  tl.fromTo(q("chip1on"), { opacity: 0, scale: 0.7, transformOrigin: "0% 50%" }, { opacity: 0, scale: 0.7, duration: 0.01 }, 0);
+  tl.fromTo(q("gradcap"), { y: 90, opacity: 0, rotation: -8 }, { y: 0, opacity: 1, rotation: 0, duration: 0.6, ease: "back.out(1.6)" }, 3.05);
+  tl.fromTo(q("gradcap"), { y: 0 }, { y: -14, duration: 1.6, ease: "sine.inOut" }, 3.7);
+
+  /* Scene 3 (5.0–6.3): tap on Étudiant(e), chip ticks mint, screen swaps */
+  tl.fromTo(q("tap"), { scale: 0.4, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.22, ease: "power2.out" }, 5.02);
+  tl.fromTo(q("ripple"), { scale: 1, opacity: 0 }, { scale: 2.2, opacity: 0, duration: 0.01 }, 0);
+  tl.fromTo(q("ripple"), { scale: 1, opacity: 0.6 }, { scale: 2.2, opacity: 0, duration: 0.6, ease: "power2.out" }, 5.24);
+  tl.fromTo(q("tap"), { scale: 1 }, { scale: 0.94, duration: 0.08, ease: "power1.in" }, 5.24);
+  tl.to(q("tap"), { scale: 1, opacity: 0, duration: 0.4, ease: "power2.out" }, 5.32);
+  tl.fromTo(q("img31"), { opacity: 0 }, { opacity: 1, duration: 0.2, ease: "power1.out" }, 5.28);
+  tl.fromTo(q("chip1on"), { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.45, ease: "back.out(2.6)" }, 5.28);
+  tl.fromTo(q("chip1"), { opacity: 1 }, { opacity: 0, duration: 0.1 }, 5.3);
+
+  /* Scene 4 (6.3–8.255): scroll to confirmation, ring + lens, hold */
+  tl.fromTo(q("scrollwin"), { opacity: 0 }, { opacity: 1, duration: 0.01 }, 6.45);
+  tl.fromTo(q("scroller"), { y: 0 }, { y: -99.2, duration: 0.7, ease: "power2.inOut" }, 6.5);
+  tl.fromTo(q("fieldring"), { scale: 1.15, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.35, ease: "back.out(2)" }, 6.95);
+  tl.fromTo(q("connector"), { scaleY: 0 }, { scaleY: 1, duration: 0.25, ease: "power2.out" }, 7.15);
+  tl.fromTo(q("lens"), { scale: 0.35, opacity: 0, transformOrigin: "80% 0%" }, { scale: 1, opacity: 1, duration: 0.5, ease: "back.out(1.5)" }, 7.27);
+
+  window.__timelines[ID] = tl;
+})();
+</script>
+</div>
+</template>
