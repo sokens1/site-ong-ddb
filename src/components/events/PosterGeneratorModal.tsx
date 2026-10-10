@@ -31,6 +31,7 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
   const [photo, setPhoto] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const isDrawing = useRef(false); // guard contre les appels concurrents
 
   // ── Swipe-to-close ────────────────────────────────────────────────────────
@@ -103,7 +104,8 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, photo]);
 
-  const downloadPoster = () => {
+  const downloadPoster = async () => {
+    if (isDownloading || isGenerating) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     if (isInAppBrowser()) {
@@ -111,20 +113,23 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
       return;
     }
 
-    // Sauvegarde en arrière-plan sur Supabase Storage pour l'admin
-    if (event.id) {
-      uploadGeneratedPoster(event.id, name, canvas).catch((e) =>
-        console.warn('Silent poster upload fail:', e)
-      );
-    }
-
+    setIsDownloading(true);
     try {
+      // Sauvegarde en arrière-plan sur Supabase Storage (écrase l'ancienne affiche de cette même personne)
+      if (event.id) {
+        await uploadGeneratedPoster(event.id, name, canvas).catch((e) =>
+          console.warn('Silent poster upload fail:', e)
+        );
+      }
+
       const link = document.createElement('a');
       link.download = `jy-serai-${name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     } catch {
       alert("Impossible de télécharger : une image source bloque l'export (URL non sécurisée). Vérifiez que les logos sont hébergés en HTTPS.");
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -208,11 +213,25 @@ const PosterGeneratorModal: React.FC<PosterGeneratorModalProps> = ({ event, defa
           <div className="px-5 py-4 md:px-8 md:pb-8 md:mt-auto">
             <button
               onClick={downloadPoster}
-              disabled={isGenerating || !photo}
+              disabled={isGenerating || isDownloading || !photo}
               className="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 active:scale-95 transition-all flex justify-center items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed shadow text-sm"
             >
-              {isGenerating ? <RefreshCw className="animate-spin" size={16} /> : <Download size={16} />}
-              Télécharger l'affiche
+              {isDownloading ? (
+                <>
+                  <RefreshCw className="animate-spin" size={16} />
+                  <span>Enregistrement & téléchargement...</span>
+                </>
+              ) : isGenerating ? (
+                <>
+                  <RefreshCw className="animate-spin" size={16} />
+                  <span>Génération de l'aperçu...</span>
+                </>
+              ) : (
+                <>
+                  <Download size={16} />
+                  <span>Télécharger l'affiche</span>
+                </>
+              )}
             </button>
           </div>
         </div>

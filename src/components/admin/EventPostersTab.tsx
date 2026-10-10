@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Download, Trash2, Image as ImageIcon, RefreshCw, HardDrive, Sparkles, Check, AlertTriangle, Eye, ExternalLink, X } from 'lucide-react';
-import { getEventPosters, downloadAllPostersZip, purgeEventPostersFromStorage, PosterFileItem } from '../../utils/posterStorage';
+import { getEventPosters, downloadAllPostersZip, purgeEventPostersFromStorage, cleanupDuplicatePosters, PosterFileItem } from '../../utils/posterStorage';
 
 interface EventPostersTabProps {
   eventId: number | string;
@@ -13,6 +13,7 @@ export const EventPostersTab: React.FC<EventPostersTabProps> = ({ eventId, event
   const [isZipping, setIsZipping] = useState(false);
   const [zipProgress, setZipProgress] = useState<{ percent: number; current: number; total: number } | null>(null);
   const [isPurging, setIsPurging] = useState(false);
+  const [isCleaning, setIsCleaning] = useState(false);
   const [showPurgeModal, setShowPurgeModal] = useState(false);
   const [previewItem, setPreviewItem] = useState<PosterFileItem | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -73,6 +74,24 @@ export const EventPostersTab: React.FC<EventPostersTabProps> = ({ eventId, event
     }
   };
 
+  const handleCleanupDuplicates = async () => {
+    setIsCleaning(true);
+    try {
+      const res = await cleanupDuplicatePosters(eventId);
+      if (res.removedCount > 0) {
+        setSuccessMessage(`${res.removedCount} doublon(s) supprimé(s) sur Supabase Storage. Espace libéré avec succès !`);
+      } else {
+        setSuccessMessage("Aucun doublon détecté. Chaque participant dispose déjà d'un visuel unique.");
+      }
+      await loadPosters();
+      setTimeout(() => setSuccessMessage(null), 4000);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Erreur lors du nettoyage des doublons.');
+    } finally {
+      setIsCleaning(false);
+    }
+  };
+
   const handleDownloadSingle = async (item: PosterFileItem) => {
     try {
       const res = await fetch(item.url);
@@ -114,7 +133,12 @@ export const EventPostersTab: React.FC<EventPostersTabProps> = ({ eventId, event
             <ImageIcon size={24} />
           </div>
           <div>
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Affiches générées</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Visuels uniques</p>
+              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                1 par personne
+              </span>
+            </div>
             <p className="text-2xl font-black text-white mt-0.5">{posters.length}</p>
           </div>
         </div>
@@ -170,18 +194,30 @@ export const EventPostersTab: React.FC<EventPostersTabProps> = ({ eventId, event
               Galerie des affiches participants
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Toutes les affiches générées automatiquement pour cet événement
+              Un seul visuel officiel conservé par participant · Les doublons sont automatiquement éliminés
             </p>
           </div>
 
-          <button
-            onClick={loadPosters}
-            disabled={loading}
-            className="p-2.5 rounded-xl bg-slate-700/60 hover:bg-slate-700 text-slate-300 hover:text-white transition-all text-xs font-semibold inline-flex items-center gap-2"
-          >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            <span>Actualiser</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCleanupDuplicates}
+              disabled={loading || isCleaning}
+              className="px-3.5 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 hover:text-emerald-200 transition-all text-xs font-bold inline-flex items-center gap-2 disabled:opacity-40"
+              title="Supprimer les anciens doublons de fichiers sur Supabase Storage pour libérer l'espace"
+            >
+              <RefreshCw size={14} className={isCleaning ? 'animate-spin' : ''} />
+              <span>{isCleaning ? 'Nettoyage…' : 'Nettoyer les doublons'}</span>
+            </button>
+
+            <button
+              onClick={loadPosters}
+              disabled={loading}
+              className="p-2.5 rounded-xl bg-slate-700/60 hover:bg-slate-700 text-slate-300 hover:text-white transition-all text-xs font-semibold inline-flex items-center gap-2"
+            >
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              <span>Actualiser</span>
+            </button>
+          </div>
         </div>
 
         {loading ? (

@@ -16,6 +16,7 @@ import { generateSlug, EVENT_TYPES } from '../../utils/eventHelpers';
 import { TicketTemplate } from '../../utils/ticketPdf';
 import { CertificateTemplate } from '../../utils/certificatePdf';
 import { PosterTemplate } from '../../utils/posterTemplates';
+import { toDatetimeLocalString, fromDatetimeLocalString, getCurrentDatetimeLocal } from '../../utils/dateUtils';
 
 interface FeedbackConfig {
   show_stars: boolean;
@@ -64,16 +65,16 @@ export interface WizardEvent {
   invitation_subtext?: string;
   certificate_enabled: boolean;
   certificate_template: CertificateTemplate;
+  certificate_title?: string;
+  certificate_subtitle?: string;
+  certificate_text?: string;
+  certificate_signatory_name?: string;
+  certificate_signatory_title?: string;
   poster_template: PosterTemplate;
 }
 
-const getCurrentDateTime = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-};
-
 const emptyEvent = (): WizardEvent => ({
-  title: '', theme: '', description: '', event_date: getCurrentDateTime(),
+  title: '', theme: '', description: '', event_date: getCurrentDatetimeLocal(),
   location: '', image_url: '', max_slots: null, price: 0,
   status: 'published',
   form_fields: [],
@@ -89,6 +90,11 @@ const emptyEvent = (): WizardEvent => ({
   invitation_subtext: '',
   certificate_enabled: false,
   certificate_template: 'classic',
+  certificate_title: '',
+  certificate_subtitle: '',
+  certificate_text: '',
+  certificate_signatory_name: '',
+  certificate_signatory_title: '',
   poster_template: 'classic',
 });
 
@@ -149,13 +155,7 @@ const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, ev
       setFetching(true);
       supabase.from('events').select('*').eq('id', eventId).single().then(({ data, error: fetchError }) => {
         if (!fetchError && data) {
-          let dateValue = getCurrentDateTime();
-          if (data.event_date) {
-            const d = new Date(data.event_date);
-            if (!isNaN(d.getTime())) {
-              dateValue = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-            }
-          }
+          const dateValue = data.event_date ? toDatetimeLocalString(data.event_date) : getCurrentDatetimeLocal();
           setFormData({
             ...emptyEvent(),
             ...data,
@@ -163,7 +163,10 @@ const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, ev
             event_date: dateValue,
             form_fields: data.form_fields || [],
             feedback_config: data.feedback_config ?? { show_stars: true, fields: [] },
-            event_dates: data.event_dates || [],
+            event_dates: (data.event_dates || []).map((ed: any) => ({
+              ...ed,
+              date: toDatetimeLocalString(ed.date),
+            })),
             organizer_logos: Array.isArray(data.organizer_logos) ? data.organizer_logos : [],
             partner_logos: Array.isArray(data.partner_logos) ? data.partner_logos : [],
             poster_enabled: data.poster_enabled !== false,
@@ -175,6 +178,11 @@ const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, ev
             invitation_subtext: data.invitation_subtext || '',
             certificate_enabled: !!data.certificate_enabled,
             certificate_template: data.certificate_template || 'classic',
+            certificate_title: data.certificate_title || '',
+            certificate_subtitle: data.certificate_subtitle || '',
+            certificate_text: data.certificate_text || '',
+            certificate_signatory_name: data.certificate_signatory_name || '',
+            certificate_signatory_title: data.certificate_signatory_title || '',
             poster_template: data.poster_template || 'classic',
           });
           slugTouched.current = true;
@@ -214,7 +222,7 @@ const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, ev
         title: formData.title,
         theme: formData.theme?.trim() || null,
         description: formData.description || '',
-        event_date: formData.event_date,
+        event_date: fromDatetimeLocalString(formData.event_date),
         location: formData.location || '',
         image_url: formData.image_url || '',
         max_slots: formData.max_slots ? parseInt(String(formData.max_slots)) : null,
@@ -222,7 +230,10 @@ const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, ev
         status: formData.status || 'draft',
         form_fields: formData.form_fields || [],
         feedback_config: formData.feedback_config ?? { show_stars: true, fields: [] },
-        event_dates: formData.event_dates || [],
+        event_dates: (formData.event_dates || []).map((ed: any) => ({
+          ...ed,
+          date: fromDatetimeLocalString(ed.date) || ed.date,
+        })),
         logo_url: formData.logo_url || null,
         organizer_logos: formData.organizer_logos || [],
         partner_logos: formData.partner_logos || [],
@@ -236,16 +247,30 @@ const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, ev
         invitation_subtext: formData.invitation_subtext?.trim() || null,
         certificate_enabled: !!formData.certificate_enabled,
         certificate_template: formData.certificate_template || 'classic',
+        certificate_title: formData.certificate_title?.trim() || null,
+        certificate_subtitle: formData.certificate_subtitle?.trim() || null,
+        certificate_text: formData.certificate_text?.trim() || null,
+        certificate_signatory_name: formData.certificate_signatory_name?.trim() || null,
+        certificate_signatory_title: formData.certificate_signatory_title?.trim() || null,
         poster_template: formData.poster_template || 'classic',
+      };
+
+      const cleanFallbackPayload = (p: any) => {
+        delete p.theme;
+        delete p.invitation_text;
+        delete p.invitation_subtext;
+        delete p.certificate_title;
+        delete p.certificate_subtitle;
+        delete p.certificate_text;
+        delete p.certificate_signatory_name;
+        delete p.certificate_signatory_title;
       };
 
       let result;
       if (isEditing && eventId) {
         let { data, error: updErr } = await supabase.from('events').update(payload).eq('id', eventId).select().single();
-        if (updErr && (updErr.message?.includes('theme') || updErr.message?.includes('invitation_'))) {
-          delete payload.theme;
-          delete payload.invitation_text;
-          delete payload.invitation_subtext;
+        if (updErr && (updErr.message?.includes('theme') || updErr.message?.includes('invitation_') || updErr.message?.includes('certificate_'))) {
+          cleanFallbackPayload(payload);
           const retry = await supabase.from('events').update(payload).eq('id', eventId).select().single();
           if (retry.error) throw retry.error;
           data = retry.data;
@@ -255,10 +280,8 @@ const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, ev
         result = data;
       } else {
         let { data, error: insErr } = await supabase.from('events').insert(payload).select().single();
-        if (insErr && (insErr.message?.includes('theme') || insErr.message?.includes('invitation_'))) {
-          delete payload.theme;
-          delete payload.invitation_text;
-          delete payload.invitation_subtext;
+        if (insErr && (insErr.message?.includes('theme') || insErr.message?.includes('invitation_') || insErr.message?.includes('certificate_'))) {
+          cleanFallbackPayload(payload);
           const retry = await supabase.from('events').insert(payload).select().single();
           if (retry.error) throw retry.error;
           data = retry.data;
@@ -824,16 +847,124 @@ const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, ev
                         </div>
 
                         {formData.certificate_enabled && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                            {(['classic', 'modern'] as CertificateTemplate[]).map(tpl => (
-                              <CertificatePreviewCard
-                                key={tpl}
-                                template={tpl}
-                                selected={formData.certificate_template === tpl}
-                                onSelect={() => setFormData({ ...formData, certificate_template: tpl })}
-                                eventTitle={formData.title}
-                              />
-                            ))}
+                          <div className="space-y-6 pt-2">
+                            <div>
+                              <p className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">
+                                Modèle de certificat — aperçu en temps réel
+                              </p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {(['classic', 'modern'] as CertificateTemplate[]).map(tpl => (
+                                  <CertificatePreviewCard
+                                    key={tpl}
+                                    template={tpl}
+                                    selected={formData.certificate_template === tpl}
+                                    onSelect={() => setFormData({ ...formData, certificate_template: tpl })}
+                                    eventTitle={formData.title}
+                                    logoUrl={formData.logo_url}
+                                    organizerLogos={formData.organizer_logos}
+                                    certificateTitle={formData.certificate_title}
+                                    certificateSubtitle={formData.certificate_subtitle}
+                                    certificateText={formData.certificate_text}
+                                    certificateSignatoryName={formData.certificate_signatory_name}
+                                    certificateSignatoryTitle={formData.certificate_signatory_title}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Options de personnalisation des éléments du certificat */}
+                            <div className="p-5 rounded-2xl border border-green-200 bg-gradient-to-br from-green-50/70 via-emerald-50/40 to-teal-50/60 space-y-4">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-xl bg-green-100 flex items-center justify-center text-green-800">
+                                  <Award size={18} />
+                                </div>
+                                <div>
+                                  <h4 className="text-xs font-bold text-green-950 uppercase tracking-wide">
+                                    Personnalisation des éléments du certificat
+                                  </h4>
+                                  <p className="text-[11px] text-green-800/80">
+                                    Configurez les textes officiels, formules et signataires affichés sur l'attestation PDF.
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                                <div>
+                                  <label className="block text-xs font-semibold text-gray-800 mb-1">
+                                    Titre principal du certificat
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={formData.certificate_title || ''}
+                                    onChange={e => setFormData({ ...formData, certificate_title: e.target.value })}
+                                    placeholder="Ex: Certificat de participation (ou laisser vide)"
+                                    className="w-full px-3 py-2 bg-white border border-green-200 rounded-lg text-xs text-gray-800 focus:ring-2 focus:ring-green-500 outline-none"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-xs font-semibold text-gray-800 mb-1">
+                                    Sous-titre / formule
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={formData.certificate_subtitle || ''}
+                                    onChange={e => setFormData({ ...formData, certificate_subtitle: e.target.value })}
+                                    placeholder="Ex: Délivré à (ou DE RECONNAISSANCE)"
+                                    className="w-full px-3 py-2 bg-white border border-green-200 rounded-lg text-xs text-gray-800 focus:ring-2 focus:ring-green-500 outline-none"
+                                  />
+                                </div>
+                              </div>
+
+                              <div>
+                                <div className="flex items-center justify-between mb-1">
+                                  <label className="text-xs font-semibold text-gray-800">
+                                    Texte officiel d'appréciation / accomplissement
+                                  </label>
+                                  <span className="text-[10px] text-green-700 bg-green-100/70 px-2 py-0.5 rounded font-mono">
+                                    {'{name}'}, {'{event}'}, {'{date}'}
+                                  </span>
+                                </div>
+                                <textarea
+                                  rows={2}
+                                  value={formData.certificate_text || ''}
+                                  onChange={e => setFormData({ ...formData, certificate_text: e.target.value })}
+                                  placeholder={`Ex: « Pour avoir participé à l'événement sur « {event} »... » (laisser vide pour la formule par défaut)`}
+                                  className="w-full px-3 py-2 bg-white border border-green-200 rounded-lg text-xs text-gray-800 focus:ring-2 focus:ring-green-500 outline-none leading-relaxed"
+                                />
+                                <p className="text-[10.5px] text-gray-500 mt-1">
+                                  Formule par défaut : <em>« Pour avoir participé à l'événement sur « {formData.title || "l'événement"} » »</em>.
+                                </p>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2 border-t border-green-200/60">
+                                <div>
+                                  <label className="block text-xs font-semibold text-gray-800 mb-1">
+                                    Nom du signataire officiel
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={formData.certificate_signatory_name || ''}
+                                    onChange={e => setFormData({ ...formData, certificate_signatory_name: e.target.value })}
+                                    placeholder="Ex: Alfred Boyer (laisser vide par défaut)"
+                                    className="w-full px-3 py-2 bg-white border border-green-200 rounded-lg text-xs text-gray-800 focus:ring-2 focus:ring-green-500 outline-none"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-xs font-semibold text-gray-800 mb-1">
+                                    Fonction / Titre du signataire
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={formData.certificate_signatory_title || ''}
+                                    onChange={e => setFormData({ ...formData, certificate_signatory_title: e.target.value })}
+                                    placeholder="Ex: Directeur général (ou Président du Comité)"
+                                    className="w-full px-3 py-2 bg-white border border-green-200 rounded-lg text-xs text-gray-800 focus:ring-2 focus:ring-green-500 outline-none"
+                                  />
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>

@@ -146,6 +146,128 @@ const wrapText = (
   ctx.fillText(line.trim(), x, currentY);
 };
 
+/**
+ * Rendu optimisé du nom du participant avec passage à la ligne intelligent (multi-lignes),
+ * répartition équilibrée des mots et ajustement dynamique de la taille de police
+ * pour que les noms longs ne débordent jamais du visuel.
+ */
+interface DrawNameOptions {
+  maxWidth: number;
+  maxFontSize: number;
+  minFontSize: number;
+  fontFamily: string;
+  fontWeight?: string;
+  color?: string;
+  lineHeightFactor?: number;
+}
+
+const drawParticipantName = (
+  ctx: CanvasRenderingContext2D,
+  rawName: string,
+  centerX: number,
+  centerY: number,
+  options: DrawNameOptions
+) => {
+  const {
+    maxWidth,
+    maxFontSize,
+    minFontSize,
+    fontFamily,
+    fontWeight = 'bold',
+    color = '#ffffff',
+    lineHeightFactor = 1.16,
+  } = options;
+
+  const displayName = (rawName || 'MON NOM').trim().toUpperCase();
+  const words = displayName.split(/\s+/).filter(Boolean);
+
+  // Découper les mots longs composés (ex: JEAN-BAPTISTE) si besoin
+  const tokens: string[] = [];
+  for (const w of words) {
+    if (w.includes('-') && w.length > 10) {
+      const parts = w.split('-');
+      parts.forEach((p, idx) => {
+        tokens.push(idx < parts.length - 1 ? `${p}-` : p);
+      });
+    } else {
+      tokens.push(w);
+    }
+  }
+
+  const measureLines = (lines: string[], fontSize: number) => {
+    ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+    return lines.every(l => ctx.measureText(l).width <= maxWidth);
+  };
+
+  let bestLines: string[] = [displayName];
+  let chosenFontSize = maxFontSize;
+
+  ctx.font = `${fontWeight} ${maxFontSize}px ${fontFamily}`;
+  const singleLineWidth = ctx.measureText(displayName).width;
+
+  // Si le nom est court et tient sans forcer sur une seule ligne
+  if (singleLineWidth <= maxWidth && words.length <= 2 && displayName.length <= 16) {
+    bestLines = [displayName];
+    chosenFontSize = maxFontSize;
+  } else {
+    // Sinon, on optimise le passage à la ligne (2 lignes idéales pour prénom + nom)
+    if (tokens.length >= 2) {
+      let bestDiff = Infinity;
+      let optimal2: [string, string] = [tokens[0], tokens.slice(1).join(' ')];
+
+      for (let i = 1; i < tokens.length; i++) {
+        const l1 = tokens.slice(0, i).join(' ').replace(/- /g, '-');
+        const l2 = tokens.slice(i).join(' ').replace(/- /g, '-');
+        const diff = Math.abs(l1.length - l2.length);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          optimal2 = [l1, l2];
+        }
+      }
+      bestLines = optimal2;
+    } else {
+      bestLines = [displayName];
+    }
+
+    // Réduction progressive de la police jusqu'à ce que chaque ligne rentre dans maxWidth
+    let size = maxFontSize;
+    while (size > minFontSize && !measureLines(bestLines, size)) {
+      size -= 2;
+    }
+
+    // Si même à minFontSize ça déborde et qu'on a au moins 3 tokens, on passe à 3 lignes
+    if (!measureLines(bestLines, size) && tokens.length >= 3) {
+      const chunk = Math.ceil(tokens.length / 3);
+      const l1 = tokens.slice(0, chunk).join(' ').replace(/- /g, '-');
+      const l2 = tokens.slice(chunk, chunk * 2).join(' ').replace(/- /g, '-');
+      const l3 = tokens.slice(chunk * 2).join(' ').replace(/- /g, '-');
+      bestLines = [l1, l2, l3].filter(Boolean);
+
+      size = maxFontSize;
+      while (size > minFontSize && !measureLines(bestLines, size)) {
+        size -= 2;
+      }
+    }
+
+    chosenFontSize = size;
+  }
+
+  // Positionnement vertical centré du bloc de texte
+  const lineHeight = Math.round(chosenFontSize * lineHeightFactor);
+  const totalHeight = (bestLines.length - 1) * lineHeight;
+  const startY = centerY - totalHeight / 2;
+
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = color;
+  ctx.font = `${fontWeight} ${chosenFontSize}px ${fontFamily}`;
+
+  bestLines.forEach((line, idx) => {
+    ctx.fillText(line, centerX, startY + idx * lineHeight);
+  });
+  ctx.restore();
+};
+
 const drawRoundedRect = (
   ctx: CanvasRenderingContext2D,
   x: number, y: number, w: number, h: number, r: number
@@ -440,18 +562,16 @@ const drawClassic = (args: DrawArgs) => {
   ctx.fillText(labelText, 0, 18);
   ctx.restore();
 
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#ffffff';
-  let fontSize = 74, nameLineHeight = 86;
-  if (name.length > 25) { fontSize = 42; nameLineHeight = 52; }
-  else if (name.length > 18) { fontSize = 54; nameLineHeight = 66; }
-  ctx.font = `bold ${fontSize}px "Segoe UI", Arial, sans-serif`;
-  const displayName = name.toUpperCase() || 'MON NOM';
-  const nameMaxWidth = 940;
-  const nameTextWidth = ctx.measureText(displayName).width;
-  const nameLines = Math.ceil(nameTextWidth / nameMaxWidth);
-  const nameStartY = canvas.height / 2 + 358 - ((nameLines - 1) * nameLineHeight) / 2;
-  wrapText(ctx, displayName, canvas.width / 2, nameStartY, nameMaxWidth, nameLineHeight);
+  // Nom du participant centré (multi-lignes équilibré pour les noms longs)
+  drawParticipantName(ctx, name, canvas.width / 2, canvas.height / 2 + 358, {
+    maxWidth: 780,
+    maxFontSize: 68,
+    minFontSize: 34,
+    fontFamily: '"Segoe UI", Arial, sans-serif',
+    fontWeight: 'bold',
+    color: '#ffffff',
+    lineHeightFactor: 1.18,
+  });
 
   drawLogosZone(args);
 };
@@ -814,13 +934,17 @@ const drawModern = (args: DrawArgs) => {
   ctx.stroke();
   ctx.restore();
 
-  // Nom du participant en dessous
-  const nameY = badgeY + badgeH + 48;
-  ctx.font = '900 36px "Montserrat", "Segoe UI", sans-serif';
-  ctx.fillStyle = '#ffffff';
-  ctx.textAlign = 'center';
-  const displayName = name.toUpperCase() || 'MON NOM';
-  ctx.fillText(displayName, photoX + photoW / 2, nameY);
+  // Nom du participant en dessous (multi-lignes optimisé pour les noms longs)
+  const nameCenterY = badgeY + badgeH + 50;
+  drawParticipantName(ctx, name, photoX + photoW / 2, nameCenterY, {
+    maxWidth: photoW - 20,
+    maxFontSize: 36,
+    minFontSize: 22,
+    fontFamily: '"Montserrat", "Segoe UI", sans-serif',
+    fontWeight: '900',
+    color: '#ffffff',
+    lineHeightFactor: 1.2,
+  });
 
   // 4. Colonne de Gauche : Emplacement du Logo de l'événement (plaqué directement, agrandi)
   const leftX = 60;

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, MapPin, Users, X, CheckCircle, ChevronLeft, Star, MessageSquare, ChevronRight, Share2, Copy, Check, Loader2, AlertCircle, Clock, User, Plus, Minus, CreditCard, Phone, ArrowRight, ExternalLink, ShieldCheck } from 'lucide-react';
+import { Calendar, MapPin, Users, X, CheckCircle, ChevronLeft, Star, MessageSquare, ChevronRight, ChevronDown, Sparkles, Share2, Copy, Check, Loader2, AlertCircle, Clock, User, Plus, Minus, CreditCard, Phone, ArrowRight, ExternalLink, ShieldCheck } from 'lucide-react';
 import PosterGeneratorModal from '../components/events/PosterGeneratorModal';
 import { EventProgramModal } from '../components/events/EventProgramModal';
 import InAppBrowserBanner from '../components/InAppBrowserBanner';
@@ -12,6 +12,7 @@ import { generateTicketPDF } from '../utils/ticketPdf';
 import { generateCertificatePDF } from '../utils/certificatePdf';
 import Turnstile, { verifySubmission, VERIFY_MESSAGES } from '../components/Turnstile';
 import { fetchPaymentSettings, DEFAULT_PAYMENT_SETTINGS, PaymentSettings } from '../utils/paymentSettings';
+import { sanitizeHTML } from '../utils/sanitizeHtml';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -54,6 +55,11 @@ interface Event {
   invitation_subtext?: string;
   certificate_enabled?: boolean;
   certificate_template?: 'classic' | 'modern';
+  certificate_title?: string;
+  certificate_subtitle?: string;
+  certificate_text?: string;
+  certificate_signatory_name?: string;
+  certificate_signatory_title?: string;
   poster_template?: 'classic' | 'modern';
 }
 
@@ -1400,7 +1406,21 @@ const EventDetailPage: React.FC = () => {
       if (!error && name) {
         setCertRecoveryOpen(false);
         try {
-          const doc = await generateCertificatePDF(String(name), event.title, event.event_date, event.certificate_template || 'classic', event.logo_url);
+          const doc = await generateCertificatePDF(
+            String(name),
+            event.title,
+            event.event_date,
+            event.certificate_template || 'classic',
+            event.logo_url,
+            event.organizer_logos,
+            {
+              title: event.certificate_title,
+              subtitle: event.certificate_subtitle,
+              text: event.certificate_text,
+              signatoryName: event.certificate_signatory_name,
+              signatoryTitle: event.certificate_signatory_title,
+            },
+          );
           const cleanTitle = event.title.replace(/[^a-z0-9]/gi, '_');
           doc.save(`Certificat_${cleanTitle}.pdf`);
         } catch (certErr) {
@@ -1538,7 +1558,7 @@ const EventDetailPage: React.FC = () => {
               <p className="mt-1 flex items-center gap-1 text-[11px] text-white/60 sm:text-xs">
                 <Users size={12} className="shrink-0 text-ddb-300" />
                 <span className="truncate">
-                  {event.max_slots ? `${seatsTaken ?? 0}/${event.max_slots}` : 'Libre'}
+                  {event.max_slots ? `${event.max_slots} places` : 'Entrée libre'}
                 </span>
               </p>
             </div>
@@ -1690,7 +1710,7 @@ const EventDetailPage: React.FC = () => {
                       Places
                     </p>
                     <p className="mt-1 text-sm font-semibold text-white">
-                      {event.max_slots ? `${seatsTaken ?? 0} / ${event.max_slots}` : 'Entrée libre'}
+                      {event.max_slots ? `${event.max_slots} places` : 'Entrée libre'}
                     </p>
                   </div>
                 </div>
@@ -1701,7 +1721,7 @@ const EventDetailPage: React.FC = () => {
                 <button
                   onClick={() => setShowModal(true)}
                   disabled={isPast || isFull}
-                  className={`flex-1 inline-flex items-center justify-center gap-2 rounded-full py-3.5 font-heading text-base font-bold transition-all shadow-xl ${
+                  className={`flex-1 inline-flex items-center justify-center gap-2 rounded-full py-3.5 px-6 font-heading text-base font-bold transition-all shadow-xl ${
                     isPast || isFull
                       ? 'cursor-not-allowed bg-white/10 text-white/30'
                       : 'bg-white text-ddb-950 hover:bg-emerald-400 hover:text-slate-950 hover:-translate-y-0.5 active:scale-95'
@@ -1710,6 +1730,7 @@ const EventDetailPage: React.FC = () => {
                   {isPast ? 'Événement terminé' : isFull ? 'Complet' : "S'inscrire"}
                   {!isPast && !isFull && <Calendar size={18} />}
                 </button>
+
                 {isPast && hasFeedback && (
                   <button
                     onClick={() => setFeedbackOpen(true)}
@@ -1731,29 +1752,42 @@ const EventDetailPage: React.FC = () => {
           {/* Main Content — pas de carte blanche, écritures directement sur le vert */}
           <div className="lg:col-span-2 space-y-8">
             <div>
-              <h2 className="font-heading text-2xl font-bold text-white">À propos de l'événement</h2>
+              <h2 className="font-heading text-2xl font-bold text-white mb-4">À propos de l'événement</h2>
 
-              {(() => {
-                const plainDesc = (event.description || '').replace(/<[^>]+>/g, '').trim();
-                const PREVIEW_LEN = 220;
-                const isLong = plainDesc.length > PREVIEW_LEN;
-                const shown = descExpanded || !isLong ? plainDesc : plainDesc.slice(0, PREVIEW_LEN).trimEnd();
+              {event.description ? (
+                (() => {
+                  const cleanHtml = sanitizeHTML(event.description);
+                  const isLong = (cleanHtml || '').length > 400;
 
-                return (
-                  <p className="mt-4 whitespace-pre-line leading-relaxed text-white/70">
-                    {shown}
-                    {isLong && !descExpanded && '… '}
-                    {isLong && (
-                      <button
-                        onClick={() => setDescExpanded(v => !v)}
-                        className="ml-1 font-heading text-sm font-bold text-ddb-300 transition-colors hover:text-white"
-                      >
-                        {descExpanded ? 'Réduire' : 'Lire plus'}
-                      </button>
-                    )}
-                  </p>
-                );
-              })()}
+                  return (
+                    <div className="relative">
+                      <div
+                        className={`prose prose-invert max-w-none text-white/85 text-sm sm:text-base leading-relaxed font-sans transition-all duration-300 [&_p]:my-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-3 [&_li]:my-1 [&_strong]:text-white [&_strong]:font-bold [&_b]:text-white [&_b]:font-bold [&_h1]:text-white [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-white [&_h2]:text-xl [&_h2]:font-bold [&_h3]:text-white [&_h3]:text-lg [&_h3]:font-bold [&_h4]:text-white [&_a]:text-ddb-300 [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-ddb-400 [&_blockquote]:pl-4 [&_blockquote]:italic [&_hr]:border-white/10 ${
+                          !descExpanded && isLong ? 'max-h-80 overflow-hidden' : ''
+                        }`}
+                        dangerouslySetInnerHTML={{ __html: cleanHtml }}
+                      />
+                      {isLong && !descExpanded && (
+                        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-ddb-950 via-ddb-950/80 to-transparent pointer-events-none" />
+                      )}
+                      {isLong && (
+                        <div className="mt-5 flex justify-center">
+                          <button
+                            type="button"
+                            onClick={() => setDescExpanded(v => !v)}
+                            className="group inline-flex items-center gap-2.5 px-6 py-2.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-heading text-sm font-extrabold shadow-lg shadow-emerald-950/50 hover:shadow-emerald-500/30 hover:scale-105 active:scale-95 transition-all duration-200"
+                          >
+                            <span>{descExpanded ? 'Réduire la description' : 'Lire toute la description'}</span>
+                            <ChevronDown size={16} className={`transition-transform duration-300 stroke-[2.5] ${descExpanded ? 'rotate-180' : 'group-hover:translate-y-0.5'}`} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()
+              ) : (
+                <p className="mt-4 text-white/50 italic text-sm">Aucune description détaillée pour cet événement.</p>
+              )}
 
               {/* ── Programme de l'événement (Carte déclencheur Modal) ── */}
               {event.program && event.program.length > 0 && (
