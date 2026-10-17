@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Camera, Loader2 } from 'lucide-react';
-import { supabase } from '../../supabaseClient';
 import { useSiteContent } from '../../context/SiteContentContext';
+import { uploadSiteImage, validateSiteImage } from './uploadSiteImage';
 
 interface EditableImageProps {
   /** Clé unique dans site_content, ex: "hero.image_1". */
@@ -50,25 +50,14 @@ const EditableImageEditMode: React.FC<{
 
   const handleFile = async (file: File | null) => {
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      alert('Veuillez sélectionner une image.');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      alert("L'image ne doit pas dépasser 5MB.");
+    const invalid = validateSiteImage(file);
+    if (invalid) {
+      alert(invalid);
       return;
     }
     setUploading(true);
     try {
-      const ext = file.name.split('.').pop();
-      const fileName = `site-content/${k.replace(/[^a-zA-Z0-9_-]/g, '_')}-${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from('ong-backend').upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: true,
-      });
-      if (error) throw error;
-      const { data } = supabase.storage.from('ong-backend').getPublicUrl(fileName);
-      await setValue(k, 'image', data.publicUrl);
+      await setValue(k, 'image', await uploadSiteImage(file, k));
     } catch (err) {
       console.error('Erreur upload image site_content:', err);
       alert("Erreur lors de l'upload de l'image.");
