@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Camera, Loader2, Plus, Trash2 } from 'lucide-react';
 import EditableText from './site-content/EditableText';
@@ -24,12 +24,87 @@ const DEFAULT_PARTNERS = [
   { key: 'partners.logo_4', url: '/images/logo-fondation-lekedi.png', alt: 'Fondation Lekedi Logo' },
 ];
 
-// Défilement : chaque logo occupe 96px + 64px de marge ; vitesse d'origine
-// (1000px en 35s). Un groupe compte au moins 12 logos pour couvrir un grand
-// écran, et il est affiché deux fois : défiler de -50% boucle sans saut.
-const ITEM_WIDTH_PX = 160;
+// Défilement : les logos ont une hauteur fixe et une largeur libre (environ
+// 210px en moyenne marge comprise) ; vitesse d'origine (1000px en 35s). Un
+// groupe compte au moins 12 logos pour couvrir un grand écran, et il est
+// affiché deux fois : défiler de -50% boucle sans saut.
+const AVG_ITEM_WIDTH_PX = 210;
 const SPEED_PX_PER_S = 1000 / 35;
 const MIN_LOGOS_PER_GROUP = 12;
+
+// ── Rognage des marges vides ────────────────────────────────────────────────
+// Beaucoup de logos arrivent avec de larges bords transparents ou blancs qui
+// les font paraître minuscules. On calcule une fois par URL une version
+// rognée (data URL) ; en cas d'échec (CORS, image illisible) on garde l'original.
+const trimmedCache = new Map<string, Promise<string>>();
+
+const isEmptyPixel = (d: Uint8ClampedArray, i: number, ignoreWhite: boolean) =>
+  d[i + 3] < 16 || (ignoreWhite && d[i] > 245 && d[i + 1] > 245 && d[i + 2] > 245);
+
+const contentBox = (d: Uint8ClampedArray, w: number, h: number, ignoreWhite: boolean) => {
+  let minX = w, minY = h, maxX = -1, maxY = -1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (isEmptyPixel(d, (y * w + x) * 4, ignoreWhite)) continue;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+  return maxX < 0 ? null : { minX, minY, maxX, maxY };
+};
+
+const trimLogo = (url: string): Promise<string> =>
+  new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onerror = () => resolve(url);
+    img.onload = () => {
+      try {
+        const w = img.naturalWidth, h = img.naturalHeight;
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx || !w || !h) return resolve(url);
+        ctx.drawImage(img, 0, 0);
+        const data = ctx.getImageData(0, 0, w, h).data;
+        // Un logo blanc sur transparent n'a que du « blanc » : on retombe
+        // alors sur la seule transparence.
+        const box = contentBox(data, w, h, true) ?? contentBox(data, w, h, false);
+        if (!box) return resolve(url);
+        const pad = Math.round(Math.max(box.maxX - box.minX, box.maxY - box.minY) * 0.02);
+        const x = Math.max(0, box.minX - pad), y = Math.max(0, box.minY - pad);
+        const cw = Math.min(w, box.maxX + pad + 1) - x, ch = Math.min(h, box.maxY + pad + 1) - y;
+        if (cw >= w * 0.97 && ch >= h * 0.97) return resolve(url); // déjà serré
+        const out = document.createElement('canvas');
+        out.width = cw;
+        out.height = ch;
+        out.getContext('2d')!.drawImage(canvas, x, y, cw, ch, 0, 0, cw, ch);
+        resolve(out.toDataURL('image/png'));
+      } catch {
+        resolve(url); // canvas « tainted » (pas de CORS) : on garde l'original
+      }
+    };
+    img.src = url;
+  });
+
+const useTrimmedLogo = (url: string) => {
+  const [src, setSrc] = useState(url);
+  useEffect(() => {
+    let active = true;
+    setSrc(url);
+    if (!trimmedCache.has(url)) trimmedCache.set(url, trimLogo(url));
+    trimmedCache.get(url)!.then((trimmed) => { if (active) setSrc(trimmed); });
+    return () => { active = false; };
+  }, [url]);
+  return src;
+};
+
+const LogoImage: React.FC<{ partner: PartnerLogo; className: string }> = ({ partner, className }) => (
+  <img src={useTrimmedLogo(partner.url)} alt={partner.alt} loading="lazy" className={className} />
+);
 
 const parseList = (raw: string | null): PartnerLogo[] | null => {
   if (raw === null) return null;
@@ -92,17 +167,19 @@ const PartnersMarquee: React.FC<{ partners: PartnerLogo[] }> = ({ partners }) =>
           x: {
             repeat: Infinity,
             repeatType: 'loop',
-            duration: (group.length * ITEM_WIDTH_PX) / SPEED_PX_PER_S,
+            duration: (group.length * AVG_ITEM_WIDTH_PX) / SPEED_PX_PER_S,
             ease: 'linear',
           },
         }}
       >
+        {/* Hauteur fixe, largeur libre : chaque logo remplit toute la hauteur,
+            et un logo large peut s'étendre jusqu'à 150px. */}
         {track.map((partner, index) => (
           <div
             key={index}
-            className="w-24 h-24 mr-16 flex-shrink-0 flex items-center justify-center transition-all duration-300 hover:scale-110"
+            className="h-10 sm:h-14 lg:h-16 mr-16 sm:mr-24 flex-shrink-0 flex items-center justify-center transition-all duration-300 hover:scale-110"
           >
-            <img src={partner.url} alt={partner.alt} loading="lazy" className="max-w-full max-h-full object-contain" />
+            <LogoImage partner={partner} className="h-full w-auto max-w-[120px] sm:max-w-[150px] object-contain" />
           </div>
         ))}
       </motion.div>
@@ -160,14 +237,14 @@ const PartnersEditor: React.FC<{
       </p>
       <div className="flex flex-wrap justify-center gap-6">
         {partners.map((partner, index) => (
-          <div key={`${partner.url}-${index}`} className="group relative w-32 h-32 rounded-2xl border border-ddb-100 bg-white">
+          <div key={`${partner.url}-${index}`} className="group relative w-52 h-32 rounded-2xl border border-ddb-100 bg-white">
             <button
               type="button"
               onClick={() => pickFile(index)}
               className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-2xl p-3"
               title="Remplacer ce logo"
             >
-              <img src={partner.url} alt={partner.alt} className="max-w-full max-h-full object-contain" />
+              <LogoImage partner={partner} className="max-w-full max-h-full object-contain" />
               <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/45 group-hover:opacity-100">
                 {uploadingIndex === index ? (
                   <Loader2 className="h-6 w-6 animate-spin text-white" />
@@ -194,7 +271,7 @@ const PartnersEditor: React.FC<{
           type="button"
           onClick={() => pickFile(partners.length)}
           disabled={uploadingIndex !== null}
-          className="flex w-32 h-32 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-ddb-300 bg-white/60 text-ddb-700 hover:bg-white disabled:opacity-60"
+          className="flex w-52 h-32 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-ddb-300 bg-white/60 text-ddb-700 hover:bg-white disabled:opacity-60"
         >
           {uploadingIndex === partners.length ? (
             <Loader2 className="h-6 w-6 animate-spin" />
