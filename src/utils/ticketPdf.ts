@@ -1,21 +1,36 @@
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
 
-/** Fetch any image URL as a base64 data URI */
+/** Cache mémoire des images converties en base64 pour accélérer les envois/téléchargements en lot */
+const imageBase64Cache = new Map<string, Promise<string>>();
+
+/** Fetch any image URL as a base64 data URI (with in-memory caching) */
 export const fetchImageAsBase64 = async (url: string): Promise<string> => {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) return '';
-    const blob = await response.blob();
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = () => resolve('');
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return '';
-  }
+  if (!url) return '';
+  if (url.startsWith('data:')) return url;
+  const cached = imageBase64Cache.get(url);
+  if (cached) return cached;
+
+  const promise = (async () => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) return '';
+      const blob = await response.blob();
+      return await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve((reader.result as string) || '');
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return '';
+    }
+  })();
+
+  imageBase64Cache.set(url, promise);
+  const result = await promise;
+  if (!result) imageBase64Cache.delete(url);
+  return result;
 };
 
 /** Génère un QR code localement (sans dépendance externe) */

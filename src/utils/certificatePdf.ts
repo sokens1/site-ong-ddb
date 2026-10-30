@@ -67,22 +67,21 @@ export const generateCertificatePDF = async (
     ? new Date(eventDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
     : '';
 
-  // 1. Logo principal de l'événement (haut à droite)
-  const eventLogoBase64 = logoUrl ? await fetchImageAsBase64(logoUrl).catch(() => '') : '';
-
-  // 2. Logos des organisateurs (en bas ou en haut selon le modèle)
+  // 1-3. Chargement parallèle (avec cache mémoire dans fetchImageAsBase64) des logos et signatures
   const rawOrgUrls = (organizerLogos || []).filter(u => typeof u === 'string' && u.trim().length > 0);
-  const orgLogosBase64 = rawOrgUrls.length > 0
-    ? (await Promise.all(rawOrgUrls.map(u => fetchImageAsBase64(u).catch(() => '')))).filter(Boolean)
-    : [];
-
-  // 3. Signatures optionnelles des signataires (PNG transparents)
-  const sig1Base64 = config?.signatorySignature
-    ? await fetchImageAsBase64(config.signatorySignature).catch(() => '')
-    : '';
-  const sig2Base64 = config?.signatory2Signature
-    ? await fetchImageAsBase64(config.signatory2Signature).catch(() => '')
-    : '';
+  const [eventLogoBase64, rawOrgBase64List, sig1Base64, sig2Base64] = await Promise.all([
+    logoUrl ? fetchImageAsBase64(logoUrl).catch(() => '') : Promise.resolve(''),
+    rawOrgUrls.length > 0
+      ? Promise.all(rawOrgUrls.map(u => fetchImageAsBase64(u).catch(() => '')))
+      : Promise.resolve([] as string[]),
+    config?.signatorySignature
+      ? fetchImageAsBase64(config.signatorySignature).catch(() => '')
+      : Promise.resolve(''),
+    config?.signatory2Signature
+      ? fetchImageAsBase64(config.signatory2Signature).catch(() => '')
+      : Promise.resolve(''),
+  ]);
+  const orgLogosBase64 = rawOrgBase64List.filter(Boolean);
 
   // ══════════════════════════════════════════════════════════════════════════
   // ── Style 3 (DJE) : Modèle élégant guilloché — DJE 2e édition ────────────
@@ -153,14 +152,21 @@ export const generateCertificatePDF = async (
     drawCornerOrnament(9.6, H - 9.6, 1, -1);        // bas-gauche
     drawCornerOrnament(W - 9.6, H - 9.6, -1, -1);   // bas-droit
 
-    // ── Logos en haut (centrés, proportions naturelles préservées) ──
-    const getImgDims = (b64: string): Promise<{ nw: number; nh: number }> =>
-      new Promise(res => {
+    // ── Logos en haut (centrés, proportions naturelles préservées + dimensions en cache) ──
+    const getImgDims = (b64: string): Promise<{ nw: number; nh: number }> => {
+      const dimsCache: Map<string, Promise<{ nw: number; nh: number }>> =
+        ((globalThis as any).__ddbCertDimsCache ||= new Map());
+      const cached = dimsCache.get(b64);
+      if (cached) return cached;
+      const p = new Promise<{ nw: number; nh: number }>(res => {
         const img = new Image();
         img.onload = () => res({ nw: img.naturalWidth || 1, nh: img.naturalHeight || 1 });
         img.onerror = () => res({ nw: 1, nh: 1 });
         img.src = b64;
       });
+      dimsCache.set(b64, p);
+      return p;
+    };
 
     let djeLogos: string[] = [];
     if (orgLogosBase64.length === 0) {

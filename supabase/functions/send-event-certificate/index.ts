@@ -23,7 +23,9 @@ serve(async (req: Request) => {
         // Sans ça, n'importe qui peut envoyer un email avec une pièce
         // jointe PDF arbitraire à n'importe quelle adresse via notre compte
         // — relais de spam/phishing potentiel. Rate limit par IP.
-        const allowed = await checkRateLimit('send-event-certificate', getClientIp(req))
+        // Autorise jusqu'à 500 envois de certificats par 10 min par IP pour permettre
+        // l'envoi groupé en parallèle depuis l'interface d'administration.
+        const allowed = await checkRateLimit('send-event-certificate', getClientIp(req), 500, 10)
         if (!allowed) {
             return new Response(JSON.stringify({ error: 'rate_limited' }), {
                 status: 429,

@@ -33,7 +33,13 @@ export function getGmailConfig(): GmailConfig {
   }
 }
 
+let cachedAccessToken: string | null = null
+let cachedTokenExpiresAt = 0
+
 export async function getGmailAccessToken(cfg: GmailConfig): Promise<string> {
+  if (cachedAccessToken && Date.now() < cachedTokenExpiresAt) {
+    return cachedAccessToken
+  }
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -46,6 +52,9 @@ export async function getGmailAccessToken(cfg: GmailConfig): Promise<string> {
   })
   if (!res.ok) throw new Error(`Échec du rafraîchissement du token Gmail: ${await res.text()}`)
   const data = await res.json()
+  cachedAccessToken = data.access_token
+  const expiresInSec = Number(data.expires_in) || 3500
+  cachedTokenExpiresAt = Date.now() + Math.max(60, expiresInSec - 120) * 1000
   return data.access_token
 }
 

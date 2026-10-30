@@ -173,6 +173,7 @@ const CreateEventPage: React.FC = () => {
   // ── Certificats : envoi manuel ou programmé aux participants scannés ──────
   const [certSendingIds, setCertSendingIds] = useState<Set<number>>(new Set());
   const [certAutoSending, setCertAutoSending] = useState(false);
+  const [certBatchProgress, setCertBatchProgress] = useState<{ done: number; total: number } | null>(null);
   const [certSchedulePickerOpen, setCertSchedulePickerOpen] = useState(false);
   const [certScheduleInput, setCertScheduleInput] = useState('');
   const [certScheduledAt, setCertScheduledAt] = useState<string | null>(null);
@@ -536,7 +537,11 @@ const CreateEventPage: React.FC = () => {
     return '';
   };
 
-  const sendCertificateToRegistration = async (reg: Registration, isManual = false): Promise<boolean> => {
+  const sendCertificateToRegistration = async (
+    reg: Registration,
+    isManual = false,
+    skipActivityLog = false,
+  ): Promise<boolean> => {
     const recipientEmail = getRegistrationRecipientEmail(reg);
     if (!recipientEmail) {
       if (isManual) setErrorMessageModal('Aucune adresse e-mail valide associée à ce participant.');
@@ -568,7 +573,9 @@ const CreateEventPage: React.FC = () => {
       if (updateError) throw updateError;
 
       setRegistrations(prev => prev.map(r => r.id === reg.id ? { ...r, certificate_sent_at: sentAt } : r));
-      logAdminActivity('send_certificate', `event_registrations:${reg.id}`, { email: recipientEmail });
+      if (!skipActivityLog) {
+        logAdminActivity('send_certificate', `event_registrations:${reg.id}`, { email: recipientEmail });
+      }
       return true;
     } catch (err: any) {
       console.error(`Erreur envoi certificat à ${recipientEmail}:`, err);
@@ -584,11 +591,39 @@ const CreateEventPage: React.FC = () => {
   const autoSendPendingCertificates = async (regs: Registration[]) => {
     const pending = regs.filter(r => r.scanned_at && !r.certificate_sent_at && !!getRegistrationRecipientEmail(r));
     if (pending.length === 0) return;
+
     setCertAutoSending(true);
-    for (const reg of pending) {
-      await sendCertificateToRegistration(reg, false);
+    setCertBatchProgress({ done: 0, total: pending.length });
+
+    const CONCURRENCY = 5;
+    let completed = 0;
+    let successCount = 0;
+
+    // Préchauffe le cache d'images/logos sur le 1er certificat si plus d'un envoi
+    // puis traite par lots parallèles de 5 pour accélérer fortement l'envoi
+    for (let i = 0; i < pending.length; i += CONCURRENCY) {
+      const batch = pending.slice(i, i + CONCURRENCY);
+      const results = await Promise.allSettled(
+        batch.map(async (reg) => {
+          const ok = await sendCertificateToRegistration(reg, false, true);
+          completed += 1;
+          if (ok) successCount += 1;
+          setCertBatchProgress({ done: completed, total: pending.length });
+          return ok;
+        }),
+      );
+      void results;
     }
+
+    if (successCount > 0) {
+      logAdminActivity('send_certificates_batch', `events:${id}`, {
+        sent: successCount,
+        total: pending.length,
+      });
+    }
+
     setCertAutoSending(false);
+    setCertBatchProgress(null);
   };
 
   // ── Édition d'inscription + renvoi du billet ──────────────────────────────
@@ -2092,7 +2127,11 @@ const CreateEventPage: React.FC = () => {
                 <div className="flex items-center gap-2 flex-wrap">
                   {certAutoSending ? (
                     <div className="flex items-center gap-2 text-xs font-semibold text-green-700 bg-green-50 px-3 py-2 rounded-lg border border-green-200">
-                      <Loader2 size={14} className="animate-spin" /> Envoi des certificats en cours…
+                      <Loader2 size={14} className="animate-spin" />
+                      <span>
+                        Envoi des certificats en cours
+                        {certBatchProgress ? ` (${certBatchProgress.done} / ${certBatchProgress.total})` : ''}…
+                      </span>
                     </div>
                   ) : (
                     <>
