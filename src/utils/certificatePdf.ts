@@ -60,7 +60,7 @@ export const generateCertificatePDF = async (
   organizerLogos?: string[],
   config?: CertificateConfig,
 ): Promise<jsPDF> => {
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
   const W = 297, H = 210;
 
   const formattedDate = eventDate
@@ -206,7 +206,7 @@ export const generateCertificatePDF = async (
       for (const it of items) {
         try {
           const yOffset = logoY + (maxH - it.h) / 2;
-          doc.addImage(it.b64, 'PNG', curX, yOffset, it.w, it.h);
+          doc.addImage(it.b64, 'PNG', curX, yOffset, it.w, it.h, undefined, 'FAST');
         } catch { /* silent */ }
         curX += it.w + logoSpacing;
       }
@@ -287,7 +287,7 @@ export const generateCertificatePDF = async (
     // Signature image 1 (optionnelle, au-dessus de la ligne gauche)
     if (sig1Base64) {
       try {
-        doc.addImage(sig1Base64, 'PNG', 80 - 20, sigY - 19, 40, 17);
+        doc.addImage(sig1Base64, 'PNG', 80 - 20, sigY - 19, 40, 17, undefined, 'FAST');
       } catch { /* silent */ }
     }
 
@@ -308,7 +308,7 @@ export const generateCertificatePDF = async (
     // Signature image 2 (optionnelle, au-dessus de la ligne droite)
     if (sig2Base64) {
       try {
-        doc.addImage(sig2Base64, 'PNG', 217 - 20, sigY - 19, 40, 17);
+        doc.addImage(sig2Base64, 'PNG', 217 - 20, sigY - 19, 40, 17, undefined, 'FAST');
       } catch { /* silent */ }
     }
 
@@ -489,7 +489,7 @@ export const generateCertificatePDF = async (
     // ── Logo de l'événement en haut à droite ──
     if (eventLogoBase64) {
       try {
-        doc.addImage(eventLogoBase64, 'PNG', W - 72, 16, 24, 24);
+        doc.addImage(eventLogoBase64, 'PNG', W - 72, 16, 24, 24, undefined, 'FAST');
       } catch { /* silent */ }
     }
 
@@ -538,10 +538,10 @@ export const generateCertificatePDF = async (
     const signatory2Title = config?.signatory2Title?.trim() || 'VICE-PRÉSIDENT';
 
     if (sig1Base64) {
-      try { doc.addImage(sig1Base64, 'PNG', 83 - 18, 172 - 17, 36, 15); } catch { /* silent */ }
+      try { doc.addImage(sig1Base64, 'PNG', 83 - 18, 172 - 17, 36, 15, undefined, 'FAST'); } catch { /* silent */ }
     }
     if (sig2Base64) {
-      try { doc.addImage(sig2Base64, 'PNG', 214 - 18, 172 - 17, 36, 15); } catch { /* silent */ }
+      try { doc.addImage(sig2Base64, 'PNG', 214 - 18, 172 - 17, 36, 15, undefined, 'FAST'); } catch { /* silent */ }
     }
 
     doc.setDrawColor(51, 65, 85);
@@ -578,7 +578,7 @@ export const generateCertificatePDF = async (
 
       for (let i = 0; i < maxLogos; i++) {
         try {
-          doc.addImage(orgLogosBase64[i], 'PNG', startX + i * (logoW + gap), startY, logoW, logoH);
+          doc.addImage(orgLogosBase64[i], 'PNG', startX + i * (logoW + gap), startY, logoW, logoH, undefined, 'FAST');
         } catch { /* silent */ }
       }
     }
@@ -663,7 +663,7 @@ export const generateCertificatePDF = async (
   if (eventLogoBase64) {
     // Si un logo officiel d'événement existe, on l'affiche bien grand en haut à droite
     try {
-      doc.addImage(eventLogoBase64, 'PNG', W - 52, 14, 28, 28);
+      doc.addImage(eventLogoBase64, 'PNG', W - 52, 14, 28, 28, undefined, 'FAST');
     } catch {
       // Fallback accent
       drawSector(topAccX, topAccY + topAccR, topAccR, -Math.PI / 2, 0, MINT);
@@ -770,7 +770,7 @@ export const generateCertificatePDF = async (
 
     for (let i = 0; i < maxLogos; i++) {
       try {
-        doc.addImage(orgLogosBase64[i], 'PNG', centerZoneX + i * (orgW + gap), orgY, orgW, orgH);
+        doc.addImage(orgLogosBase64[i], 'PNG', centerZoneX + i * (orgW + gap), orgY, orgW, orgH, undefined, 'FAST');
       } catch { /* silent */ }
     }
   }
@@ -781,7 +781,7 @@ export const generateCertificatePDF = async (
 
   if (sig1Base64) {
     try {
-      doc.addImage(sig1Base64, 'PNG', sigX + 11, sigY - 11, 40, 16);
+      doc.addImage(sig1Base64, 'PNG', sigX + 11, sigY - 11, 40, 16, undefined, 'FAST');
     } catch { /* silent */ }
   } else {
     // Courbe signature élégante par défaut

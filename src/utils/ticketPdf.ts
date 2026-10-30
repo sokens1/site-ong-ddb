@@ -1,13 +1,52 @@
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
 
-/** Cache mémoire des images converties en base64 pour accélérer les envois/téléchargements en lot */
+/** Cache mémoire des images converties et optimisées en base64 pour accélérer les envois/téléchargements */
 const imageBase64Cache = new Map<string, Promise<string>>();
 
-/** Fetch any image URL as a base64 data URI (with in-memory caching) */
+/** Redimensionne une image base64 à maxPx (ex: 420px = ~300 DPI pour un logo/signature de 35mm) afin d'alléger drastiquement les PDFs envoyés par email */
+const optimizeImageDataUri = (dataUri: string, maxPx = 420): Promise<string> =>
+  new Promise((resolve) => {
+    if (typeof document === 'undefined') {
+      resolve(dataUri);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const nw = img.naturalWidth || img.width || 1;
+        const nh = img.naturalHeight || img.height || 1;
+        const scale = Math.min(1, maxPx / Math.max(nw, nh));
+        // Si l'image est déjà petite (< 45 Ko) et sous la dimension max, on la garde telle quelle
+        if (scale === 1 && dataUri.length < 60_000) {
+          resolve(dataUri);
+          return;
+        }
+        const cw = Math.max(1, Math.round(nw * scale));
+        const ch = Math.max(1, Math.round(nh * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = cw;
+        canvas.height = ch;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(dataUri);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, cw, ch);
+        const optimized = canvas.toDataURL('image/png');
+        resolve(optimized.length < dataUri.length ? optimized : dataUri);
+      } catch {
+        resolve(dataUri);
+      }
+    };
+    img.onerror = () => resolve(dataUri);
+    img.src = dataUri;
+  });
+
+/** Fetch any image URL as a base64 data URI (with in-memory caching & size optimization) */
 export const fetchImageAsBase64 = async (url: string): Promise<string> => {
   if (!url) return '';
-  if (url.startsWith('data:')) return url;
+  if (url.startsWith('data:')) return optimizeImageDataUri(url);
   const cached = imageBase64Cache.get(url);
   if (cached) return cached;
 
@@ -16,12 +55,14 @@ export const fetchImageAsBase64 = async (url: string): Promise<string> => {
       const response = await fetch(url);
       if (!response.ok) return '';
       const blob = await response.blob();
-      return await new Promise<string>((resolve) => {
+      const rawDataUri = await new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve((reader.result as string) || '');
         reader.onerror = () => resolve('');
         reader.readAsDataURL(blob);
       });
+      if (!rawDataUri) return '';
+      return await optimizeImageDataUri(rawDataUri);
     } catch {
       return '';
     }
