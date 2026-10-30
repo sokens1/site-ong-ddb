@@ -303,68 +303,68 @@ const EventStatsTab: React.FC<EventStatsTabProps> = ({
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="px-6 sm:px-10 py-8 space-y-8">
+    <div className="px-4 sm:px-10 py-5 sm:py-8 space-y-6 sm:space-y-8">
 
       {/* ── KPI Cards ── */}
       <div>
-        <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Vue d'ensemble</p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <p className="text-xs sm:text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 sm:mb-4">Vue d'ensemble</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
 
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-xl bg-green-100 flex items-center justify-center">
-                <Users size={16} className="text-green-700" />
+          <div className="bg-white border border-gray-100 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-2 sm:mb-3">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-green-100 flex items-center justify-center">
+                <Users size={15} className="text-green-700" />
               </div>
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Inscrits</span>
+              <span className="text-[11px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">Inscrits</span>
             </div>
-            <p className="text-3xl font-black text-green-700">{total}</p>
-            <p className="text-xs text-gray-400 mt-1">participant{total > 1 ? 's' : ''}</p>
+            <p className="text-2xl sm:text-3xl font-black text-green-700">{total}</p>
+            <p className="text-[11px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">participant{total > 1 ? 's' : ''}</p>
           </div>
 
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${maxSlots ? 'bg-orange-100' : 'bg-violet-100'}`}>
-                <Target size={16} className={maxSlots ? 'text-orange-600' : 'text-violet-600'} />
+          <div className="bg-white border border-gray-100 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-2 sm:mb-3">
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center ${maxSlots ? 'bg-orange-100' : 'bg-violet-100'}`}>
+                <Target size={15} className={maxSlots ? 'text-orange-600' : 'text-violet-600'} />
               </div>
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Capacité</span>
+              <span className="text-[11px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">Capacité</span>
             </div>
             {maxSlots ? (
               <>
-                <p className={`text-3xl font-black ${fillRate !== null && fillRate >= 80 ? 'text-orange-600' : 'text-blue-600'}`}>
+                <p className={`text-2xl sm:text-3xl font-black ${fillRate !== null && fillRate >= 80 ? 'text-orange-600' : 'text-blue-600'}`}>
                   {fillRate}%
                 </p>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-[11px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">
                   {remaining} place{remaining !== 1 ? 's' : ''} restante{remaining !== 1 ? 's' : ''}
                 </p>
               </>
             ) : (
               <>
-                <p className="text-2xl font-black text-violet-600">Libre</p>
-                <p className="text-xs text-gray-400 mt-1">entrée sans limite</p>
+                <p className="text-xl sm:text-2xl font-black text-violet-600">Libre</p>
+                <p className="text-[11px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">entrée sans limite</p>
               </>
             )}
           </div>
 
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-xl bg-teal-100 flex items-center justify-center">
-                <Mail size={16} className="text-teal-700" />
+          <div className="bg-white border border-gray-100 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-2 sm:mb-3">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-teal-100 flex items-center justify-center">
+                <Mail size={15} className="text-teal-700" />
               </div>
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Emails</span>
+              <span className="text-[11px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">Emails</span>
             </div>
-            <p className="text-3xl font-black text-teal-700">{emailCount}</p>
-            <p className="text-xs text-gray-400 mt-1">contacts collectés</p>
+            <p className="text-2xl sm:text-3xl font-black text-teal-700">{emailCount}</p>
+            <p className="text-[11px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">contacts collectés</p>
           </div>
 
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-xl bg-indigo-100 flex items-center justify-center">
-                <Calendar size={16} className="text-indigo-700" />
+          <div className="bg-white border border-gray-100 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-2 sm:mb-3">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-indigo-100 flex items-center justify-center">
+                <Calendar size={15} className="text-indigo-700" />
               </div>
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Récents</span>
+              <span className="text-[11px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">Récents</span>
             </div>
-            <p className="text-3xl font-black text-indigo-700">{thisWeekCount}</p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-2xl sm:text-3xl font-black text-indigo-700">{thisWeekCount}</p>
+            <p className="text-[11px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">
               cette semaine
               {todayCount > 0 && (
                 <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-bold text-[10px]">

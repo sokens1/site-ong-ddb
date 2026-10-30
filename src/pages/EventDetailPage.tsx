@@ -38,7 +38,10 @@ interface Event {
   location: string;
   image_url: string | null;
   max_slots: number | null;
+  price?: number | null;
   status: string;
+  registrations_open?: boolean;
+  registration_deadline?: string | null;
   form_fields?: FormField[];
   feedback_config?: FeedbackConfig;
   event_dates?: { date: string; label?: string }[];
@@ -54,12 +57,17 @@ interface Event {
   invitation_text?: string;
   invitation_subtext?: string;
   certificate_enabled?: boolean;
-  certificate_template?: 'classic' | 'modern';
+  certificate_template?: 'classic' | 'modern' | 'dje';
   certificate_title?: string;
   certificate_subtitle?: string;
   certificate_text?: string;
   certificate_signatory_name?: string;
   certificate_signatory_title?: string;
+  certificate_signatory_signature?: string;
+  certificate_signatory2_name?: string;
+  certificate_signatory2_title?: string;
+  certificate_signatory2_signature?: string;
+  certificate_participant_quality?: string;
   poster_template?: 'classic' | 'modern';
 }
 
@@ -98,9 +106,11 @@ const PAYMENT_CONFIG = {
 
 const EventRegistrationModal: React.FC<{
   event: Event;
+  isFull?: boolean;
+  seatsTaken?: number | null;
   onClose: () => void;
   onGeneratePoster: (name: string) => void;
-}> = ({ event, onClose, onGeneratePoster }) => {
+}> = ({ event, isFull, seatsTaken, onClose, onGeneratePoster }) => {
   const { reactivate: reactivateInAppBanner } = useInAppBrowserBanner();
 
   // Détection si l'événement est payant
@@ -207,9 +217,11 @@ const EventRegistrationModal: React.FC<{
     }
   };
 
+  const remainingSlots = event.max_slots != null && seatsTaken != null ? Math.max(0, event.max_slots - seatsTaken) : null;
+
   const handlePlacesChange = (newCount: number) => {
-    const maxSlots = event.max_slots ? Math.min(10, event.max_slots) : 10;
-    const count = Math.max(1, Math.min(maxSlots, newCount));
+    const maxAllowed = remainingSlots != null ? Math.min(10, remainingSlots) : (event.max_slots ? Math.min(10, event.max_slots) : 10);
+    const count = Math.max(1, Math.min(Math.max(1, maxAllowed), newCount));
     setPlacesCount(count);
     setParticipantNames(prev => {
       const next = [...prev];
@@ -761,6 +773,15 @@ const EventRegistrationModal: React.FC<{
                PARCOURS ÉVÉNEMENT PAYANT : 1. DÉTAILS/PARTICIPANTS -> 2. PAIEMENT
                ══════════════════════════════════════════════════════════════════════ */
             <div>
+              {isFull && (
+                <div className="bg-amber-50 border border-amber-300 text-amber-800 text-sm p-3.5 rounded-xl mb-4 font-medium flex items-start gap-2.5">
+                  <AlertCircle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold">Événement complet : </span>
+                    Le nombre maximum de places ({event.max_slots} places) a été atteint. Les inscriptions ne sont plus acceptées.
+                  </div>
+                </div>
+              )}
               {error && <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-xl mb-4 font-medium">{error}</div>}
 
               {paidFlowStep === 'details' && (
@@ -912,7 +933,8 @@ const EventRegistrationModal: React.FC<{
                     <button
                       type="button"
                       onClick={handleProceedToPayment}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 text-base active:scale-95"
+                      disabled={isFull}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 text-base active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       Procéder au paiement ({totalAmount.toLocaleString('fr-FR')} XAF)
                       <ArrowRight size={18} />
@@ -1078,6 +1100,15 @@ const EventRegistrationModal: React.FC<{
                PARCOURS ÉVÉNEMENT GRATUIT : STEP-BY-STEP HABITUEL
                ══════════════════════════════════════════════════════════════════════ */
             <div>
+              {isFull && (
+                <div className="bg-amber-50 border border-amber-300 text-amber-800 text-sm p-3.5 rounded-xl mb-4 font-medium flex items-start gap-2.5">
+                  <AlertCircle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold">Événement complet : </span>
+                    Le nombre maximum de places ({event.max_slots} places) a été atteint. Les inscriptions ne sont plus acceptées.
+                  </div>
+                </div>
+              )}
               {error && <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-4">{error}</div>}
 
               <div className="space-y-5">
@@ -1103,8 +1134,8 @@ const EventRegistrationModal: React.FC<{
                     if (isLastFreeStep) handleFreeSubmit();
                     else setFreeStep(s => s + 1);
                   }}
-                  disabled={!canAdvanceFree() || isSubmitting}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+                  disabled={!canAdvanceFree() || isSubmitting || isFull}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? (
                     <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -1334,12 +1365,28 @@ const EventDetailPage: React.FC = () => {
         if (othersData) setOtherEvents(othersData as unknown as Event[]);
 
         // Nombre d'inscrits (uniquement si l'event a une limite de places)
+        // Essai via RPC SECURITY DEFINER (bypasse la RLS pour les visiteurs publics),
+        // sinon repli direct par select count
         if (eventData.max_slots) {
-          const { count } = await supabase
-            .from('event_registrations')
-            .select('id', { count: 'exact', head: true })
-            .eq('event_id', eventData.id);
-          setSeatsTaken(count ?? 0);
+          try {
+            const { data: countData, error: rpcErr } = await supabase
+              .rpc('get_event_registered_count', { p_event_id: eventData.id });
+            if (!rpcErr && typeof countData === 'number') {
+              setSeatsTaken(countData);
+            } else {
+              const { count } = await supabase
+                .from('event_registrations')
+                .select('id', { count: 'exact', head: true })
+                .eq('event_id', eventData.id);
+              setSeatsTaken(count ?? 0);
+            }
+          } catch {
+            const { count } = await supabase
+              .from('event_registrations')
+              .select('id', { count: 'exact', head: true })
+              .eq('event_id', eventData.id);
+            setSeatsTaken(count ?? 0);
+          }
         }
       }
     } catch (err) {
@@ -1419,6 +1466,11 @@ const EventDetailPage: React.FC = () => {
               text: event.certificate_text,
               signatoryName: event.certificate_signatory_name,
               signatoryTitle: event.certificate_signatory_title,
+              signatorySignature: event.certificate_signatory_signature,
+              signatory2Name: event.certificate_signatory2_name,
+              signatory2Title: event.certificate_signatory2_title,
+              signatory2Signature: event.certificate_signatory2_signature,
+              participantQuality: event.certificate_participant_quality,
             },
           );
           const cleanTitle = event.title.replace(/[^a-z0-9]/gi, '_');
@@ -1459,6 +1511,16 @@ const EventDetailPage: React.FC = () => {
   const status = getEventStatus(event.event_date);
   const isPast = status.label === 'Terminé';
   const isFull = event.max_slots != null && seatsTaken != null && seatsTaken >= event.max_slots;
+  const deadlinePassed = !!event.registration_deadline && new Date(event.registration_deadline).getTime() < Date.now();
+  const isClosed = event.registrations_open === false || deadlinePassed;
+  const cannotRegister = isPast || isFull || isClosed;
+  const registerLabel = isPast
+    ? 'Événement terminé'
+    : isFull
+    ? 'Complet'
+    : isClosed
+    ? 'Inscriptions fermées'
+    : "S'inscrire";
   const feedbackConfig: FeedbackConfig = event.feedback_config ?? { show_stars: true, fields: [] };
   const hasFeedback = feedbackConfig.show_stars || feedbackConfig.fields.length > 0;
 
@@ -1558,7 +1620,15 @@ const EventDetailPage: React.FC = () => {
               <p className="mt-1 flex items-center gap-1 text-[11px] text-white/60 sm:text-xs">
                 <Users size={12} className="shrink-0 text-ddb-300" />
                 <span className="truncate">
-                  {event.max_slots ? `${event.max_slots} places` : 'Entrée libre'}
+                  {event.max_slots ? (
+                    isFull ? (
+                      <span className="font-bold text-amber-400">Complet</span>
+                    ) : (
+                      `${event.max_slots} places`
+                    )
+                  ) : (
+                    'Entrée libre'
+                  )}
                 </span>
               </p>
             </div>
@@ -1710,35 +1780,64 @@ const EventDetailPage: React.FC = () => {
                       Places
                     </p>
                     <p className="mt-1 text-sm font-semibold text-white">
-                      {event.max_slots ? `${event.max_slots} places` : 'Entrée libre'}
+                      {event.max_slots ? (
+                        isFull ? (
+                          <span className="font-bold text-amber-400">Complet</span>
+                        ) : (
+                          `${event.max_slots} places`
+                        )
+                      ) : (
+                        'Entrée libre'
+                      )}
                     </p>
                   </div>
                 </div>
               </div>
 
               {/* Bouton d'action Desktop */}
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  onClick={() => setShowModal(true)}
-                  disabled={isPast || isFull}
-                  className={`flex-1 inline-flex items-center justify-center gap-2 rounded-full py-3.5 px-6 font-heading text-base font-bold transition-all shadow-xl ${
-                    isPast || isFull
-                      ? 'cursor-not-allowed bg-white/10 text-white/30'
-                      : 'bg-white text-ddb-950 hover:bg-emerald-400 hover:text-slate-950 hover:-translate-y-0.5 active:scale-95'
-                  }`}
-                >
-                  {isPast ? 'Événement terminé' : isFull ? 'Complet' : "S'inscrire"}
-                  {!isPast && !isFull && <Calendar size={18} />}
-                </button>
-
-                {isPast && hasFeedback && (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-3">
                   <button
-                    onClick={() => setFeedbackOpen(true)}
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 py-3.5 px-6 font-heading text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-95"
+                    onClick={() => setShowModal(true)}
+                    disabled={cannotRegister}
+                    className={`flex-1 inline-flex items-center justify-center gap-2 rounded-full py-3.5 px-6 font-heading text-base font-bold transition-all shadow-xl ${
+                      cannotRegister
+                        ? 'cursor-not-allowed bg-white/10 text-white/40'
+                        : 'bg-white text-ddb-950 hover:bg-emerald-400 hover:text-slate-950 hover:-translate-y-0.5 active:scale-95'
+                    }`}
                   >
-                    <MessageSquare size={16} />
-                    Donner mon avis
+                    {registerLabel}
+                    {!cannotRegister && <Calendar size={18} />}
                   </button>
+
+                  {isPast && hasFeedback && (
+                    <button
+                      onClick={() => setFeedbackOpen(true)}
+                      className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 py-3.5 px-6 font-heading text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-95"
+                    >
+                      <MessageSquare size={16} />
+                      Donner mon avis
+                    </button>
+                  )}
+                </div>
+
+                {/* Message d'information sobre et rassurant (ton sur ton, sans couleur anxiogène) */}
+                {isFull && !isPast && (
+                  <div className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/75">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-white/40 shrink-0" />
+                    <span>Cet événement a atteint sa capacité maximale ({event.max_slots} places). Les inscriptions sont actuellement closes.</span>
+                  </div>
+                )}
+
+                {!isFull && isClosed && !isPast && (
+                  <div className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/75">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-white/40 shrink-0" />
+                    <span>
+                      {deadlinePassed
+                        ? `La date limite d'inscription (${new Date(event.registration_deadline!).toLocaleString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}) est dépassée.`
+                        : "Les inscriptions pour cet événement sont actuellement fermées."}
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
@@ -1912,15 +2011,29 @@ const EventDetailPage: React.FC = () => {
                       )}
                       {shareOpen && <div className="fixed inset-0 z-40" onClick={() => setShareOpen(false)} />}
                     </div>
+                    {isFull && !isPast && (
+                      <p className="w-full text-[11px] text-white/60 mb-1 flex items-center gap-1.5 sm:hidden">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-white/40 shrink-0" />
+                        Cet événement est complet ({event.max_slots} places).
+                      </p>
+                    )}
+                    {!isFull && isClosed && !isPast && (
+                      <p className="w-full text-[11px] text-white/60 mb-1 flex items-center gap-1.5 sm:hidden">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-white/40 shrink-0" />
+                        Inscriptions actuellement closes.
+                      </p>
+                    )}
                     <button
                       onClick={() => setShowModal(true)}
-                      disabled={isPast || isFull}
+                      disabled={cannotRegister}
                       className={`flex-1 sm:flex-initial font-bold py-3 px-4 sm:py-3.5 sm:px-10 rounded-xl transition-all text-sm sm:text-lg flex justify-center items-center gap-2 whitespace-nowrap ${
-                        isPast || isFull ? 'bg-white/10 text-white/30 cursor-not-allowed' : 'bg-white hover:-translate-y-0.5 text-ddb-950 shadow-md active:scale-95'
+                        cannotRegister
+                          ? 'bg-white/10 text-white/40 cursor-not-allowed'
+                          : 'bg-white hover:-translate-y-0.5 text-ddb-950 shadow-md active:scale-95'
                       }`}
                     >
-                      {isPast ? 'Événement terminé' : isFull ? 'Complet' : "S'inscrire"}
-                      {!isPast && !isFull && <Calendar size={16} className="hidden sm:block" />}
+                      {registerLabel}
+                      {!cannotRegister && <Calendar size={16} className="hidden sm:block" />}
                     </button>
                   </div>
                     {isPast && hasFeedback && (
@@ -2093,6 +2206,8 @@ const EventDetailPage: React.FC = () => {
         {showModal && (
           <EventRegistrationModal
             event={event}
+            isFull={isFull}
+            seatsTaken={seatsTaken}
             onClose={() => setShowModal(false)}
             onGeneratePoster={(name) => setPosterState({ isOpen: true, name })}
           />

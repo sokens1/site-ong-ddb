@@ -49,6 +49,8 @@ export interface WizardEvent {
   max_slots: number | null;
   price?: number | null;
   status: 'draft' | 'published' | 'cancelled';
+  registrations_open: boolean;
+  registration_deadline: string;
   form_fields: FormField[];
   feedback_config: FeedbackConfig;
   event_dates: { date: string; label?: string }[];
@@ -70,6 +72,11 @@ export interface WizardEvent {
   certificate_text?: string;
   certificate_signatory_name?: string;
   certificate_signatory_title?: string;
+  certificate_signatory_signature?: string;
+  certificate_signatory2_name?: string;
+  certificate_signatory2_title?: string;
+  certificate_signatory2_signature?: string;
+  certificate_participant_quality?: string;
   poster_template: PosterTemplate;
 }
 
@@ -77,6 +84,8 @@ const emptyEvent = (): WizardEvent => ({
   title: '', theme: '', description: '', event_date: getCurrentDatetimeLocal(),
   location: '', image_url: '', max_slots: null, price: 0,
   status: 'published',
+  registrations_open: true,
+  registration_deadline: '',
   form_fields: [],
   feedback_config: { show_stars: true, fields: [] },
   event_dates: [], logo_url: '',
@@ -95,6 +104,11 @@ const emptyEvent = (): WizardEvent => ({
   certificate_text: '',
   certificate_signatory_name: '',
   certificate_signatory_title: '',
+  certificate_signatory_signature: '',
+  certificate_signatory2_name: '',
+  certificate_signatory2_title: '',
+  certificate_signatory2_signature: '',
+  certificate_participant_quality: '',
   poster_template: 'classic',
 });
 
@@ -183,7 +197,14 @@ const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, ev
             certificate_text: data.certificate_text || '',
             certificate_signatory_name: data.certificate_signatory_name || '',
             certificate_signatory_title: data.certificate_signatory_title || '',
+            certificate_signatory_signature: data.certificate_signatory_signature || '',
+            certificate_signatory2_name: data.certificate_signatory2_name || '',
+            certificate_signatory2_title: data.certificate_signatory2_title || '',
+            certificate_signatory2_signature: data.certificate_signatory2_signature || '',
+            certificate_participant_quality: data.certificate_participant_quality || '',
             poster_template: data.poster_template || 'classic',
+            registrations_open: data.registrations_open !== false,
+            registration_deadline: data.registration_deadline ? toDatetimeLocalString(data.registration_deadline) : '',
           });
           slugTouched.current = true;
         }
@@ -228,6 +249,8 @@ const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, ev
         max_slots: formData.max_slots ? parseInt(String(formData.max_slots)) : null,
         price: formData.price ? parseFloat(String(formData.price)) : 0,
         status: formData.status || 'draft',
+        registrations_open: formData.registrations_open !== false,
+        registration_deadline: formData.registration_deadline ? fromDatetimeLocalString(formData.registration_deadline) : null,
         form_fields: formData.form_fields || [],
         feedback_config: formData.feedback_config ?? { show_stars: true, fields: [] },
         event_dates: (formData.event_dates || []).map((ed: any) => ({
@@ -252,6 +275,11 @@ const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, ev
         certificate_text: formData.certificate_text?.trim() || null,
         certificate_signatory_name: formData.certificate_signatory_name?.trim() || null,
         certificate_signatory_title: formData.certificate_signatory_title?.trim() || null,
+        certificate_signatory_signature: formData.certificate_signatory_signature?.trim() || null,
+        certificate_signatory2_name: formData.certificate_signatory2_name?.trim() || null,
+        certificate_signatory2_title: formData.certificate_signatory2_title?.trim() || null,
+        certificate_signatory2_signature: formData.certificate_signatory2_signature?.trim() || null,
+        certificate_participant_quality: formData.certificate_participant_quality?.trim() || null,
         poster_template: formData.poster_template || 'classic',
       };
 
@@ -264,12 +292,22 @@ const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, ev
         delete p.certificate_text;
         delete p.certificate_signatory_name;
         delete p.certificate_signatory_title;
+        delete p.certificate_signatory_signature;
+        delete p.certificate_signatory2_name;
+        delete p.certificate_signatory2_title;
+        delete p.certificate_signatory2_signature;
+        delete p.certificate_participant_quality;
+        delete p.registrations_open;
+        delete p.registration_deadline;
       };
+
+      const isMissingColumnError = (msg?: string) =>
+        !!msg && (msg.includes('theme') || msg.includes('invitation_') || msg.includes('certificate_') || msg.includes('registration'));
 
       let result;
       if (isEditing && eventId) {
         let { data, error: updErr } = await supabase.from('events').update(payload).eq('id', eventId).select().single();
-        if (updErr && (updErr.message?.includes('theme') || updErr.message?.includes('invitation_') || updErr.message?.includes('certificate_'))) {
+        if (updErr && isMissingColumnError(updErr.message)) {
           cleanFallbackPayload(payload);
           const retry = await supabase.from('events').update(payload).eq('id', eventId).select().single();
           if (retry.error) throw retry.error;
@@ -280,7 +318,7 @@ const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, ev
         result = data;
       } else {
         let { data, error: insErr } = await supabase.from('events').insert(payload).select().single();
-        if (insErr && (insErr.message?.includes('theme') || insErr.message?.includes('invitation_') || insErr.message?.includes('certificate_'))) {
+        if (insErr && isMissingColumnError(insErr.message)) {
           cleanFallbackPayload(payload);
           const retry = await supabase.from('events').insert(payload).select().single();
           if (retry.error) throw retry.error;
@@ -561,6 +599,39 @@ const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, ev
                               <option value="draft">Brouillon (Caché)</option>
                               <option value="cancelled">Annulé</option>
                             </select>
+                          </div>
+
+                          {/* Inscriptions : interrupteur manuel + date limite */}
+                          <div className="sm:col-span-2 border border-gray-200 p-4 rounded-xl bg-gray-50/50 space-y-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <label className="block text-sm font-bold text-gray-700">Inscriptions ouvertes</label>
+                                <p className="text-xs text-gray-400">
+                                  {formData.registrations_open
+                                    ? 'Le public peut s\'inscrire à cet événement.'
+                                    : 'Les inscriptions sont fermées : le bouton « S\'inscrire » est désactivé sur le site.'}
+                                </p>
+                              </div>
+                              <Toggle
+                                checked={formData.registrations_open}
+                                onChange={() => setFormData({ ...formData, registrations_open: !formData.registrations_open })}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-2">Date limite d'inscription</label>
+                              <div className="flex gap-2 items-center">
+                                <input type="datetime-local" value={formData.registration_deadline}
+                                  onChange={(e) => setFormData({ ...formData, registration_deadline: e.target.value })}
+                                  className="flex-1 px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all" />
+                                {formData.registration_deadline && (
+                                  <button type="button" onClick={() => setFormData({ ...formData, registration_deadline: '' })}
+                                    className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Retirer la date limite">
+                                    <X size={16} />
+                                  </button>
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-400 mt-1.5">Laisser vide = pas de date limite. Passé cette date, les inscriptions se ferment automatiquement.</p>
+                            </div>
                           </div>
                         </div>
 
@@ -853,7 +924,7 @@ const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, ev
                                 Modèle de certificat — aperçu en temps réel
                               </p>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {(['classic', 'modern'] as CertificateTemplate[]).map(tpl => (
+                                {(['dje', 'classic', 'modern'] as CertificateTemplate[]).map(tpl => (
                                   <CertificatePreviewCard
                                     key={tpl}
                                     template={tpl}
@@ -867,6 +938,11 @@ const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, ev
                                     certificateText={formData.certificate_text}
                                     certificateSignatoryName={formData.certificate_signatory_name}
                                     certificateSignatoryTitle={formData.certificate_signatory_title}
+                                    certificateSignatorySignature={formData.certificate_signatory_signature}
+                                    certificateSignatory2Name={formData.certificate_signatory2_name}
+                                    certificateSignatory2Title={formData.certificate_signatory2_title}
+                                    certificateSignatory2Signature={formData.certificate_signatory2_signature}
+                                    participantQuality={formData.certificate_participant_quality}
                                   />
                                 ))}
                               </div>
@@ -946,7 +1022,7 @@ const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, ev
                                     type="text"
                                     value={formData.certificate_signatory_name || ''}
                                     onChange={e => setFormData({ ...formData, certificate_signatory_name: e.target.value })}
-                                    placeholder="Ex: Alfred Boyer (laisser vide par défaut)"
+                                    placeholder={formData.certificate_template === 'dje' ? 'Ex: M. ONDENO Franck' : 'Ex: Alfred Boyer (laisser vide par défaut)'}
                                     className="w-full px-3 py-2 bg-white border border-green-200 rounded-lg text-xs text-gray-800 focus:ring-2 focus:ring-green-500 outline-none"
                                   />
                                 </div>
@@ -959,11 +1035,75 @@ const EventWizardModal: React.FC<EventWizardModalProps> = ({ isOpen, onClose, ev
                                     type="text"
                                     value={formData.certificate_signatory_title || ''}
                                     onChange={e => setFormData({ ...formData, certificate_signatory_title: e.target.value })}
-                                    placeholder="Ex: Directeur général (ou Président du Comité)"
+                                    placeholder={formData.certificate_template === 'dje' ? "Ex: Président de l'ONG Développement Durable et Bien-être" : 'Ex: Directeur général (ou Président du Comité)'}
                                     className="w-full px-3 py-2 bg-white border border-green-200 rounded-lg text-xs text-gray-800 focus:ring-2 focus:ring-green-500 outline-none"
                                   />
                                 </div>
                               </div>
+
+                              <div>
+                                <MultiLogoUpload
+                                  value={formData.certificate_signatory_signature ? [formData.certificate_signatory_signature] : []}
+                                  onChange={urls => setFormData({ ...formData, certificate_signatory_signature: urls[urls.length - 1] || '' })}
+                                  label="Image de la signature du 1er signataire (optionnel)"
+                                  description="PNG sur fond transparent recommandé — s'affiche au-dessus de la ligne de signature."
+                                />
+                              </div>
+
+                              {/* Champs supplémentaires DJE : 2e signataire + qualité du participant */}
+                              {formData.certificate_template === 'dje' && (
+                                <>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2 border-t border-green-200/60">
+                                    <div>
+                                      <label className="block text-xs font-semibold text-gray-800 mb-1">
+                                        2ème signataire — Nom
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={formData.certificate_signatory2_name || ''}
+                                        onChange={e => setFormData({ ...formData, certificate_signatory2_name: e.target.value })}
+                                        placeholder="Ex: Mme Pauline WHITE"
+                                        className="w-full px-3 py-2 bg-white border border-green-200 rounded-lg text-xs text-gray-800 focus:ring-2 focus:ring-green-500 outline-none"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-xs font-semibold text-gray-800 mb-1">
+                                        2ème signataire — Titre / Fonction
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={formData.certificate_signatory2_title || ''}
+                                        onChange={e => setFormData({ ...formData, certificate_signatory2_title: e.target.value })}
+                                        placeholder="Ex: Présidente de Women in Logistics Africa"
+                                        className="w-full px-3 py-2 bg-white border border-green-200 rounded-lg text-xs text-gray-800 focus:ring-2 focus:ring-green-500 outline-none"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <MultiLogoUpload
+                                      value={formData.certificate_signatory2_signature ? [formData.certificate_signatory2_signature] : []}
+                                      onChange={urls => setFormData({ ...formData, certificate_signatory2_signature: urls[urls.length - 1] || '' })}
+                                      label="Image de la signature du 2ème signataire (optionnel)"
+                                      description="PNG sur fond transparent recommandé — s'affiche au-dessus de la ligne du 2ème signataire."
+                                    />
+                                  </div>
+                                  <div className="pt-2 border-t border-green-200/60">
+                                    <label className="block text-xs font-semibold text-gray-800 mb-1">
+                                      Qualité du participant <span className="text-gray-400 font-normal">(optionnel)</span>
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={formData.certificate_participant_quality || ''}
+                                      onChange={e => setFormData({ ...formData, certificate_participant_quality: e.target.value })}
+                                      placeholder="Ex: intervenant, modérateur, participant — laisser vide si non applicable"
+                                      className="w-full px-3 py-2 bg-white border border-green-200 rounded-lg text-xs text-gray-800 focus:ring-2 focus:ring-green-500 outline-none"
+                                    />
+                                    <p className="text-[10.5px] text-gray-500 mt-1">
+                                      Insère automatiquement <em>« pour sa participation en qualité de … »</em> dans le texte du certificat.
+                                    </p>
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </div>
                         )}

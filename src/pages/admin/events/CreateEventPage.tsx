@@ -6,6 +6,7 @@ import {
   ArrowLeft, Users, Trash2, Star, Eye, Search, Pencil, Send, CheckCircle2, Download, Loader2,
   BarChart2, FileSpreadsheet, HardHat, Upload, Mail, Edit3, Award, Ticket, Sparkles, ClipboardList,
   MessageSquare, Calendar, MapPin, Clock, Smartphone, CreditCard, Plus, ChevronDown, ChevronUp, Layers, AlertCircle,
+  Lock, Unlock, MoreVertical,
 } from 'lucide-react';
 import EventStatsTab from './EventStatsTab';
 import { EventPostersTab } from '../../../components/admin/EventPostersTab';
@@ -48,6 +49,8 @@ interface Event {
   max_slots: number | null;
   price?: number | null;
   status: 'draft' | 'published' | 'cancelled';
+  registrations_open?: boolean;
+  registration_deadline?: string | null;
   form_fields?: FormField[];
   feedback_config?: FeedbackConfig;
   created_at?: string;
@@ -70,6 +73,12 @@ interface Event {
   certificate_text?: string;
   certificate_signatory_name?: string;
   certificate_signatory_title?: string;
+  certificate_signatory_signature?: string;
+  certificate_signatory2_name?: string;
+  certificate_signatory2_title?: string;
+  certificate_signatory2_signature?: string;
+  certificate_participant_quality?: string;
+  certificate_scheduled_at?: string | null;
   poster_template?: string;
 }
 
@@ -161,10 +170,14 @@ const CreateEventPage: React.FC = () => {
   const [validatingPaymentId, setValidatingPaymentId] = useState<number | null>(null);
   const itemsPerPage = 10;
 
-  // ── Certificats : envoi automatique aux participants scannés ──────────────
+  // ── Certificats : envoi manuel ou programmé aux participants scannés ──────
   const [certSendingIds, setCertSendingIds] = useState<Set<number>>(new Set());
   const [certAutoSending, setCertAutoSending] = useState(false);
-  const certAutoSendDone = React.useRef(false);
+  const [certSchedulePickerOpen, setCertSchedulePickerOpen] = useState(false);
+  const [certScheduleInput, setCertScheduleInput] = useState('');
+  const [certScheduledAt, setCertScheduledAt] = useState<string | null>(null);
+  const [savingCertSchedule, setSavingCertSchedule] = useState(false);
+  const certScheduleTriggeredRef = React.useRef(false);
 
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean; title: string; message: string; onConfirm: () => void; type?: 'danger' | 'info' | 'success';
@@ -175,6 +188,7 @@ const CreateEventPage: React.FC = () => {
   const [expandedOrderKeys, setExpandedOrderKeys] = useState<Set<string>>(new Set());
   const [validatingOrderKey, setValidatingOrderKey] = useState<string | null>(null);
   const [downloadingOrderKey, setDownloadingOrderKey] = useState<string | null>(null);
+  const [openActionMenuKey, setOpenActionMenuKey] = useState<string | null>(null);
 
   // Modale de confirmation de validation (remplace window.alert)
   const [validationModal, setValidationModal] = useState<{
@@ -494,6 +508,11 @@ const CreateEventPage: React.FC = () => {
         text: formData.certificate_text,
         signatoryName: formData.certificate_signatory_name,
         signatoryTitle: formData.certificate_signatory_title,
+        signatorySignature: (formData as any).certificate_signatory_signature,
+        signatory2Name: (formData as any).certificate_signatory2_name,
+        signatory2Title: (formData as any).certificate_signatory2_title,
+        signatory2Signature: (formData as any).certificate_signatory2_signature,
+        participantQuality: (formData as any).certificate_participant_quality,
       },
     );
   };
@@ -509,17 +528,29 @@ const CreateEventPage: React.FC = () => {
     }
   };
 
-  const sendCertificateToRegistration = async (reg: Registration): Promise<boolean> => {
-    if (!reg.email || reg.email === VISITOR_EMAIL) return false;
+  const getRegistrationRecipientEmail = (reg: Registration): string => {
+    if (reg.email && reg.email !== VISITOR_EMAIL) return reg.email;
+    if (reg.custom_data?.buyer_email && reg.custom_data.buyer_email !== VISITOR_EMAIL) {
+      return reg.custom_data.buyer_email;
+    }
+    return '';
+  };
+
+  const sendCertificateToRegistration = async (reg: Registration, isManual = false): Promise<boolean> => {
+    const recipientEmail = getRegistrationRecipientEmail(reg);
+    if (!recipientEmail) {
+      if (isManual) setErrorMessageModal('Aucune adresse e-mail valide associée à ce participant.');
+      return false;
+    }
     setCertSendingIds(prev => new Set(prev).add(reg.id));
     try {
       const doc = await getCertificateDoc(reg.fullname);
       const pdfBase64 = doc.output('datauristring').split('base64,')[1];
       const cleanTitle = (formData.title || 'evenement').replace(/[^a-z0-9]/gi, '_');
 
-      const { error: fnError } = await supabase.functions.invoke('send-event-certificate', {
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('send-event-certificate', {
         body: {
-          email: reg.email,
+          email: recipientEmail,
           fullname: reg.fullname,
           eventTitle: formData.title,
           pdfBase64,
@@ -527,6 +558,7 @@ const CreateEventPage: React.FC = () => {
         },
       });
       if (fnError) throw fnError;
+      if (fnData?.error) throw new Error(fnData.error);
 
       const sentAt = new Date().toISOString();
       const { error: updateError } = await supabase
@@ -536,10 +568,13 @@ const CreateEventPage: React.FC = () => {
       if (updateError) throw updateError;
 
       setRegistrations(prev => prev.map(r => r.id === reg.id ? { ...r, certificate_sent_at: sentAt } : r));
-      logAdminActivity('send_certificate', `event_registrations:${reg.id}`, { email: reg.email });
+      logAdminActivity('send_certificate', `event_registrations:${reg.id}`, { email: recipientEmail });
       return true;
-    } catch (err) {
-      console.error(`Erreur envoi certificat à ${reg.email}:`, err);
+    } catch (err: any) {
+      console.error(`Erreur envoi certificat à ${recipientEmail}:`, err);
+      if (isManual) {
+        setErrorMessageModal(`Erreur lors de l'envoi du certificat à ${recipientEmail} : ${err?.message || 'Erreur inconnue'}`);
+      }
       return false;
     } finally {
       setCertSendingIds(prev => { const s = new Set(prev); s.delete(reg.id); return s; });
@@ -547,11 +582,11 @@ const CreateEventPage: React.FC = () => {
   };
 
   const autoSendPendingCertificates = async (regs: Registration[]) => {
-    const pending = regs.filter(r => r.scanned_at && !r.certificate_sent_at && r.email && r.email !== VISITOR_EMAIL);
+    const pending = regs.filter(r => r.scanned_at && !r.certificate_sent_at && !!getRegistrationRecipientEmail(r));
     if (pending.length === 0) return;
     setCertAutoSending(true);
     for (const reg of pending) {
-      await sendCertificateToRegistration(reg);
+      await sendCertificateToRegistration(reg, false);
     }
     setCertAutoSending(false);
   };
@@ -851,6 +886,12 @@ const CreateEventPage: React.FC = () => {
           program: Array.isArray(eventItem.program) ? eventItem.program : [],
           ticket_tiers: Array.isArray(eventItem.ticket_tiers) ? eventItem.ticket_tiers : [],
         });
+        const localSched = localStorage.getItem(`cert_schedule_${eventItem.id}`);
+        const schedIso = eventItem.certificate_scheduled_at || localSched || null;
+        setCertScheduledAt(schedIso);
+        if (schedIso) {
+          setCertScheduleInput(toDatetimeLocalString(schedIso));
+        }
         fetchRegistrations(parseInt(id));
         fetchFeedbacks(parseInt(id));
         fetchVolunteers(parseInt(id));
@@ -858,18 +899,108 @@ const CreateEventPage: React.FC = () => {
     }
   }, [id, isEditing, eventsData]);
 
-  // Envoi automatique des certificats aux participants scannés qui n'en ont pas encore reçu,
-  // dès l'ouverture de l'onglet "Certificats" (idempotent grâce à certificate_sent_at).
+  // ── Ouverture / fermeture rapide des inscriptions ─────────────────────────
+  const [togglingRegistrations, setTogglingRegistrations] = useState(false);
+  const registrationDeadlinePassed = !!formData.registration_deadline
+    && new Date(formData.registration_deadline).getTime() < Date.now();
+  const registrationsClosed = formData.registrations_open === false || registrationDeadlinePassed;
+  const isEventFull = formData.max_slots != null && registrations.length >= formData.max_slots;
+
+  const toggleRegistrations = async () => {
+    if (!id) return;
+    const nextOpen = formData.registrations_open === false;
+    setTogglingRegistrations(true);
+    const { error } = await supabase.from('events').update({ registrations_open: nextOpen }).eq('id', parseInt(id));
+    setTogglingRegistrations(false);
+    if (error) {
+      setErrorMessageModal(
+        error.message?.includes('registrations_open')
+          ? "La colonne 'registrations_open' n'existe pas encore : exécutez la migration 047_event_registration_closing.sql dans Supabase."
+          : `Erreur : ${error.message}`
+      );
+      return;
+    }
+    setFormData(prev => ({ ...prev, registrations_open: nextOpen }));
+    refreshEvents();
+  };
+
+  // ── Programmation de l'envoi des certificats ─────────────────────────────
+  const handleSaveCertSchedule = async () => {
+    if (!id || !certScheduleInput) return;
+    const targetDate = new Date(certScheduleInput);
+    if (isNaN(targetDate.getTime()) || targetDate.getTime() <= Date.now()) {
+      setErrorMessageModal("Veuillez choisir une date et une heure futures pour programmer l'envoi.");
+      return;
+    }
+    const iso = targetDate.toISOString();
+    setSavingCertSchedule(true);
+    certScheduleTriggeredRef.current = false;
+    try {
+      const { error } = await supabase
+        .from('events')
+        .update({ certificate_scheduled_at: iso })
+        .eq('id', parseInt(id));
+      if (error && !error.message?.includes('certificate_scheduled_at')) {
+        throw error;
+      }
+      localStorage.setItem(`cert_schedule_${id}`, iso);
+      setCertScheduledAt(iso);
+      setFormData(prev => ({ ...prev, certificate_scheduled_at: iso }));
+      setCertSchedulePickerOpen(false);
+    } catch (err: any) {
+      setErrorMessageModal(`Erreur lors de la programmation : ${err.message}`);
+    } finally {
+      setSavingCertSchedule(false);
+    }
+  };
+
+  const handleCancelCertSchedule = async () => {
+    if (!id) return;
+    setSavingCertSchedule(true);
+    try {
+      await supabase
+        .from('events')
+        .update({ certificate_scheduled_at: null })
+        .eq('id', parseInt(id));
+      localStorage.removeItem(`cert_schedule_${id}`);
+      setCertScheduledAt(null);
+      setFormData(prev => ({ ...prev, certificate_scheduled_at: null }));
+      certScheduleTriggeredRef.current = false;
+    } finally {
+      setSavingCertSchedule(false);
+    }
+  };
+
+  // Déclenchement uniquement lorsque la date/heure programmée est atteinte
   useEffect(() => {
-    if (activeTab !== 'certificates') { certAutoSendDone.current = false; return; }
-    if (!formData.certificate_enabled) return;
-    if (certAutoSendDone.current || registrationsLoading) return;
-    const pending = registrations.filter(r => r.scanned_at && !r.certificate_sent_at && r.email && r.email !== VISITOR_EMAIL);
-    if (pending.length === 0) return;
-    certAutoSendDone.current = true;
-    autoSendPendingCertificates(registrations);
+    if (!certScheduledAt || !formData.certificate_enabled || registrationsLoading) return;
+
+    const checkAndTriggerScheduledSend = async () => {
+      if (certScheduleTriggeredRef.current || certAutoSending) return;
+      const targetMs = new Date(certScheduledAt).getTime();
+      if (isNaN(targetMs) || Date.now() < targetMs) return;
+
+      const pending = registrations.filter(
+        r => r.scanned_at && !r.certificate_sent_at && !!getRegistrationRecipientEmail(r)
+      );
+      certScheduleTriggeredRef.current = true;
+      if (pending.length > 0) {
+        await autoSendPendingCertificates(registrations);
+      }
+      // Nettoie la programmation une fois exécutée
+      if (id) {
+        localStorage.removeItem(`cert_schedule_${id}`);
+        await supabase.from('events').update({ certificate_scheduled_at: null }).eq('id', parseInt(id));
+      }
+      setCertScheduledAt(null);
+      setFormData(prev => ({ ...prev, certificate_scheduled_at: null }));
+    };
+
+    checkAndTriggerScheduledSend();
+    const timer = setInterval(checkAndTriggerScheduledSend, 15000);
+    return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, formData.certificate_enabled, registrations, registrationsLoading]);
+  }, [certScheduledAt, formData.certificate_enabled, registrations, registrationsLoading, certAutoSending, id]);
 
   const fetchFeedbacks = async (eventId: number) => {
     setFeedbacksLoading(true);
@@ -1094,22 +1225,22 @@ const CreateEventPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col max-w-full overflow-x-hidden">
       {/* Top bar */}
-      <div className="bg-white shadow-sm sticky top-0 z-10 w-full border-b border-gray-200 px-4 sm:px-8 h-14 flex items-center justify-between flex-shrink-0">
-        <button onClick={handleBack} className="flex items-center gap-2 text-green-600 hover:text-green-700 font-medium transition-colors">
-          <ArrowLeft size={18} /> Retour
+      <div className="bg-white shadow-sm sticky top-0 z-20 w-full border-b border-gray-200 px-3 sm:px-8 h-13 sm:h-14 flex items-center justify-between gap-2 flex-shrink-0">
+        <button onClick={handleBack} className="flex items-center gap-1.5 text-green-600 hover:text-green-700 font-semibold text-xs sm:text-sm transition-colors flex-shrink-0">
+          <ArrowLeft size={17} /> <span>Retour</span>
         </button>
-        <div className="text-gray-800 font-bold hidden sm:block truncate max-w-[50%]">{formData.title || "Gérer l'événement"}</div>
+        <div className="text-gray-800 font-bold text-xs sm:text-base truncate flex-1 text-center px-2">{formData.title || "Gérer l'événement"}</div>
         <button onClick={() => openWizardAt('info')}
-          className="px-5 py-2 font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-sm flex items-center gap-2 text-sm">
-          <Edit3 size={16} /> Modifier
+          className="px-3 sm:px-5 py-1.5 sm:py-2 font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-sm flex items-center gap-1.5 text-xs sm:text-sm flex-shrink-0">
+          <Edit3 size={14} /> <span>Modifier</span>
         </button>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="bg-white border-b border-gray-200 sticky top-14 z-10">
-        <div className="flex overflow-x-auto scrollbar-hide px-3 sm:px-6 gap-1.5 py-2.5">
+      {/* Tab Navigation : grille enveloppante sur mobile (zéro scroll horizontal caché) */}
+      <div className="bg-white border-b border-gray-200 sticky top-13 sm:top-14 z-10">
+        <div className="flex flex-wrap sm:flex-nowrap sm:overflow-x-auto scrollbar-hide px-2.5 sm:px-6 gap-1 sm:gap-1.5 py-2">
           {tabs.map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.key;
@@ -1117,16 +1248,16 @@ const CreateEventPage: React.FC = () => {
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
+                className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
                   isActive
-                    ? 'bg-green-600 text-white shadow-md shadow-green-200'
-                    : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
+                    ? 'bg-green-600 text-white shadow-sm sm:shadow-md shadow-green-200'
+                    : 'bg-gray-50 sm:bg-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-100'
                 }`}
               >
-                <Icon size={15} />
+                <Icon size={14} />
                 <span>{tab.label}</span>
                 {'badge' in tab && tab.badge ? (
-                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-white/25 text-white' : 'bg-green-100 text-green-800'}`}>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${isActive ? 'bg-white/25 text-white' : 'bg-green-100 text-green-800'}`}>
                     {tab.badge}
                   </span>
                 ) : null}
@@ -1141,18 +1272,18 @@ const CreateEventPage: React.FC = () => {
 
         {/* ── Info Tab : résumé + accès au wizard ── */}
         {activeTab === 'info' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-6 sm:px-10 py-8 space-y-6">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-4 sm:px-10 py-5 sm:py-8 space-y-5 sm:space-y-6">
             <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div className="flex items-start gap-4 min-w-0">
+              <div className="flex items-start gap-3 sm:gap-4 min-w-0">
                 {formData.image_url ? (
-                  <img src={formData.image_url} alt="" className="w-20 h-20 rounded-2xl object-cover border border-gray-100 shadow-sm flex-shrink-0" />
+                  <img src={formData.image_url} alt="" className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border border-gray-100 shadow-sm flex-shrink-0" />
                 ) : (
-                  <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center flex-shrink-0">
-                    <Calendar size={24} className="text-gray-300" />
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <Calendar size={22} className="text-gray-300" />
                   </div>
                 )}
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <div className="flex items-center gap-1.5 flex-wrap mb-1">
                     <span className="text-[10px] font-bold uppercase tracking-wide bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                       {EVENT_TYPES.find(t => t.value === formData.event_type)?.label || 'Conférence'}
                     </span>
@@ -1161,69 +1292,107 @@ const CreateEventPage: React.FC = () => {
                     }`}>
                       {formData.status === 'published' ? 'Publié' : formData.status === 'cancelled' ? 'Annulé' : 'Brouillon'}
                     </span>
+                    <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                      registrationsClosed ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700'
+                    }`}>
+                      {registrationsClosed ? <Lock size={10} /> : <Unlock size={10} />}
+                      {registrationsClosed ? 'Inscriptions fermées' : 'Inscriptions ouvertes'}
+                    </span>
+                    {isEventFull && (
+                      <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-red-100 text-red-700 flex items-center gap-1">
+                        <AlertCircle size={10} />
+                        Complet ({registrations.length}/{formData.max_slots})
+                      </span>
+                    )}
                   </div>
-                  <h2 className="text-xl font-bold text-gray-800 leading-snug">{formData.title || 'Sans titre'}</h2>
-                  <div className="flex items-center gap-4 flex-wrap mt-1.5 text-sm text-gray-500">
+                  <h2 className="text-base sm:text-xl font-bold text-gray-800 leading-snug">{formData.title || 'Sans titre'}</h2>
+                  <div className="flex items-center gap-3 flex-wrap mt-1.5 text-xs sm:text-sm text-gray-500">
                     <span className="flex items-center gap-1.5">
-                      <Calendar size={14} className="text-green-500" />
+                      <Calendar size={13} className="text-green-500 flex-shrink-0" />
                       {formData.event_date ? new Date(formData.event_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}
                     </span>
                     {formData.location && (
                       <span className="flex items-center gap-1.5">
-                        <MapPin size={14} className="text-green-500" />
+                        <MapPin size={13} className="text-green-500 flex-shrink-0" />
                         {formData.location}
+                      </span>
+                    )}
+                    {formData.registration_deadline && (
+                      <span className={`flex items-center gap-1.5 ${registrationDeadlinePassed ? 'text-amber-600' : ''}`}>
+                        <Clock size={13} className={registrationDeadlinePassed ? 'text-amber-500' : 'text-green-500'} />
+                        Inscriptions jusqu'au {new Date(formData.registration_deadline).toLocaleString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
                       </span>
                     )}
                   </div>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => openWizardAt('info')}
-                className="flex items-center gap-2 px-5 py-2.5 font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-sm text-sm flex-shrink-0"
-              >
-                <Edit3 size={16} /> Modifier les informations
-              </button>
+              <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+                {isEditing && (
+                  <button
+                    type="button"
+                    onClick={toggleRegistrations}
+                    disabled={togglingRegistrations}
+                    title={registrationDeadlinePassed && formData.registrations_open !== false ? 'La date limite est dépassée : modifiez-la dans les informations pour rouvrir.' : undefined}
+                    className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 font-bold rounded-xl transition-all shadow-sm text-xs sm:text-sm border disabled:opacity-60 ${
+                      formData.registrations_open === false
+                        ? 'bg-white text-green-700 border-green-200 hover:bg-green-50'
+                        : 'bg-white text-amber-700 border-amber-200 hover:bg-amber-50'
+                    }`}
+                  >
+                    {togglingRegistrations
+                      ? <Loader2 size={15} className="animate-spin" />
+                      : formData.registrations_open === false ? <Unlock size={15} /> : <Lock size={15} />}
+                    {formData.registrations_open === false ? 'Rouvrir inscriptions' : 'Fermer inscriptions'}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => openWizardAt('info')}
+                  className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 sm:px-5 sm:py-2.5 font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-sm text-xs sm:text-sm"
+                >
+                  <Edit3 size={15} /> Modifier infos
+                </button>
+              </div>
             </div>
 
             {formData.description && (
-              <div className="prose prose-sm max-w-none text-gray-600 bg-gray-50 rounded-xl p-4 border border-gray-100 line-clamp-4"
+              <div className="prose prose-sm max-w-none text-gray-600 bg-gray-50 rounded-xl p-3.5 sm:p-4 border border-gray-100 line-clamp-4"
                 dangerouslySetInnerHTML={{ __html: formData.description }} />
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
-              <div className="border border-gray-100 rounded-xl p-4 bg-gray-50/50">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <ClipboardList size={15} className="text-green-600" />
-                  <p className="text-xs font-bold text-gray-700">Questionnaires</p>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 pt-1">
+              <div className="border border-gray-100 rounded-xl p-3 sm:p-4 bg-gray-50/50">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <ClipboardList size={14} className="text-green-600 flex-shrink-0" />
+                  <p className="text-xs font-bold text-gray-700 truncate">Questionnaires</p>
                 </div>
-                <p className="text-xs text-gray-500">{(formData.form_fields || []).length} question(s) d'inscription, {(formData.feedback_config?.fields || []).length} question(s) d'avis</p>
+                <p className="text-[11px] sm:text-xs text-gray-500 leading-snug">{(formData.form_fields || []).length} question(s) d'inscription, {(formData.feedback_config?.fields || []).length} d'avis</p>
               </div>
-              <div className="border border-gray-100 rounded-xl p-4 bg-gray-50/50">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Ticket size={15} className="text-green-600" />
-                  <p className="text-xs font-bold text-gray-700">Billetterie</p>
+              <div className="border border-gray-100 rounded-xl p-3 sm:p-4 bg-gray-50/50">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Ticket size={14} className="text-green-600 flex-shrink-0" />
+                  <p className="text-xs font-bold text-gray-700 truncate">Billetterie</p>
                 </div>
-                <p className="text-xs text-gray-500">
-                  {(formData.program || []).length} étape(s) au programme · {(formData.ticket_tiers || []).length} tarif(s) · modèle {formData.ticket_template === 'modern' ? 'moderne' : 'classique'}
+                <p className="text-[11px] sm:text-xs text-gray-500 leading-snug">
+                  {(formData.program || []).length} étape(s) · {(formData.ticket_tiers || []).length} tarif(s) · {formData.ticket_template === 'modern' ? 'moderne' : 'classique'}
                 </p>
               </div>
-              <div className="border border-gray-100 rounded-xl p-4 bg-gray-50/50">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Award size={15} className={formData.certificate_enabled ? 'text-green-600' : 'text-gray-300'} />
-                  <p className="text-xs font-bold text-gray-700">Certificats</p>
+              <div className="border border-gray-100 rounded-xl p-3 sm:p-4 bg-gray-50/50">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Award size={14} className={formData.certificate_enabled ? 'text-green-600 flex-shrink-0' : 'text-gray-300 flex-shrink-0'} />
+                  <p className="text-xs font-bold text-gray-700 truncate">Certificats</p>
                 </div>
-                <p className="text-xs text-gray-500">
-                  {formData.certificate_enabled ? `Activés · modèle ${formData.certificate_template === 'modern' ? 'moderne' : 'classique'}` : 'Désactivés'}
+                <p className="text-[11px] sm:text-xs text-gray-500 leading-snug">
+                  {formData.certificate_enabled ? `Activés · ${formData.certificate_template === 'modern' ? 'moderne' : formData.certificate_template === 'dje' ? 'DJE élégant' : 'classique'}` : 'Désactivés'}
                 </p>
               </div>
-              <div className="border border-gray-100 rounded-xl p-4 bg-gray-50/50">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Sparkles size={15} className={formData.poster_enabled !== false ? 'text-green-600' : 'text-gray-300'} />
-                  <p className="text-xs font-bold text-gray-700">Visuel "J'y serai"</p>
+              <div className="border border-gray-100 rounded-xl p-3 sm:p-4 bg-gray-50/50">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Sparkles size={14} className={formData.poster_enabled !== false ? 'text-green-600 flex-shrink-0' : 'text-gray-300 flex-shrink-0'} />
+                  <p className="text-xs font-bold text-gray-700 truncate">Visuel "J'y serai"</p>
                 </div>
-                <p className="text-xs text-gray-500">
-                  {formData.poster_enabled !== false ? `Activé · modèle ${formData.poster_template === 'modern' ? 'moderne' : 'classique'}` : 'Désactivé'}
+                <p className="text-[11px] sm:text-xs text-gray-500 leading-snug">
+                  {formData.poster_enabled !== false ? `Activé · ${formData.poster_template === 'modern' ? 'moderne' : 'classique'}` : 'Désactivé'}
                 </p>
               </div>
             </div>
@@ -1367,23 +1536,29 @@ const CreateEventPage: React.FC = () => {
         {activeTab === 'participants' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             {/* Header */}
-            <div className="flex items-center justify-between px-6 sm:px-10 py-5 border-b border-gray-100">
-              <div>
-                <h2 className="text-xl font-bold text-gray-800">Participants inscrits</h2>
-                <p className="text-gray-500 text-sm mt-0.5">
-                  <span className="font-bold text-green-600">{registrations.length}</span> inscription{registrations.length !== 1 ? 's' : ''}
-                </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-10 py-4 sm:py-5 border-b border-gray-100 gap-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-800">Participants inscrits</h2>
+                  <p className="text-gray-500 text-xs sm:text-sm mt-0.5">
+                    <span className="font-bold text-green-600">{registrations.length}</span> inscription{registrations.length !== 1 ? 's' : ''}
+                  </p>
+                </div>
+                <button onClick={() => fetchRegistrations(parseInt(id!))}
+                  className="sm:hidden px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors">
+                  Rafraîchir
+                </button>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Recherche */}
-                <div className="relative">
+                <div className="relative flex-1 sm:flex-initial">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                   <input
                     type="text"
-                    placeholder="Rechercher…"
+                    placeholder="Rechercher un nom, email…"
                     value={participantSearch}
                     onChange={e => { setParticipantSearch(e.target.value); setCurrentPage(1); }}
-                    className="pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-green-500 w-44"
+                    className="pl-8 pr-3 py-2 text-xs sm:text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-green-500 w-full sm:w-48"
                   />
                 </div>
                 {selectedParticipantIds.size > 0 && (
@@ -1392,31 +1567,31 @@ const CreateEventPage: React.FC = () => {
                       targetGroup: 'participants',
                       recipients: registrations.filter(r => selectedParticipantIds.has(r.id) && r.email && r.email !== VISITOR_EMAIL),
                     })}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-xs sm:text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors"
                   >
-                    <Mail size={15} /> Envoyer un email ({selectedParticipantIds.size})
+                    <Mail size={14} /> <span>Email ({selectedParticipantIds.size})</span>
                   </button>
                 )}
                 {registrations.length > 0 && (
                   <button onClick={exportXLSX}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-700 text-sm font-semibold rounded-lg hover:bg-green-100 transition-colors border border-green-200">
-                    <FileSpreadsheet size={15} /> Exporter XLSX
+                    className="flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-700 text-xs sm:text-sm font-semibold rounded-lg hover:bg-green-100 transition-colors border border-green-200">
+                    <FileSpreadsheet size={14} /> <span>XLSX</span>
                   </button>
                 )}
                 <button onClick={() => fetchRegistrations(parseInt(id!))}
-                  className="px-3 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors">
+                  className="hidden sm:inline-flex px-3 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors">
                   Rafraîchir
                 </button>
               </div>
             </div>
 
             {/* Barre de filtres par statut de paiement */}
-            <div className="flex items-center gap-2 px-6 sm:px-10 py-3 bg-gray-50/70 border-b border-gray-100 overflow-x-auto">
-              <span className="text-xs font-semibold text-gray-400 mr-1">Filtres :</span>
+            <div className="flex items-center gap-1.5 sm:gap-2 px-4 sm:px-10 py-2.5 sm:py-3 bg-gray-50/70 border-b border-gray-100 flex-wrap">
+              <span className="text-xs font-semibold text-gray-400 mr-1 hidden sm:inline">Filtres :</span>
               <button
                 type="button"
                 onClick={() => { setPaymentFilter('all'); setCurrentPage(1); }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                   paymentFilter === 'all'
                     ? 'bg-gray-900 text-white'
                     : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
@@ -1427,31 +1602,31 @@ const CreateEventPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => { setPaymentFilter('pending'); setCurrentPage(1); }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1 ${
                   paymentFilter === 'pending'
                     ? 'bg-amber-600 text-white'
                     : 'bg-white border border-gray-200 text-amber-800 hover:bg-amber-50'
                 }`}
               >
-                <Clock size={12} />
+                <Clock size={11} />
                 À valider ({pendingPaymentsCount})
               </button>
               <button
                 type="button"
                 onClick={() => { setPaymentFilter('paid'); setCurrentPage(1); }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1 ${
                   paymentFilter === 'paid'
                     ? 'bg-green-700 text-white'
                     : 'bg-white border border-gray-200 text-green-800 hover:bg-green-50'
                 }`}
               >
-                <CheckCircle2 size={12} />
+                <CheckCircle2 size={11} />
                 Payées ({paidPaymentsCount})
               </button>
               <button
                 type="button"
                 onClick={() => { setPaymentFilter('free'); setCurrentPage(1); }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                   paymentFilter === 'free'
                     ? 'bg-gray-700 text-white'
                     : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
@@ -1515,7 +1690,7 @@ const CreateEventPage: React.FC = () => {
                         return (
                           <React.Fragment key={order.groupKey}>
                             <tr className="hover:bg-gray-50/80 transition-colors">
-                              <td className="px-5 py-4 align-top">
+                              <td className="px-3 sm:px-5 py-3.5 sm:py-4 align-top w-8">
                                 <input
                                   type="checkbox"
                                   checked={isAllSelected}
@@ -1533,27 +1708,33 @@ const CreateEventPage: React.FC = () => {
                                   className="rounded border-gray-300 text-green-600 focus:ring-green-500 mt-1"
                                 />
                               </td>
-                              <td className="px-4 py-4 align-top">
+                              <td className="px-2.5 sm:px-4 py-3.5 sm:py-4 align-top">
                                 {order.isGroup ? (
                                   <div>
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="font-bold text-gray-900 text-sm">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="font-bold text-gray-900 text-xs sm:text-sm">
                                         {order.primaryRegistration.fullname}
                                       </span>
-                                      <span className="text-[11px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                                      <span className="text-[10px] sm:text-[11px] font-semibold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">
                                         {order.placesCount} places
                                       </span>
+                                      {order.primaryRegistration.custom_data?.ticket_tier && (
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                                          {order.primaryRegistration.custom_data.ticket_tier}
+                                        </span>
+                                      )}
                                       {order.orderRef && (
-                                        <span className="text-[11px] font-mono text-gray-400">
+                                        <span className="text-[10px] font-mono text-gray-400">
                                           {order.orderRef}
                                         </span>
                                       )}
                                     </div>
+                                    <p className="sm:hidden text-[11px] text-gray-500 truncate mt-0.5">{order.buyerEmail}</p>
                                     <div className="mt-1">
                                       <button
                                         type="button"
                                         onClick={() => toggleOrderExpand(order.groupKey)}
-                                        className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 transition-colors py-0.5"
+                                        className="inline-flex items-center gap-1 text-xs text-green-700 font-medium hover:text-green-900 transition-colors py-0.5"
                                       >
                                         {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                                         <span>{isExpanded ? 'Masquer' : `Voir les ${order.placesCount} participants`}</span>
@@ -1562,9 +1743,22 @@ const CreateEventPage: React.FC = () => {
                                   </div>
                                 ) : (
                                   <div>
-                                    <p className="font-bold text-gray-900 text-sm">{order.primaryRegistration.fullname}</p>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <p className="font-bold text-gray-900 text-xs sm:text-sm">{order.primaryRegistration.fullname}</p>
+                                      {order.primaryRegistration.custom_data?.ticket_tier && (
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                                          {order.primaryRegistration.custom_data.ticket_tier}
+                                        </span>
+                                      )}
+                                      {order.primaryRegistration.scanned_at && (
+                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                          Scanné ✓
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="sm:hidden text-[11px] text-gray-500 truncate mt-0.5">{order.buyerEmail}</p>
                                     {order.primaryRegistration.ticket_ref && (
-                                      <span className="text-xs font-mono text-gray-400 block mt-0.5">
+                                      <span className="text-[11px] font-mono text-gray-400 block mt-0.5">
                                         {order.primaryRegistration.ticket_ref}
                                       </span>
                                     )}
@@ -1615,8 +1809,9 @@ const CreateEventPage: React.FC = () => {
                               <td className="px-4 py-4 hidden md:table-cell text-gray-400 text-xs whitespace-nowrap align-top">
                                 {order.createdAt ? new Date(order.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
                               </td>
-                              <td className="px-4 py-4 align-top">
-                                <div className="flex items-center justify-center gap-1 flex-wrap">
+                              <td className="px-2 sm:px-4 py-3.5 sm:py-4 align-top">
+                                {/* Desktop : boutons alignés */}
+                                <div className="hidden sm:flex items-center justify-center gap-1 flex-wrap">
                                   {order.paymentStatus === 'pending' && (
                                     <button
                                       type="button"
@@ -1691,6 +1886,98 @@ const CreateEventPage: React.FC = () => {
                                   >
                                     <Trash2 size={15} />
                                   </button>
+                                </div>
+
+                                {/* Mobile : menu 3 points (MoreVertical) */}
+                                <div className="sm:hidden relative flex justify-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => setOpenActionMenuKey(prev => prev === order.groupKey ? null : order.groupKey)}
+                                    className="p-2 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors"
+                                    aria-label="Actions"
+                                  >
+                                    <MoreVertical size={17} />
+                                  </button>
+
+                                  {openActionMenuKey === order.groupKey && (
+                                    <>
+                                      <div
+                                        className="fixed inset-0 z-30"
+                                        onClick={() => setOpenActionMenuKey(null)}
+                                      />
+                                      <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-100 rounded-xl shadow-xl z-40 py-1 overflow-hidden text-left">
+                                        {order.paymentStatus === 'pending' && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setOpenActionMenuKey(null);
+                                              handleValidateOrder(order);
+                                            }}
+                                            disabled={validatingOrderKey === order.groupKey}
+                                            className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-xs font-bold text-green-700 hover:bg-green-50 transition-colors disabled:opacity-50"
+                                          >
+                                            <CheckCircle2 size={14} className="text-green-600 flex-shrink-0" />
+                                            <span>Valider {order.isGroup ? `(${order.placesCount})` : 'le paiement'}</span>
+                                          </button>
+                                        )}
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setOpenActionMenuKey(null);
+                                            if (order.isGroup) {
+                                              setViewingOrder(order);
+                                            } else {
+                                              setViewingParticipant(order.primaryRegistration);
+                                            }
+                                          }}
+                                          className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                                        >
+                                          <Eye size={14} className="text-purple-500 flex-shrink-0" />
+                                          <span>Voir les détails</span>
+                                        </button>
+                                        {!order.isGroup && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setOpenActionMenuKey(null);
+                                              openEditParticipant(order.primaryRegistration);
+                                            }}
+                                            className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                                          >
+                                            <Pencil size={14} className="text-amber-500 flex-shrink-0" />
+                                            <span>Modifier</span>
+                                          </button>
+                                        )}
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setOpenActionMenuKey(null);
+                                            if (order.isGroup) {
+                                              handleDownloadOrderTickets(order);
+                                            } else {
+                                              handleDownloadTicket(order.primaryRegistration);
+                                            }
+                                          }}
+                                          className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                                        >
+                                          <Download size={14} className="text-blue-500 flex-shrink-0" />
+                                          <span>{order.isGroup ? `Télécharger (${order.placesCount} billets)` : 'Télécharger le billet'}</span>
+                                        </button>
+                                        <div className="border-t border-gray-100 my-0.5" />
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setOpenActionMenuKey(null);
+                                            handleDeleteOrder(order);
+                                          }}
+                                          className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+                                        >
+                                          <Trash2 size={14} className="flex-shrink-0" />
+                                          <span>Supprimer</span>
+                                        </button>
+                                      </div>
+                                    </>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -1790,21 +2077,137 @@ const CreateEventPage: React.FC = () => {
                 <h2 className="text-xl font-bold text-gray-800">Certificats de participation</h2>
                 <p className="text-gray-500 text-sm mt-0.5">
                   <span className="font-bold text-green-600">{scannedRegistrations.length}</span> participant{scannedRegistrations.length !== 1 ? 's' : ''} scanné{scannedRegistrations.length !== 1 ? 's' : ''} à l'entrée
+                  {scannedRegistrations.length > 0 && (
+                    <span className="text-gray-400">
+                      {' · '}
+                      <span className="font-semibold text-amber-600">
+                        {scannedRegistrations.filter(r => !r.certificate_sent_at && !!getRegistrationRecipientEmail(r)).length}
+                      </span>{' '}
+                      en attente d'envoi initial
+                    </span>
+                  )}
                 </p>
               </div>
-              {certAutoSending && (
-                <div className="flex items-center gap-2 text-xs font-semibold text-green-700 bg-green-50 px-3 py-2 rounded-lg border border-green-200">
-                  <Loader2 size={14} className="animate-spin" /> Envoi automatique des certificats en cours…
+              {formData.certificate_enabled && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {certAutoSending ? (
+                    <div className="flex items-center gap-2 text-xs font-semibold text-green-700 bg-green-50 px-3 py-2 rounded-lg border border-green-200">
+                      <Loader2 size={14} className="animate-spin" /> Envoi des certificats en cours…
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => autoSendPendingCertificates(registrations)}
+                        disabled={!scannedRegistrations.some(r => !r.certificate_sent_at && !!getRegistrationRecipientEmail(r))}
+                        className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed rounded-xl shadow-sm transition-all"
+                      >
+                        <Send size={14} />
+                        Envoyer les certificats ({scannedRegistrations.filter(r => !r.certificate_sent_at && !!getRegistrationRecipientEmail(r)).length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!certScheduleInput) {
+                            const defaultDate = new Date(Date.now() + 60 * 60 * 1000);
+                            setCertScheduleInput(toDatetimeLocalString(defaultDate.toISOString()));
+                          }
+                          setCertSchedulePickerOpen(prev => !prev);
+                        }}
+                        className={`inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl border transition-all ${
+                          certScheduledAt
+                            ? 'text-amber-700 bg-amber-50 border-amber-200 hover:bg-amber-100'
+                            : 'text-gray-700 bg-white border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        <Clock size={14} />
+                        {certScheduledAt ? "Modifier l'envoi programmé" : "Programmer l'envoi"}
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
+
+            {/* Panneau / Bannière de programmation de l'envoi initial */}
+            {formData.certificate_enabled && (certScheduledAt || certSchedulePickerOpen) && (
+              <div className="mx-6 sm:mx-10 mt-4 p-4 rounded-xl bg-amber-50/70 border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-2.5">
+                  <Clock size={16} className="text-amber-600 mt-0.5 shrink-0" />
+                  <div className="text-xs text-amber-900">
+                    {certScheduledAt ? (
+                      <>
+                        <p className="font-bold">
+                          Envoi initial programmé pour le{' '}
+                          {new Date(certScheduledAt).toLocaleDateString('fr-FR', {
+                            weekday: 'long',
+                            day: '2-digit',
+                            month: 'long',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </p>
+                        <p className="text-amber-700 mt-0.5">
+                          Tous les billets scannés en attente recevront automatiquement leur certificat à cette échéance.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-bold">Programmer l'envoi initial des certificats</p>
+                        <p className="text-amber-700 mt-0.5">
+                          Choisissez la date et l'heure auxquelles envoyer les certificats aux participants scannés.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {certSchedulePickerOpen ? (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <input
+                      type="datetime-local"
+                      value={certScheduleInput}
+                      onChange={e => setCertScheduleInput(e.target.value)}
+                      className="px-3 py-1.5 text-xs font-medium bg-white border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSaveCertSchedule}
+                      disabled={savingCertSchedule || !certScheduleInput}
+                      className="px-3 py-1.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 rounded-lg transition-colors"
+                    >
+                      {savingCertSchedule ? 'Enregistrement…' : 'Valider'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCertSchedulePickerOpen(false)}
+                      className="px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-amber-100 rounded-lg transition-colors"
+                    >
+                      Fermer
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCancelCertSchedule}
+                      disabled={savingCertSchedule}
+                      className="px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition-colors"
+                    >
+                      Annuler la programmation
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {!formData.certificate_enabled ? (
               <div className="text-center py-16 mx-6 sm:mx-10 my-6 bg-gray-50 rounded-xl border border-dashed border-gray-200">
                 <Award size={40} className="mx-auto mb-3 text-gray-300" />
                 <p className="font-semibold text-gray-700">Les certificats ne sont pas activés pour cet événement.</p>
                 <p className="text-sm text-gray-400 mt-1 mb-4">Activez-les depuis l'étape "Certificats" du wizard.</p>
-                <button type="button" onClick={() => setInfoWizardOpen(true)}
+                <button type="button" onClick={() => openWizardAt('certificates')}
                   className="inline-flex items-center gap-2 px-5 py-2.5 font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-sm text-sm">
                   <Edit3 size={16} /> Activer les certificats
                 </button>
@@ -1817,7 +2220,7 @@ const CreateEventPage: React.FC = () => {
               <div className="text-center py-16 mx-6 sm:mx-10 my-6 bg-gray-50 rounded-xl border border-dashed border-gray-200">
                 <Award size={40} className="mx-auto mb-3 text-gray-300" />
                 <p className="font-semibold text-gray-700">Aucun participant scanné pour le moment.</p>
-                <p className="text-sm text-gray-400 mt-1">Dès qu'un billet est scanné à l'entrée (onglet Scan), le participant apparaît ici et reçoit automatiquement son certificat.</p>
+                <p className="text-sm text-gray-400 mt-1">Dès qu'un billet est scanné à l'entrée (onglet Scan), le participant apparaît ici. Vous pourrez alors lancer ou programmer l'envoi des certificats.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -1833,11 +2236,17 @@ const CreateEventPage: React.FC = () => {
                   <tbody className="divide-y divide-gray-50">
                     {scannedRegistrations.map(reg => {
                       const isSending = certSendingIds.has(reg.id);
+                      const recipientEmail = getRegistrationRecipientEmail(reg);
                       return (
                         <tr key={reg.id} className="hover:bg-green-50/30 transition-colors">
-                          <td className="px-5 py-4">
-                            <p className="font-bold text-gray-900">{reg.fullname}</p>
-                            <p className="text-gray-500 text-xs">{reg.email}</p>
+                          <td className="px-3 sm:px-5 py-3.5 sm:py-4">
+                            <p className="font-bold text-gray-900 text-xs sm:text-sm">{reg.fullname}</p>
+                            <p className="text-gray-500 text-[11px] sm:text-xs truncate max-w-[160px] sm:max-w-none">{recipientEmail || reg.email}</p>
+                            {reg.scanned_at && (
+                              <p className="sm:hidden text-[10px] text-gray-400 mt-0.5">
+                                Scanné le {new Date(reg.scanned_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            )}
                           </td>
                           <td className="px-4 py-4 hidden sm:table-cell text-gray-500 text-xs whitespace-nowrap">
                             {reg.scanned_at ? new Date(reg.scanned_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
@@ -1858,7 +2267,7 @@ const CreateEventPage: React.FC = () => {
                             )}
                           </td>
                           <td className="px-4 py-4">
-                            <div className="flex items-center justify-center gap-1">
+                            <div className="flex items-center justify-center gap-1.5">
                               <button
                                 onClick={() => downloadCertificateForRegistration(reg)}
                                 title="Télécharger le certificat (PDF)"
@@ -1867,12 +2276,17 @@ const CreateEventPage: React.FC = () => {
                                 <Download size={16} />
                               </button>
                               <button
-                                onClick={() => sendCertificateToRegistration(reg)}
-                                disabled={isSending || !reg.email || reg.email === VISITOR_EMAIL}
+                                onClick={() => sendCertificateToRegistration(reg, true)}
+                                disabled={isSending || !recipientEmail}
                                 title={reg.certificate_sent_at ? 'Renvoyer le certificat par email' : 'Envoyer le certificat par email'}
-                                className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                                  reg.certificate_sent_at
+                                    ? 'text-gray-700 bg-gray-100 hover:bg-gray-200'
+                                    : 'text-green-700 bg-green-50 hover:bg-green-100 border border-green-200'
+                                }`}
                               >
-                                <Send size={16} />
+                                <Send size={13} />
+                                {reg.certificate_sent_at ? 'Renvoyer' : 'Envoyer'}
                               </button>
                             </div>
                           </td>
@@ -1999,8 +2413,12 @@ const CreateEventPage: React.FC = () => {
                               className="rounded border-gray-300 text-green-600 focus:ring-green-500"
                             />
                           </td>
-                          <td className="px-4 py-4">
-                            <p className="font-bold text-gray-900">{vol.fullname}</p>
+                          <td className="px-3 sm:px-4 py-3.5 sm:py-4">
+                            <p className="font-bold text-gray-900 text-xs sm:text-sm">{vol.fullname}</p>
+                            <div className="sm:hidden text-[11px] text-gray-500 mt-0.5 space-y-0.5">
+                              {vol.email && <p className="truncate max-w-[180px]">{vol.email}</p>}
+                              {vol.phone && <p className="text-gray-400 font-mono text-[10px]">{vol.phone}</p>}
+                            </div>
                           </td>
                           <td className="px-4 py-4 hidden sm:table-cell">
                             <p className="text-gray-700">{vol.email || '—'}</p>

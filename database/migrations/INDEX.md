@@ -61,6 +61,8 @@ déjà appliquée en production ; le supprimer effacerait la trace de ce qui a
 | 039 | `event_capacity.sql` | 2026-09-10 | Trigger `BEFORE INSERT` sur `event_registrations` : refuse l'inscription si `events.max_slots` atteint, avec `SELECT ... FOR UPDATE` sur la ligne event pour bloquer la race condition sur la dernière place | ✅ PERMANENT |
 | 040 | `email_validation.sql` | 2026-09-10 | Contraintes `CHECK` de format email (`NOT VALID`) sur `form_submissions`, `donations`, `newsletter_subscribers`, `event_registrations` — défense en profondeur si le client est contourné | ✅ PERMANENT |
 | 041 | `login_attempts.sql` | 2026-09-11 | Table `login_attempts` (email, ip, succès, date) pour le verrouillage anti brute-force de `/admin/login`, géré par l'edge function `admin-login`. RLS activée sans aucune policy anon/authenticated — accès service role uniquement | ✅ PERMANENT |
+| 047 | `event_registration_closing.sql` | 2026-10-29 | Colonnes `events.registrations_open` (interrupteur manuel) + `events.registration_deadline` (date limite). Étend `enforce_event_capacity()` (#039) pour refuser l'inscription si fermée/date dépassée. Fonctions RPC `get_event_registered_count()` et `get_events_registered_counts()` pour permettre au front public de détecter les événements complets malgré la RLS | ✅ PERMANENT — **⚠️ à exécuter** |
+| 048 | `certificate_dje_template.sql` | 2026-10-30 | Colonnes `events.certificate_signatory2_name`, `certificate_signatory2_title`, `certificate_participant_quality` pour le nouveau template de certificat élégant DJE (2 signataires + qualité du participant) | ✅ PERMANENT — **⚠️ à exécuter** |
 
 ## En clair : où regarder pour savoir "qui a le droit de faire quoi" aujourd'hui
 

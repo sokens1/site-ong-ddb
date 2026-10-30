@@ -315,43 +315,43 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="w-full max-w-full overflow-x-hidden">
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+      <div className="flex items-center justify-between mb-4 sm:mb-6 flex-wrap gap-2">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Tableau de bord</h1>
-          <p className="text-sm text-gray-400 mt-0.5">Vue d'ensemble de l'activité</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Tableau de bord</h1>
+          <p className="text-xs sm:text-sm text-gray-400 mt-0.5">Vue d'ensemble de l'activité</p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-gray-500 bg-white border border-gray-100 rounded-xl px-3 py-2 shadow-sm">
-          <Calendar size={16} className="text-green-600" />
-          <span className="capitalize">{new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+        <div className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-500 bg-white border border-gray-100 rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-sm">
+          <Calendar size={14} className="text-green-600 flex-shrink-0" />
+          <span className="capitalize truncate">{new Date().toLocaleDateString('fr-FR', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</span>
         </div>
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 animate-pulse">
-              <div className="h-4 bg-gray-100 rounded-lg w-1/2 mb-4"></div>
-              <div className="h-8 bg-gray-100 rounded-lg w-1/3"></div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-4 mb-5">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 sm:p-5 animate-pulse">
+              <div className="h-3.5 bg-gray-100 rounded-lg w-1/2 mb-3"></div>
+              <div className="h-6 bg-gray-100 rounded-lg w-1/3"></div>
             </div>
           ))}
         </div>
       ) : (
         <>
-          {/* Cartes de statistiques */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+          {/* Cartes de statistiques : 2 par ligne sur mobile */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-4 mb-5 sm:mb-6">
             {statCards.map((stat) => {
               const Icon = stat.icon;
               return (
-                <div key={stat.label} className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden">
-                  <div className="p-5">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className={`${stat.tint} w-11 h-11 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105`}>
-                        <Icon size={20} />
+                <div key={stat.label} className="group bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden flex flex-col justify-between">
+                  <div className="p-3.5 sm:p-5">
+                    <div className="flex items-center justify-between mb-2.5 sm:mb-4">
+                      <div className={`${stat.tint} w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center transition-transform group-hover:scale-105`}>
+                        <Icon size={18} />
                       </div>
-                      <TrendingUp className="text-gray-300" size={16} />
+                      <TrendingUp className="text-gray-300 hidden sm:block" size={16} />
                     </div>
-                    <p className="text-gray-500 text-sm font-medium mb-1">{stat.label}</p>
-                    <p className="text-3xl font-bold text-gray-800">{stat.value}</p>
+                    <p className="text-gray-500 text-xs sm:text-sm font-medium mb-0.5 truncate" title={stat.label}>{stat.label}</p>
+                    <p className="text-xl sm:text-3xl font-bold text-gray-800 leading-tight">{stat.value}</p>
                   </div>
                   <div className={`h-1 ${stat.bar}`}></div>
                 </div>
@@ -360,16 +360,16 @@ const AdminDashboard: React.FC = () => {
           </div>
 
           {/* Graphique des visites journalières */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
-            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 mb-5 sm:mb-6">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-gray-800">Visites</h2>
-                <div className="flex items-center gap-1 text-xs text-green-600 font-semibold bg-green-50 px-2 py-1 rounded-full">
+                <h2 className="text-base sm:text-lg font-bold text-gray-800">Visites</h2>
+                <div className="flex items-center gap-1 text-[11px] sm:text-xs text-green-600 font-semibold bg-green-50 px-2 py-0.5 sm:py-1 rounded-full">
                   <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
                   <span>En direct</span>
                 </div>
               </div>
-              <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+              <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 w-full sm:w-auto justify-between sm:justify-start">
                 {([
                   { key: 'day',   label: 'Jour'    },
                   { key: 'week',  label: 'Semaine' },
@@ -379,7 +379,7 @@ const AdminDashboard: React.FC = () => {
                   <button
                     key={key}
                     onClick={() => setVisitsPeriod(key)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    className={`flex-1 sm:flex-initial px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       visitsPeriod === key
                         ? 'bg-white text-indigo-600 shadow-sm'
                         : 'text-gray-500 hover:text-gray-700'
@@ -391,20 +391,21 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
             {dailyVisits.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={dailyVisits}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                   <XAxis
                     dataKey="date"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    tick={{ fill: '#6b7280', fontSize: 11 }}
                   />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    tick={{ fill: '#6b7280', fontSize: 11 }}
                     allowDecimals={false}
+                    width={28}
                   />
                   <Tooltip
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
@@ -414,33 +415,33 @@ const AdminDashboard: React.FC = () => {
                     dataKey="visites"
                     stroke="#4f46e5"
                     strokeWidth={3}
-                    dot={{ fill: '#4f46e5', strokeWidth: 2, r: 4, stroke: '#fff' }}
-                    activeDot={{ r: 6, strokeWidth: 0 }}
+                    dot={{ fill: '#4f46e5', strokeWidth: 2, r: 3.5, stroke: '#fff' }}
+                    activeDot={{ r: 5, strokeWidth: 0 }}
                     name="Visites"
                   />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-[300px] text-gray-500 bg-gray-50 rounded-lg">
-                <p>Aucune donnée de visite pour le moment. Assurez-vous d'avoir lancé le script SQL.</p>
+              <div className="flex items-center justify-center h-[200px] sm:h-[260px] text-gray-500 bg-gray-50 rounded-lg text-xs sm:text-sm px-4 text-center">
+                <p>Aucune donnée de visite pour le moment.</p>
               </div>
             )}
           </div>
 
           {/* Graphiques */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-5 sm:mb-6">
             {/* Graphique Projets */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h2 className="text-lg font-bold text-gray-800 mb-4">État des Projets</h2>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6">
+              <h2 className="text-base sm:text-lg font-bold text-gray-800 mb-3 sm:mb-4">État des Projets</h2>
               {projectPieData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
                     <Pie
                       data={projectPieData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
+                      innerRadius={50}
+                      outerRadius={85}
                       paddingAngle={5}
                       dataKey="value"
                     >
@@ -449,21 +450,21 @@ const AdminDashboard: React.FC = () => {
                       ))}
                     </Pie>
                     <Tooltip />
-                    <Legend />
+                    <Legend wrapperStyle={{ fontSize: '12px' }} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[300px] text-gray-500">
+                <div className="flex items-center justify-center h-[220px] text-gray-500 text-sm">
                   <p>Aucun projet enregistré</p>
                 </div>
               )}
             </div>
 
             {/* Graphique Répartition du contenu */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h2 className="text-lg font-bold text-gray-800 mb-4">Répartition du contenu</h2>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6">
+              <h2 className="text-base sm:text-lg font-bold text-gray-800 mb-3 sm:mb-4">Répartition du contenu</h2>
               {pieData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
                     <Pie
                       data={pieData}
@@ -471,7 +472,7 @@ const AdminDashboard: React.FC = () => {
                       cy="50%"
                       labelLine={false}
                       label={({ name, percent, value }) => value > 0 ? `${name}: ${((percent || 0) * 100).toFixed(0)}%` : ''}
-                      outerRadius={100}
+                      outerRadius={85}
                       fill="#8884d8"
                       dataKey="value"
                     >
@@ -480,38 +481,36 @@ const AdminDashboard: React.FC = () => {
                       ))}
                     </Pie>
                     <Tooltip />
-                    <Legend />
+                    <Legend wrapperStyle={{ fontSize: '12px' }} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[300px] text-gray-500">
+                <div className="flex items-center justify-center h-[220px] text-gray-500 text-sm">
                   <p>Aucune donnée disponible</p>
                 </div>
               )}
             </div>
           </div>
 
-
-
           {/* Graphique linéaire pour l'évolution temporelle */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">Évolution des 6 derniers mois</h2>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 mb-6">
+            <h2 className="text-base sm:text-lg font-bold text-gray-800 mb-3 sm:mb-4">Évolution des 6 derniers mois</h2>
             {monthlyData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={monthlyData}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis allowDecimals={false} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis allowDecimals={false} width={28} tick={{ fontSize: 11 }} />
                   <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="submissions" stroke="#ec4899" strokeWidth={2} name="Candidatures" dot={{ r: 4 }} />
-                  <Line type="monotone" dataKey="newsletter" stroke="#06b6d4" strokeWidth={2} name="Newsletter" dot={{ r: 4 }} />
+                  <Legend wrapperStyle={{ fontSize: '12px' }} />
+                  <Line type="monotone" dataKey="submissions" stroke="#ec4899" strokeWidth={2} name="Candidatures" dot={{ r: 3.5 }} />
+                  <Line type="monotone" dataKey="newsletter" stroke="#06b6d4" strokeWidth={2} name="Newsletter" dot={{ r: 3.5 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex flex-col items-center justify-center h-[300px] text-gray-500">
-                <p className="mb-2">Aucune donnée disponible pour les 6 derniers mois</p>
-                <p className="text-sm text-gray-400">Les données apparaîtront ici une fois que des candidatures ou abonnements seront enregistrés</p>
+              <div className="flex flex-col items-center justify-center h-[220px] text-gray-500 text-center px-4">
+                <p className="mb-1 text-sm">Aucune donnée disponible pour les 6 derniers mois</p>
+                <p className="text-xs text-gray-400">Les données apparaîtront ici dès que des candidatures ou abonnements seront enregistrés</p>
               </div>
             )}
           </div>

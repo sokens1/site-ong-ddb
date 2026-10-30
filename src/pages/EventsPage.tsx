@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Search, Calendar, MapPin, Users, ArrowRight } from 'lucide-react';
+import { Search, Calendar, MapPin, Users, ArrowRight, Lock } from 'lucide-react';
 import EditableText from '../components/site-content/EditableText';
 
 interface Event {
@@ -15,6 +15,8 @@ interface Event {
   image_url: string | null;
   max_slots: number | null;
   status: string;
+  registrations_open?: boolean;
+  registration_deadline?: string | null;
 }
 
 // Petites pastilles de couleur décoratives sur les cartes, on tourne dessus
@@ -22,6 +24,7 @@ const BLOB_COLORS = ['bg-ddb-400', 'bg-amber-400', 'bg-ddb-600', 'bg-sky-400'];
 
 const EventsPage: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
+  const [registeredCounts, setRegisteredCounts] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'Tous' | 'Bientôt' | 'En cours' | 'Terminé'>('Tous');
@@ -46,14 +49,39 @@ const EventsPage: React.FC = () => {
     const fetchEvents = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
+        const baseCols = 'id, slug, title, event_date, location, image_url, description, max_slots, status';
+        let { data, error } = await supabase
           .from('events')
-          .select('id, slug, title, event_date, location, image_url, description, max_slots, status')
+          .select(`${baseCols}, registrations_open, registration_deadline`)
           .eq('status', 'published')
           .order('event_date', { ascending: false });
 
+        // Repli si la migration 047 n'a pas encore été exécutée
+        if (error && error.message?.includes('registration')) {
+          ({ data, error } = await supabase
+            .from('events')
+            .select(baseCols)
+            .eq('status', 'published')
+            .order('event_date', { ascending: false }) as any);
+        }
+
         if (error) console.error('Error fetching events:', error);
-        if (!error && data) setEvents(data);
+        if (!error && data) setEvents(data as Event[]);
+
+        try {
+          const { data: countsData } = await supabase.rpc('get_events_registered_counts');
+          if (Array.isArray(countsData)) {
+            const map: Record<number, number> = {};
+            countsData.forEach((row: any) => {
+              if (row && row.event_id != null) {
+                map[Number(row.event_id)] = Number(row.registered_count || 0);
+              }
+            });
+            setRegisteredCounts(map);
+          }
+        } catch {
+          // Tolérance si la fonction RPC n'est pas encore créée
+        }
       } catch (err) {
         console.error('Unexpected error fetching events:', err);
       } finally {
@@ -199,6 +227,10 @@ const EventsPage: React.FC = () => {
             {filteredEvents.map((event, index) => {
               const status = getEventStatus(event.event_date);
               const blob = BLOB_COLORS[index % BLOB_COLORS.length];
+              const taken = registeredCounts[event.id] ?? 0;
+              const isFull = event.max_slots != null && taken >= event.max_slots;
+              const deadlinePassed = !!event.registration_deadline && new Date(event.registration_deadline).getTime() < Date.now();
+              const isClosed = event.registrations_open === false || deadlinePassed;
               return (
                 <motion.div
                   key={event.id}
@@ -225,6 +257,20 @@ const EventsPage: React.FC = () => {
                       <span className={`absolute left-3 top-3 z-20 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold text-white ${status.color}`}>
                         {status.label}
                       </span>
+                      {status.label !== 'Terminé' && (
+                        isFull ? (
+                          <span className="absolute right-3 top-3 z-20 inline-flex items-center gap-1 rounded-full bg-ddb-950/80 backdrop-blur-md border border-white/20 px-2.5 py-1 text-[11px] font-bold text-white shadow">
+                            <Lock size={11} />
+                            <span>Complet</span>
+                          </span>
+                        ) : isClosed ? (
+                          <span className="absolute right-3 top-3 z-20 inline-flex items-center gap-1 rounded-full bg-ddb-950/80 backdrop-blur-md border border-white/20 px-2.5 py-1 text-[11px] font-bold text-white shadow">
+                            <Lock size={11} />
+                            <span className="hidden sm:inline">Inscriptions fermées</span>
+                            <span className="sm:hidden">Fermé</span>
+                          </span>
+                        ) : null
+                      )}
                     </div>
 
                     <div className="mt-4 flex items-center gap-2 text-xs font-medium text-ddb-950/40">
@@ -251,7 +297,11 @@ const EventsPage: React.FC = () => {
                       {event.max_slots && (
                         <p className="flex items-center gap-1.5 text-sm text-ddb-950/60">
                           <Users size={14} className="shrink-0 text-ddb-600" />
-                          {event.max_slots} places limitées
+                          {isFull ? (
+                            <span className="font-semibold text-red-600">Complet</span>
+                          ) : (
+                            `${event.max_slots} places limitées`
+                          )}
                         </p>
                       )}
                     </div>

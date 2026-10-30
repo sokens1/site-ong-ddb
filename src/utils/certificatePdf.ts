@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { fetchImageAsBase64 } from './ticketPdf';
 
-export type CertificateTemplate = 'classic' | 'modern';
+export type CertificateTemplate = 'classic' | 'modern' | 'dje';
 
 export interface CertificateConfig {
   title?: string;
@@ -9,6 +9,15 @@ export interface CertificateConfig {
   text?: string;
   signatoryName?: string;
   signatoryTitle?: string;
+  /** Optional signature image URL for 1st signatory */
+  signatorySignature?: string;
+  /** DJE template — second signatory (bottom right) */
+  signatory2Name?: string;
+  signatory2Title?: string;
+  /** Optional signature image URL for 2nd signatory */
+  signatory2Signature?: string;
+  /** DJE template — participant quality / role (e.g. "intervenant", "participant") */
+  participantQuality?: string;
 }
 
 /**
@@ -61,11 +70,321 @@ export const generateCertificatePDF = async (
   // 1. Logo principal de l'événement (haut à droite)
   const eventLogoBase64 = logoUrl ? await fetchImageAsBase64(logoUrl).catch(() => '') : '';
 
-  // 2. Logos des organisateurs (en bas)
+  // 2. Logos des organisateurs (en bas ou en haut selon le modèle)
   const rawOrgUrls = (organizerLogos || []).filter(u => typeof u === 'string' && u.trim().length > 0);
   const orgLogosBase64 = rawOrgUrls.length > 0
     ? (await Promise.all(rawOrgUrls.map(u => fetchImageAsBase64(u).catch(() => '')))).filter(Boolean)
     : [];
+
+  // 3. Signatures optionnelles des signataires (PNG transparents)
+  const sig1Base64 = config?.signatorySignature
+    ? await fetchImageAsBase64(config.signatorySignature).catch(() => '')
+    : '';
+  const sig2Base64 = config?.signatory2Signature
+    ? await fetchImageAsBase64(config.signatory2Signature).catch(() => '')
+    : '';
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ── Style 3 (DJE) : Modèle élégant guilloché — DJE 2e édition ────────────
+  // Palette : Bleu marine #041c72 · Vert institutionnel #087B42 · Blanc crème #FFFEFB
+  // Typographie : Cinzel (serif institutionnel), Cormorant Garamond (corps élégant)
+  // Dimensions A4 paysage : 297 × 210 mm
+  // ══════════════════════════════════════════════════════════════════════════
+  if (template === 'dje') {
+    const DJE_NAVY: [number, number, number] = [4, 28, 114];      // #041c72
+    const DJE_GREEN: [number, number, number] = [8, 123, 66];     // #087B42
+    const DJE_CREAM: [number, number, number] = [255, 254, 251];  // #FFFEFB
+    const DJE_SLATE: [number, number, number] = [58, 69, 102];    // #3A4566
+    const DJE_TEXT: [number, number, number] = [28, 37, 65];      // #1C2541
+
+    // ── Fond crème ──
+    doc.setFillColor(...DJE_CREAM);
+    doc.rect(0, 0, W, H, 'F');
+
+    // ── Cadre extérieur bleu épais (18px = 4.76mm, border 10px = 2.65mm) ──
+    doc.setDrawColor(...DJE_NAVY);
+    doc.setLineWidth(2.65);
+    doc.rect(6.1, 6.1, W - 12.2, H - 12.2, 'S');
+
+    // ── Cadre vert fin intérieur (36px = 9.52mm, border 1.5px = 0.40mm) ──
+    doc.setDrawColor(...DJE_GREEN);
+    doc.setLineWidth(0.45);
+    doc.rect(9.6, 9.6, W - 19.2, H - 19.2, 'S');
+
+    // ── Cadre bleu très fin intérieur (42px = 11.11mm, border 0.75px = 0.22mm) ──
+    doc.setDrawColor(...DJE_NAVY);
+    doc.setLineWidth(0.22);
+    doc.setGState(new (doc as any).GState({ opacity: 0.6 }));
+    doc.rect(11.2, 11.2, W - 22.4, H - 22.4, 'S');
+    doc.setGState(new (doc as any).GState({ opacity: 1 }));
+
+    // ── Ornements de coins (fidèles au SVG : équerre verte sur cadre 9.6mm, équerre bleue sur 11.2mm, losange vert) ──
+    const drawCornerOrnament = (gx: number, gy: number, sx: number, sy: number) => {
+      // Grande équerre verte sur le coin du cadre vert (9.6mm)
+      doc.setDrawColor(...DJE_GREEN);
+      doc.setLineWidth(0.6);
+      doc.line(gx, gy, gx + sx * 6.4, gy);
+      doc.line(gx, gy, gx, gy + sy * 6.4);
+
+      // Petite équerre bleue sur le coin du cadre bleu fin (11.2mm = gx + sx * 1.6)
+      const bx = gx + sx * 1.6;
+      const by = gy + sy * 1.6;
+      doc.setDrawColor(...DJE_NAVY);
+      doc.setLineWidth(0.3);
+      doc.line(bx, by, bx + sx * 6.4, by);
+      doc.line(bx, by, bx, by + sy * 6.4);
+
+      // Losange vert centré sur le coin (gx, gy)
+      const lr = 1.85;
+      doc.setFillColor(...DJE_GREEN);
+      const diamond = [
+        { op: 'm', c: [gx, gy - lr] },
+        { op: 'l', c: [gx + lr, gy] },
+        { op: 'l', c: [gx, gy + lr] },
+        { op: 'l', c: [gx - lr, gy] },
+        { op: 'h', c: [] },
+      ];
+      doc.path(diamond);
+      doc.fill();
+    };
+
+    drawCornerOrnament(9.6, 9.6, 1, 1);             // haut-gauche
+    drawCornerOrnament(W - 9.6, 9.6, -1, 1);        // haut-droit
+    drawCornerOrnament(9.6, H - 9.6, 1, -1);        // bas-gauche
+    drawCornerOrnament(W - 9.6, H - 9.6, -1, -1);   // bas-droit
+
+    // ── Logos en haut (centrés, proportions naturelles préservées) ──
+    const getImgDims = (b64: string): Promise<{ nw: number; nh: number }> =>
+      new Promise(res => {
+        const img = new Image();
+        img.onload = () => res({ nw: img.naturalWidth || 1, nh: img.naturalHeight || 1 });
+        img.onerror = () => res({ nw: 1, nh: 1 });
+        img.src = b64;
+      });
+
+    let djeLogos: string[] = [];
+    if (orgLogosBase64.length === 0) {
+      const defaultUrls = [
+        '/certificates/logo-ddb.png',
+        '/certificates/logo-dje.png',
+        '/certificates/logo-wila.png',
+      ];
+      const defaults = (await Promise.all(defaultUrls.map(u => fetchImageAsBase64(u).catch(() => '')))).filter(Boolean);
+      if (eventLogoBase64 && defaults.length === 3) {
+        djeLogos = [defaults[0], eventLogoBase64, defaults[2]];
+      } else {
+        djeLogos = defaults;
+      }
+    } else if (orgLogosBase64.length === 2) {
+      const centerLogo = eventLogoBase64 || await fetchImageAsBase64('/certificates/logo-dje.png').catch(() => '');
+      djeLogos = centerLogo ? [orgLogosBase64[0], centerLogo, orgLogosBase64[1]] : orgLogosBase64;
+    } else {
+      djeLogos = orgLogosBase64.slice(0, 4);
+    }
+
+    if (djeLogos.length > 0) {
+      const dims = await Promise.all(djeLogos.map(getImgDims));
+      const logoSpacing = 12;
+      const logoY = 17;
+      const items = djeLogos.map((b64, idx) => {
+        const { nw, nh } = dims[idx];
+        const ratio = nw / nh;
+        // Hauteur 17mm pour les logos carrés/verticaux, 18.5mm pour un logo central large
+        const h = ratio > 1.35 ? 18.5 : 16.5;
+        const w = Math.min(h * ratio, 42);
+        return { b64, w, h };
+      });
+      const totalLogosW = items.reduce((acc, it) => acc + it.w, 0) + logoSpacing * (items.length - 1);
+      let curX = (W - totalLogosW) / 2;
+      const maxH = Math.max(...items.map(it => it.h));
+      for (const it of items) {
+        try {
+          const yOffset = logoY + (maxH - it.h) / 2;
+          doc.addImage(it.b64, 'PNG', curX, yOffset, it.w, it.h);
+        } catch { /* silent */ }
+        curX += it.w + logoSpacing;
+      }
+    }
+
+    // ── CERTIFICAT (Times bold, centré avec précision sans bug charSpace) ──
+    const rawMainTitle = (config?.title?.trim() || 'CERTIFICAT').toUpperCase();
+    const spacedTitle = rawMainTitle.length <= 14 ? rawMainTitle.split('').join(' ') : rawMainTitle;
+    doc.setTextColor(...DJE_NAVY);
+    doc.setFont('times', 'bold');
+    doc.setFontSize(rawMainTitle.length > 16 ? 30 : 38);
+    doc.text(spacedTitle, W / 2, 53, { align: 'center' });
+
+    // ── Ligne décorative verte avec "DE PARTICIPATION" ──
+    const subtitleY = 61.5;
+    const lineLen = 24;
+    const lineGap = 5;
+    const rawSubtitle = (config?.subtitle?.trim() || 'DE PARTICIPATION').toUpperCase();
+    const spacedSubtitle = rawSubtitle.split('').join(' ');
+    doc.setFont('times', 'bold');
+    doc.setFontSize(10.5);
+    const subW = doc.getTextWidth(spacedSubtitle);
+    const leftLineEnd = W / 2 - subW / 2 - lineGap;
+    const rightLineStart = W / 2 + subW / 2 + lineGap;
+
+    doc.setDrawColor(...DJE_GREEN);
+    doc.setLineWidth(0.45);
+    doc.line(leftLineEnd - lineLen, subtitleY - 1.1, leftLineEnd, subtitleY - 1.1);
+    doc.setTextColor(...DJE_GREEN);
+    doc.text(spacedSubtitle, W / 2, subtitleY, { align: 'center' });
+    doc.line(rightLineStart, subtitleY - 1.1, rightLineStart + lineLen, subtitleY - 1.1);
+
+    // ── "Ce certificat est décerné à" ──
+    doc.setTextColor(...DJE_SLATE);
+    doc.setFont('times', 'italic');
+    doc.setFontSize(14);
+    doc.text('Ce certificat est décerné à', W / 2, 76, { align: 'center' });
+
+    // ── Nom du participant (Times bold, grand) ──
+    const participantName = fullname || 'Nom et Prénom';
+    doc.setTextColor(...DJE_NAVY);
+    doc.setFont('times', 'bold');
+    doc.setFontSize(28);
+    doc.text(participantName, W / 2, 90, { align: 'center' });
+
+    // Ligne verte sous le nom
+    const nameW = doc.getTextWidth(participantName);
+    const nameLineLen = Math.max(nameW + 24, 110);
+    doc.setDrawColor(...DJE_GREEN);
+    doc.setLineWidth(0.55);
+    doc.line(W / 2 - nameLineLen / 2, 94, W / 2 + nameLineLen / 2, 94);
+
+    // ── Corps du texte ──
+    const quality = config?.participantQuality?.trim() || '';
+    let bodyText: string;
+    if (config?.text?.trim()) {
+      bodyText = formatCertificateBodyText(config.text, fullname, eventTitle, formattedDate, '')
+        .replace(/\{qualite\}/gi, quality)
+        .replace(/\[qualite\]/gi, quality);
+    } else {
+      const qualityPart = quality ? `pour sa participation en qualité de ${quality} ` : 'pour sa participation ';
+      bodyText = `${qualityPart}à la 2ème édition du Déjeuner Environnemental (DJE), placée sous le thème « Le leadership féminin comme levier d'innovation dans la logistique urbaine et durable au Gabon », organisée le ${formattedDate || '30 octobre 2026'} par l'ONG Développement Durable et Bien-être, en partenariat avec Women in Logistics Africa (WILA).`;
+    }
+
+    doc.setTextColor(...DJE_TEXT);
+    doc.setFont('times', 'normal');
+    doc.setFontSize(13);
+    const bodyLines = doc.splitTextToSize(bodyText, W - 76);
+    doc.text(bodyLines, W / 2, 105, { align: 'center', lineHeightFactor: 1.48 });
+
+    // ── SIGNATURES (bas de page) ──
+    const sigY = 170;
+    const sig1Name = config?.signatoryName?.trim() || 'M. ONDENO Franck';
+    const sig1Title = config?.signatoryTitle?.trim() || 'Président de l\'ONG Développement Durable et Bien-être';
+    const sig2Name = config?.signatory2Name?.trim() || 'Mme Pauline WHITE';
+    const sig2Title = config?.signatory2Title?.trim() || 'Présidente de Women in Logistics Africa — Gabon';
+
+    // Signature image 1 (optionnelle, au-dessus de la ligne gauche)
+    if (sig1Base64) {
+      try {
+        doc.addImage(sig1Base64, 'PNG', 80 - 20, sigY - 19, 40, 17);
+      } catch { /* silent */ }
+    }
+
+    // Ligne sig 1 (gauche)
+    doc.setDrawColor(...DJE_NAVY);
+    doc.setLineWidth(0.35);
+    doc.line(42, sigY, 118, sigY);
+    doc.setTextColor(...DJE_NAVY);
+    doc.setFont('times', 'bold');
+    doc.setFontSize(10.5);
+    doc.text(sig1Name, 80, sigY + 5.5, { align: 'center' });
+    doc.setFont('times', 'italic');
+    doc.setFontSize(9.5);
+    doc.setTextColor(...DJE_SLATE);
+    const sig1TitleLines = doc.splitTextToSize(sig1Title, 80);
+    doc.text(sig1TitleLines, 80, sigY + 10.5, { align: 'center', lineHeightFactor: 1.3 });
+
+    // Signature image 2 (optionnelle, au-dessus de la ligne droite)
+    if (sig2Base64) {
+      try {
+        doc.addImage(sig2Base64, 'PNG', 217 - 20, sigY - 19, 40, 17);
+      } catch { /* silent */ }
+    }
+
+    // Ligne sig 2 (droite)
+    doc.setDrawColor(...DJE_NAVY);
+    doc.setLineWidth(0.35);
+    doc.line(179, sigY, 255, sigY);
+    doc.setTextColor(...DJE_NAVY);
+    doc.setFont('times', 'bold');
+    doc.setFontSize(10.5);
+    doc.text(sig2Name, 217, sigY + 5.5, { align: 'center' });
+    doc.setFont('times', 'italic');
+    doc.setFontSize(9.5);
+    doc.setTextColor(...DJE_SLATE);
+    const sig2TitleLines = doc.splitTextToSize(sig2Title, 80);
+    doc.text(sig2TitleLines, 217, sigY + 10.5, { align: 'center', lineHeightFactor: 1.3 });
+
+    // ── Sceau central guilloché avec rubans (fidèle au SVG Certificat.dc.html) ──
+    const sealX = W / 2;
+    const sealY = 158;
+    const outerR = 14;
+    const innerR = 12.2;
+    const points = 24;
+
+    // Rubans bleu marine sous le sceau
+    doc.setFillColor(...DJE_NAVY);
+    doc.path([
+      { op: 'm', c: [sealX - 5, sealY + 9] },
+      { op: 'l', c: [sealX - 8.5, sealY + 19] },
+      { op: 'l', c: [sealX - 4, sealY + 16.5] },
+      { op: 'l', c: [sealX - 1.5, sealY + 19.5] },
+      { op: 'l', c: [sealX - 0.5, sealY + 10] },
+      { op: 'h', c: [] },
+    ]);
+    doc.fill();
+    doc.path([
+      { op: 'm', c: [sealX + 5, sealY + 9] },
+      { op: 'l', c: [sealX + 8.5, sealY + 19] },
+      { op: 'l', c: [sealX + 4, sealY + 16.5] },
+      { op: 'l', c: [sealX + 1.5, sealY + 19.5] },
+      { op: 'l', c: [sealX + 0.5, sealY + 10] },
+      { op: 'h', c: [] },
+    ]);
+    doc.fill();
+
+    // Étoile 24 branches verte
+    const sealPts: { op: string; c: number[] }[] = [];
+    for (let i = 0; i < points * 2; i++) {
+      const angle = (i * Math.PI) / points - Math.PI / 2;
+      const r = i % 2 === 0 ? outerR : innerR;
+      const px = sealX + r * Math.cos(angle);
+      const py = sealY + r * Math.sin(angle);
+      sealPts.push({ op: i === 0 ? 'm' : 'l', c: [px, py] });
+    }
+    sealPts.push({ op: 'h', c: [] });
+    doc.setFillColor(...DJE_GREEN);
+    doc.path(sealPts);
+    doc.fill();
+
+    // Cercles blancs internes
+    doc.setDrawColor(255, 255, 255);
+    doc.setLineWidth(0.35);
+    doc.circle(sealX, sealY, 10.8, 'S');
+    doc.setLineWidth(0.2);
+    doc.circle(sealX, sealY, 6.8, 'S');
+
+    // "DJE 2026" dans le sceau
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('times', 'bold');
+    doc.setFontSize(9.5);
+    doc.text('DJE', sealX, sealY + 0.8, { align: 'center' });
+    doc.setFontSize(6);
+    doc.text('2026', sealX, sealY + 4, { align: 'center' });
+
+    // "Fait le ..." sous le sceau
+    doc.setTextColor(...DJE_SLATE);
+    doc.setFont('times', 'bolditalic');
+    doc.setFontSize(9);
+    doc.text(formattedDate ? `Fait le ${formattedDate}` : 'Fait le 30 octobre 2026', sealX, sealY + 24, { align: 'center' });
+
+    return doc;
+  }
 
   if (template === 'modern') {
     // ── Modèle Moderne fidèle à la maquette : cadre géométrique bleu, rosette à rubans, signatures ──
@@ -209,6 +528,15 @@ export const generateCertificatePDF = async (
     // 6. Signatures
     const signatory1Name = config?.signatoryName?.trim() || 'Isabel Mercado';
     const signatory1Title = config?.signatoryTitle?.trim() || 'SUPERVISEUR';
+    const signatory2Name = config?.signatory2Name?.trim() || 'Adora Montminy';
+    const signatory2Title = config?.signatory2Title?.trim() || 'VICE-PRÉSIDENT';
+
+    if (sig1Base64) {
+      try { doc.addImage(sig1Base64, 'PNG', 83 - 18, 172 - 17, 36, 15); } catch { /* silent */ }
+    }
+    if (sig2Base64) {
+      try { doc.addImage(sig2Base64, 'PNG', 214 - 18, 172 - 17, 36, 15); } catch { /* silent */ }
+    }
 
     doc.setDrawColor(51, 65, 85);
     doc.setLineWidth(0.45);
@@ -219,13 +547,13 @@ export const generateCertificatePDF = async (
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.text(signatory1Name, 83, 179, { align: 'center' });
-    doc.text('Adora Montminy', 214, 179, { align: 'center' });
+    doc.text(signatory2Name, 214, 179, { align: 'center' });
 
     doc.setTextColor(...MUTED_GRAY);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.text(signatory1Title, 83, 185, { align: 'center' });
-    doc.text('VICE-PRÉSIDENT', 214, 185, { align: 'center' });
+    doc.text(signatory2Title, 214, 185, { align: 'center' });
 
     // 7. Logos des organisateurs en bas (au centre entre les signatures)
     if (orgLogosBase64.length > 0) {
@@ -445,17 +773,23 @@ export const generateCertificatePDF = async (
   const sigX = W - 78;
   const sigY = 162;
 
-  // Courbe signature élégante
-  doc.setDrawColor(...DARK_NAVY);
-  doc.setLineWidth(0.65);
-  const sigCurve = [
-    { op: 'm', c: [sigX + 2, sigY + 4] },
-    { op: 'c', c: [sigX + 12, sigY - 14, sigX + 18, sigY + 8, sigX + 26, sigY - 6] },
-    { op: 'c', c: [sigX + 32, sigY - 16, sigX + 36, sigY + 12, sigX + 46, sigY - 2] },
-    { op: 'c', c: [sigX + 50, sigY - 8, sigX + 54, sigY + 6, sigX + 64, sigY + 2] },
-  ];
-  doc.path(sigCurve);
-  doc.stroke();
+  if (sig1Base64) {
+    try {
+      doc.addImage(sig1Base64, 'PNG', sigX + 11, sigY - 11, 40, 16);
+    } catch { /* silent */ }
+  } else {
+    // Courbe signature élégante par défaut
+    doc.setDrawColor(...DARK_NAVY);
+    doc.setLineWidth(0.65);
+    const sigCurve = [
+      { op: 'm', c: [sigX + 2, sigY + 4] },
+      { op: 'c', c: [sigX + 12, sigY - 14, sigX + 18, sigY + 8, sigX + 26, sigY - 6] },
+      { op: 'c', c: [sigX + 32, sigY - 16, sigX + 36, sigY + 12, sigX + 46, sigY - 2] },
+      { op: 'c', c: [sigX + 50, sigY - 8, sigX + 54, sigY + 6, sigX + 64, sigY + 2] },
+    ];
+    doc.path(sigCurve);
+    doc.stroke();
+  }
 
   // Ligne sous la signature
   doc.setDrawColor(...SLATE_MUTED);

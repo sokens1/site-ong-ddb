@@ -64,43 +64,43 @@ const EventCard: React.FC<{
       className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden flex flex-col cursor-pointer"
     >
       {/* Image */}
-      <div className="relative h-44 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
+      <div className="relative h-32 sm:h-44 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
         {event.image_url ? (
           <img src={event.image_url} alt={event.title} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-2">
-            <Calendar size={32} className="text-gray-300" />
+            <Calendar size={28} className="text-gray-300" />
             <span className="text-xs text-gray-400">Pas d'image</span>
           </div>
         )}
         {/* Status badge */}
-        <div className={`absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold ${status.bg} ${status.color}`}>
-          <StatusIcon size={12} />
+        <div className={`absolute top-2.5 left-2.5 flex items-center gap-1 px-2.5 py-0.5 sm:py-1 rounded-full border text-[11px] sm:text-xs font-semibold ${status.bg} ${status.color}`}>
+          <StatusIcon size={11} />
           {status.label}
         </div>
         {/* Logo */}
         {event.logo_url && (
-          <div className="absolute bottom-3 right-3 w-10 h-10 rounded-xl overflow-hidden border-2 border-white shadow-md bg-white">
+          <div className="absolute bottom-2.5 right-2.5 w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden border-2 border-white shadow-md bg-white">
             <img src={event.logo_url} alt="logo" className="w-full h-full object-contain p-0.5" />
           </div>
         )}
         {/* Upcoming badge */}
         {isUpcoming && (
-          <div className="absolute top-3 right-3 bg-green-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+          <div className="absolute top-2.5 right-2.5 bg-green-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
             À venir
           </div>
         )}
       </div>
 
       {/* Content */}
-      <div className="p-4 flex-1 flex flex-col gap-2">
+      <div className="p-3.5 sm:p-4 flex-1 flex flex-col gap-1.5 sm:gap-2">
         <h3 className="font-bold text-gray-900 text-sm leading-snug line-clamp-2">{event.title}</h3>
 
         <div className="flex flex-col gap-1 text-xs text-gray-500">
           <div className="flex items-center gap-1.5">
             <Calendar size={12} className="text-green-500 flex-shrink-0" />
-            <span>
-              {eventDate ? eventDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+            <span className="truncate">
+              {eventDate ? eventDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
             </span>
           </div>
           {event.location && (
@@ -117,13 +117,21 @@ const EventCard: React.FC<{
       </div>
 
       {/* Footer actions */}
-      <div className="border-t border-gray-100 px-4 py-3 flex items-center justify-between">
-        <button
-          onClick={e => { e.stopPropagation(); onManage(event.id); }}
-          className="flex items-center gap-1.5 text-xs text-green-700 font-semibold hover:text-green-800 transition-colors"
-        >
-          <Eye size={13} /> Voir
-        </button>
+      <div className="border-t border-gray-100 px-3.5 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={e => { e.stopPropagation(); onManage(event.id); }}
+            className="flex items-center gap-1.5 text-xs text-green-700 font-bold hover:text-green-800 transition-colors py-1"
+          >
+            <Eye size={13} /> Gérer
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); onEdit(event.id); }}
+            className="flex items-center gap-1 text-xs text-gray-600 font-semibold hover:text-gray-900 transition-colors py-1"
+          >
+            <Edit3 size={13} /> Modifier
+          </button>
+        </div>
 
         {/* 3-dot menu */}
         <div className="relative" ref={menuRef} onClick={e => e.stopPropagation()}>
@@ -254,37 +262,37 @@ const EventsAdmin: React.FC = () => {
   return (
     <div className="w-full max-w-full overflow-x-hidden">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+      <div className="flex flex-row justify-between items-center gap-3 mb-4 sm:mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Événements</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{events.length} événement{events.length > 1 ? 's' : ''} au total</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Événements</h1>
+          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">{events.length} événement{events.length > 1 ? 's' : ''} au total</p>
         </div>
         <button
           onClick={() => setWizard({ isOpen: true, eventId: undefined })}
-          className="flex items-center gap-2 bg-green-600 text-white px-5 py-2.5 rounded-xl hover:bg-green-700 transition shadow-sm text-sm font-semibold"
+          className="flex items-center gap-1.5 sm:gap-2 bg-green-600 text-white px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl hover:bg-green-700 transition shadow-sm text-xs sm:text-sm font-semibold flex-shrink-0"
         >
-          <Plus size={18} /> Nouvel événement
+          <Plus size={16} /> <span>Nouvel événement</span>
         </button>
       </div>
 
       {/* Search */}
-      <div className="mb-6">
+      <div className="mb-4 sm:mb-6">
         <input
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Rechercher par titre ou lieu..."
-          className="w-full max-w-xs px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none shadow-sm"
+          className="w-full sm:max-w-xs px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none shadow-sm"
         />
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4">{error}</div>}
 
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-5">
           {[...Array(8)].map((_, i) => (
             <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
-              <div className="h-44 bg-gray-100" />
+              <div className="h-32 sm:h-44 bg-gray-100" />
               <div className="p-4 space-y-2">
                 <div className="h-4 bg-gray-100 rounded w-3/4" />
                 <div className="h-3 bg-gray-100 rounded w-1/2" />
@@ -309,7 +317,7 @@ const EventsAdmin: React.FC = () => {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-5">
           {filtered.map(event => (
             <EventCard
               key={event.id}

@@ -14,6 +14,11 @@ interface CertificatePreviewCardProps {
   certificateText?: string;
   certificateSignatoryName?: string;
   certificateSignatoryTitle?: string;
+  certificateSignatorySignature?: string;
+  certificateSignatory2Name?: string;
+  certificateSignatory2Title?: string;
+  certificateSignatory2Signature?: string;
+  participantQuality?: string;
 }
 
 /** Aperçu HTML/CSS fidèle au rendu PDF réel (voir utils/certificatePdf.ts) */
@@ -29,6 +34,11 @@ const CertificatePreviewCard: React.FC<CertificatePreviewCardProps> = ({
   certificateText,
   certificateSignatoryName,
   certificateSignatoryTitle,
+  certificateSignatorySignature,
+  certificateSignatory2Name,
+  certificateSignatory2Title,
+  certificateSignatory2Signature,
+  participantQuality,
 }) => {
   const title = eventTitle || "l'événement";
 
@@ -61,7 +71,122 @@ const CertificatePreviewCard: React.FC<CertificatePreviewCardProps> = ({
       )}
 
       <div className="p-4 bg-gray-50">
-        {template === 'classic' ? (
+        {template === 'dje' ? (
+          // ── DJE Preview : guilloché crème, double cadre, Cinzel, sceau, 2 signatures ──
+          <div className="aspect-[1.4/1] rounded-lg shadow-sm overflow-hidden relative border border-gray-200 select-none" style={{ background: '#FFFEFB', fontFamily: "'Cinzel', Georgia, serif" }}>
+            {/* Cadre bleu épais externe */}
+            <div className="absolute inset-[3%]" style={{ border: '4px solid #041c72' }} />
+            {/* Cadre vert fin interne */}
+            <div className="absolute inset-[6%]" style={{ border: '1px solid #087B42' }} />
+            {/* Cadre bleu très fin */}
+            <div className="absolute inset-[7%]" style={{ border: '0.5px solid #041c72', opacity: 0.6 }} />
+
+            {/* Ornements de coins */}
+            {([
+              { top: '4.5%', left: '4.5%', transform: 'none' },
+              { top: '4.5%', right: '4.5%', transform: 'scaleX(-1)' },
+              { bottom: '4.5%', left: '4.5%', transform: 'scaleY(-1)' },
+              { bottom: '4.5%', right: '4.5%', transform: 'scale(-1, -1)' },
+            ] as React.CSSProperties[]).map((pos, i) => (
+              <svg key={i} width="18" height="18" viewBox="0 0 54 54" aria-hidden="true" className="absolute" style={pos}>
+                <path d="M6 30V6h24" fill="none" stroke="#087B42" strokeWidth="2" />
+                <path d="M12 36V12h24" fill="none" stroke="#041c72" strokeWidth="1" />
+                <rect x="1" y="1" width="10" height="10" fill="#087B42" transform="rotate(45 6 6)" />
+              </svg>
+            ))}
+
+            {/* Logos organisateurs */}
+            <div className="absolute left-0 right-0 top-[9%] flex justify-center items-center gap-3">
+              {(cleanOrgLogos.length === 0
+                ? ['/certificates/logo-ddb.png', logoUrl || '/certificates/logo-dje.png', '/certificates/logo-wila.png']
+                : cleanOrgLogos.length === 2
+                ? [cleanOrgLogos[0], logoUrl || '/certificates/logo-dje.png', cleanOrgLogos[1]]
+                : cleanOrgLogos.slice(0, 4)
+              ).map((url, i) => (
+                <div key={i} className="flex items-center justify-center" style={{ height: '20px' }}>
+                  <img src={url} alt="" className="max-h-full object-contain" style={{ maxWidth: '38px' }} />
+                </div>
+              ))}
+            </div>
+
+            {/* Filigrane guilloché (simulé par cercles SVG) */}
+            <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 400 280" style={{ opacity: 0.07 }}>
+              <circle cx="200" cy="140" r="100" fill="none" stroke="#041c72" strokeWidth="18" />
+              <circle cx="200" cy="140" r="80" fill="none" stroke="#087B42" strokeWidth="8" />
+              <circle cx="200" cy="140" r="60" fill="none" stroke="#041c72" strokeWidth="4" />
+              <circle cx="200" cy="140" r="40" fill="none" stroke="#087B42" strokeWidth="2" />
+            </svg>
+
+            {/* CERTIFICAT */}
+            <div className="absolute left-0 right-0 top-[27%] flex flex-col items-center text-center">
+              <p className="font-bold tracking-[0.16em] leading-none" style={{ fontSize: '15px', color: '#041c72', fontFamily: "'Cinzel', Georgia, serif" }}>
+                {(certificateTitle?.trim() || 'CERTIFICAT').toUpperCase()}
+              </p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="block" style={{ width: '22px', height: '1px', background: '#087B42' }} />
+                <span className="tracking-[0.18em] font-semibold" style={{ fontSize: '5px', color: '#087B42', fontFamily: "'Cinzel', Georgia, serif" }}>
+                  {(certificateSubtitle?.trim() || 'DE PARTICIPATION').toUpperCase()}
+                </span>
+                <span className="block" style={{ width: '22px', height: '1px', background: '#087B42' }} />
+              </div>
+
+              <p className="mt-1 italic" style={{ fontSize: '4.5px', color: '#3A4566' }}>Ce certificat est décerné à</p>
+
+              {/* Nom */}
+              <p className="font-bold leading-snug border-b mt-0.5 px-3" style={{ fontSize: '10px', color: '#041c72', fontFamily: "'Cinzel', Georgia, serif", borderColor: '#087B42', minWidth: '100px', paddingBottom: '2px' }}>
+                Andrea Sanchez
+              </p>
+
+              {/* Corps */}
+              <p className="mt-1 leading-relaxed mx-4 line-clamp-2" style={{ fontSize: '4px', color: '#1C2541', maxWidth: '82%' }}>
+                {certificateText?.trim()
+                  ? formatText(certificateText).replace(/\{qualite\}/gi, participantQuality || '').replace(/\[qualite\]/gi, participantQuality || '')
+                  : <>pour sa participation{participantQuality ? <> en qualité de <strong style={{ color: '#041c72' }}>{participantQuality}</strong></> : ''} à la 2ème édition du <strong style={{ color: '#041c72' }}>Déjeuner Environnemental (DJE)</strong></>
+                }
+              </p>
+            </div>
+
+            {/* Signatures bas */}
+            <div className="absolute bottom-[8%] left-0 right-0 px-[10%] flex justify-between items-end">
+              <div className="text-center flex flex-col items-center">
+                {certificateSignatorySignature && (
+                  <img src={certificateSignatorySignature} alt="" className="h-4 max-w-[44px] object-contain mb-0.5" />
+                )}
+                <span className="block mb-0.5" style={{ width: '55px', height: '0.5px', background: '#041c72' }} />
+                <span className="font-bold tracking-wide" style={{ fontSize: '3.5px', color: '#041c72', fontFamily: "'Cinzel', Georgia, serif" }}>
+                  {certificateSignatoryName?.trim() || 'M. ONDENO Franck'}
+                </span>
+                <span className="italic" style={{ fontSize: '3px', color: '#3A4566', maxWidth: '65px', display: 'block', textAlign: 'center' }}>
+                  {certificateSignatoryTitle?.trim() || "Président de l'ONG DDB"}
+                </span>
+              </div>
+
+              {/* Sceau central DJE */}
+              <svg width="36" height="44" viewBox="0 0 130 150">
+                <path d="M42 110 L30 148 L46 138 L54 150 L62 112 Z" fill="#041c72" />
+                <path d="M88 110 L100 148 L84 138 L76 150 L68 112 Z" fill="#041c72" />
+                <polygon points="128.0,65.0 121.8,69.5 127.2,74.9 120.4,78.3 124.9,84.5 117.7,86.8 121.1,93.6 113.6,94.8 116.0,102.0 108.3,102.0 109.5,109.5 102.0,108.3 102.0,116.0 94.8,113.6 93.6,121.1 86.8,117.7 84.5,124.9 78.3,120.4 74.9,127.2 69.5,121.8 65.0,128.0 60.5,121.8 55.1,127.2 51.7,120.4 45.5,124.9 43.2,117.7 36.4,121.1 35.2,113.6 28.0,116.0 28.0,108.3 20.5,109.5 21.7,102.0 14.0,102.0 16.4,94.8 8.9,93.6 12.3,86.8 5.1,84.5 9.6,78.3 2.8,74.9 8.2,69.5 2.0,65.0 8.2,60.5 2.8,55.1 9.6,51.7 5.1,45.5 12.3,43.2 8.9,36.4 16.4,35.2 14.0,28.0 21.7,28.0 20.5,20.5 28.0,21.7 28.0,14.0 35.2,16.4 36.4,8.9 43.2,12.3 45.5,5.1 51.7,9.6 55.1,2.8 60.5,8.2 65.0,2.0 69.5,8.2 74.9,2.8 78.3,9.6 84.5,5.1 86.8,12.3 93.6,8.9 94.8,16.4 102.0,14.0 102.0,21.7 109.5,20.5 108.3,28.0 116.0,28.0 113.6,35.2 121.1,36.4 117.7,43.2 124.9,45.5 120.4,51.7 127.2,55.1 121.8,60.5" fill="#087B42" />
+                <circle cx="65" cy="65" r="52" fill="none" stroke="#FFFFFF" strokeWidth="1.4" />
+                <circle cx="65" cy="65" r="31" fill="none" stroke="#FFFFFF" strokeWidth="0.8" />
+                <text x="65" y="66" textAnchor="middle" fontFamily="Georgia, serif" fontSize="19" fontWeight="700" fill="#FFFFFF">DJE</text>
+                <text x="65" y="80" textAnchor="middle" fontFamily="Georgia, serif" fontSize="9" fontWeight="600" letterSpacing="1" fill="#FFFFFF">2026</text>
+              </svg>
+
+              <div className="text-center flex flex-col items-center">
+                {certificateSignatory2Signature && (
+                  <img src={certificateSignatory2Signature} alt="" className="h-4 max-w-[44px] object-contain mb-0.5" />
+                )}
+                <span className="block mb-0.5" style={{ width: '55px', height: '0.5px', background: '#041c72' }} />
+                <span className="font-bold tracking-wide" style={{ fontSize: '3.5px', color: '#041c72', fontFamily: "'Cinzel', Georgia, serif" }}>
+                  {certificateSignatory2Name?.trim() || 'Mme Pauline WHITE'}
+                </span>
+                <span className="italic" style={{ fontSize: '3px', color: '#3A4566', maxWidth: '65px', display: 'block', textAlign: 'center' }}>
+                  {certificateSignatory2Title?.trim() || 'Présidente WILA — Gabon'}
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : template === 'classic' ? (
           <div className="aspect-[1.4/1] rounded-lg shadow-sm bg-white overflow-hidden relative border border-gray-200 select-none flex">
             {/* ── 1. Panneau vertical gauche Bauhaus ── */}
             <div className="w-[28%] h-full bg-[#f8faf8] relative border-r border-gray-100 flex-shrink-0 overflow-hidden">
@@ -260,7 +385,7 @@ const CertificatePreviewCard: React.FC<CertificatePreviewCardProps> = ({
 
       <div className="px-4 py-2.5 border-t border-gray-100 bg-white flex items-center justify-between">
         <span className="text-xs font-semibold text-gray-700">
-          {template === 'classic' ? 'Géométrique Bauhaus — vert & bleu, signature' : 'Moderne — cadre bleu, rosette'}
+          {template === 'classic' ? 'Géométrique Bauhaus — vert & bleu, signature' : template === 'modern' ? 'Moderne — cadre bleu, rosette' : 'Élégant DJE — guilloché, Cinzel, sceau officiel'}
         </span>
         <span className={`text-[10px] font-bold uppercase tracking-wide ${selected ? 'text-green-600' : 'text-gray-300 group-hover:text-gray-400'}`}>
           {selected ? 'Sélectionné' : 'Choisir'}
