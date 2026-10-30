@@ -126,10 +126,17 @@ const ScanPage: React.FC = () => {
   const [certSending, setCertSending] = useState(false);
   const [certError, setCertError] = useState<string | null>(null);
 
-  // Event filter state
+  // Event filter state (persisted in localStorage across page reloads)
+  const SCAN_EVENT_STORAGE_KEY = 'ddb_scan_selected_event_id';
   const [eventsList, setEventsList] = useState<EventOption[]>([]);
-  const [selectedEventId, setSelectedEventId] = useState<string>('all');
-  const selectedEventIdRef = useRef<string>('all');
+  const [selectedEventId, setSelectedEventId] = useState<string>(() => {
+    try {
+      return localStorage.getItem('ddb_scan_selected_event_id') || 'all';
+    } catch {
+      return 'all';
+    }
+  });
+  const selectedEventIdRef = useRef<string>(selectedEventId);
 
   useEffect(() => {
     selectedEventIdRef.current = selectedEventId;
@@ -143,11 +150,31 @@ const ScanPage: React.FC = () => {
         .order('event_date', { ascending: false });
       if (data && data.length > 0) {
         setEventsList(data);
-        // Sélectionne par défaut l'événement publié le plus récent / à venir
-        const published = data.find(e => e.status === 'published') || data[0];
-        if (published) {
-          setSelectedEventId(String(published.id));
-          selectedEventIdRef.current = String(published.id);
+        let savedId: string | null = null;
+        try {
+          savedId = localStorage.getItem(SCAN_EVENT_STORAGE_KEY);
+        } catch {
+          savedId = null;
+        }
+        const savedExists =
+          savedId === 'all' || (savedId && data.some(e => String(e.id) === savedId));
+
+        if (savedExists && savedId) {
+          setSelectedEventId(savedId);
+          selectedEventIdRef.current = savedId;
+        } else {
+          // Sélectionne par défaut l'événement publié le plus récent / à venir
+          const published = data.find(e => e.status === 'published') || data[0];
+          if (published) {
+            const defaultId = String(published.id);
+            setSelectedEventId(defaultId);
+            selectedEventIdRef.current = defaultId;
+            try {
+              localStorage.setItem(SCAN_EVENT_STORAGE_KEY, defaultId);
+            } catch {
+              // ignore storage errors
+            }
+          }
         }
       }
     };
@@ -525,8 +552,14 @@ const ScanPage: React.FC = () => {
           <select
             value={selectedEventId}
             onChange={e => {
-              setSelectedEventId(e.target.value);
-              selectedEventIdRef.current = e.target.value;
+              const val = e.target.value;
+              setSelectedEventId(val);
+              selectedEventIdRef.current = val;
+              try {
+                localStorage.setItem(SCAN_EVENT_STORAGE_KEY, val);
+              } catch {
+                // ignore storage errors
+              }
               setResult({ status: 'idle' });
             }}
             className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
