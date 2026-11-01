@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import BackToTop from './components/BackToTop';
@@ -11,6 +11,13 @@ const LoadingFallback = () => (
     <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
   </div>
 );
+
+// ── /events/:id/album → /album/:id (liens envoyés avant le raccourcissement)
+const LegacyAlbumRedirect = () => {
+  const { id = '' } = useParams<{ id: string }>();
+  const { search } = useLocation();
+  return <Navigate to={`/album/${encodeURIComponent(id)}${search}`} replace />;
+};
 
 // ── Error boundary so a crashed lazy page shows an error, not infinite spinner
 class AppErrorBoundary extends React.Component<
@@ -180,7 +187,7 @@ function App() {
             <BackToTop />
           </div>
         } />
-        <Route path="/events/:id/album" element={
+        <Route path="/album/:id" element={
           <div className="bg-ddb-950">
             <Header />
             <EventAlbumPage />
@@ -188,6 +195,8 @@ function App() {
             <BackToTop />
           </div>
         } />
+        {/* Ancienne adresse des albums : redirige en conservant ?cle= / ?invitation= */}
+        <Route path="/events/:id/album" element={<LegacyAlbumRedirect />} />
         <Route path="/events" element={
           <div className="bg-gray-50">
             <Header />

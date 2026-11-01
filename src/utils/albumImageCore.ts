@@ -7,15 +7,17 @@
  *              téléchargement / partage WhatsApp. Le ré-encodage supprime au
  *              passage les métadonnées EXIF (position GPS des photos !).
  *  - `thumb` : WebP 480 px (≈ 25–50 Ko) pour la grille.
- *  - `placeholder` : JPEG 16 px en data URL (~500 octets), affiché flouté
- *              instantanément, avant même le chargement de la miniature.
+ *  - `placeholder` : PNG 8 px en data URL (~200 octets), affiché agrandi
+ *              (donc flou) instantanément, avant même la miniature. PNG plutôt
+ *              que JPEG : l'en-tête JPEG pèse à lui seul ~600 octets, et ces
+ *              aperçus sont envoyés pour chaque élément de l'album.
  */
 
 export const FULL_MAX_EDGE = 2048;
 export const FULL_QUALITY = 0.85;
 export const THUMB_MAX_EDGE = 480;
 export const THUMB_QUALITY = 0.72;
-const PLACEHOLDER_MAX_EDGE = 16;
+const PLACEHOLDER_MAX_EDGE = 8;
 
 export interface ProcessedImage {
   full: Blob;
@@ -55,6 +57,18 @@ const draw = (
 };
 
 /**
+ * Libère immédiatement la mémoire d'un canvas devenu inutile (une photo de
+ * 48 Mpx occupe ~190 Mo décodée) au lieu d'attendre le ramasse-miettes.
+ * Test par propriété : HTMLCanvasElement n'existe pas dans un Web Worker.
+ */
+export const releaseCanvas = (c: CanvasImageSource | AnyCanvas) => {
+  if ('getContext' in c) {
+    c.width = 0;
+    c.height = 0;
+  }
+};
+
+/**
  * Réduction par paliers de ÷2 : un passage direct 6000 → 2048 px crénelle les
  * détails fins (cheveux, textes, tissus) ; les paliers donnent un rendu net.
  */
@@ -73,9 +87,13 @@ export const resizeStepwise = (
   while (w / 2 >= targetW && h / 2 >= targetH) {
     w = Math.round(w / 2);
     h = Math.round(h / 2);
-    current = draw(current, w, h, makeCanvas, background);
+    const next = draw(current, w, h, makeCanvas, background);
+    if (current !== source) releaseCanvas(current);
+    current = next;
   }
-  return draw(current, targetW, targetH, makeCanvas, background);
+  const result = draw(current, targetW, targetH, makeCanvas, background);
+  if (current !== source) releaseCanvas(current);
+  return result;
 };
 
 export const canvasToBlob = (canvas: AnyCanvas, type: string, quality: number): Promise<Blob> => {
@@ -111,7 +129,7 @@ export const makePlaceholder = async (
 ): Promise<string> => {
   const [pw, ph] = fitWithin(w, h, PLACEHOLDER_MAX_EDGE);
   const canvas = draw(source, pw, ph, makeCanvas, '#ffffff');
-  return blobToDataUrl(await canvasToBlob(canvas, 'image/jpeg', 0.5));
+  return blobToDataUrl(await canvasToBlob(canvas, 'image/png', 1));
 };
 
 const decode = async (file: Blob): Promise<ImageBitmap> => {
@@ -140,6 +158,8 @@ export const processImage = async (file: Blob, makeCanvas: CanvasFactory): Promi
     const thumbCanvas = resizeStepwise(fullCanvas, fw, fh, tw, th, makeCanvas);
     const thumb = await encodeThumb(thumbCanvas);
     const placeholder = await makePlaceholder(thumbCanvas, tw, th, makeCanvas);
+    releaseCanvas(fullCanvas);
+    releaseCanvas(thumbCanvas);
 
     return { full, thumb, placeholder, width: fw, height: fh };
   } finally {

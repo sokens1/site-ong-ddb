@@ -34,7 +34,10 @@ const corsHeaders = {
 }
 
 const BUCKET = 'event-albums'
-const SIGNED_URL_TTL_SEC = 6 * 3600
+// URLs signées mémorisées 7 jours (migration 051) et partagées par tous les
+// visiteurs : cache navigateur/CDN efficace. Renouvelées à 2 jours de l'échéance.
+const SIGNED_URL_TTL_SEC = 7 * 86400
+const SIGNED_URL_REFRESH_MS = 2 * 86400_000
 const SESSION_DAYS = 30
 const INVITE_DAYS = 30
 const OTP_MINUTES = 10
@@ -61,6 +64,16 @@ function randomToken(bytes = 32): string {
     const a = new Uint8Array(bytes)
     crypto.getRandomValues(a)
     return btoa(String.fromCharCode(...a)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+/** Alphabet des liens visibles : 32 caractères, sans l/o/0/1 (ambigus à l'écrit comme à l'oral). */
+const KEY_ALPHABET = 'abcdefghijkmnpqrstuvwxyz23456789'
+
+/** Clé courte et lisible ; `& 31` = 5 bits aléatoires par caractère, sans biais. */
+function randomKey(len: number): string {
+    const bytes = new Uint8Array(len)
+    crypto.getRandomValues(bytes)
+    return Array.from(bytes, (b) => KEY_ALPHABET[b & 31]).join('')
 }
 
 function randomCode(): string {
@@ -176,40 +189,83 @@ async function hasAccess(eventId: number, album: AlbumRow, linkKey: unknown, ema
     return data === true
 }
 
-/** Contenu de l'album avec URLs signées (un seul appel Storage par tranche de 500 chemins). */
-async function grantedPayload(event: EventRow, album: AlbumRow, email: string | null) {
-    const { data: rows } = await db.from('event_media')
-        .select('id, kind, path, thumb_path, placeholder, width, height, duration, size_bytes, mime_type, caption')
-        .eq('event_id', event.id)
-        .order('position', { ascending: true })
-        .order('created_at', { ascending: true })
-    const media = rows ?? []
+interface MediaRow {
+    id: string
+    path: string
+    thumb_path: string | null
+    signed_url: string | null
+    signed_thumb_url: string | null
+    signed_until: string | null
+    [key: string]: unknown
+}
 
-    const paths: string[] = []
-    for (const m of media) {
-        paths.push(m.path)
-        if (m.thumb_path) paths.push(m.thumb_path)
-    }
+/**
+ * Réutilise les URLs signées mémorisées ; ne re-signe que les fichiers nouveaux
+ * ou dont l'URL expire bientôt (un appel Storage par tranche de 500 chemins),
+ * puis mémorise le résultat en une seule requête.
+ */
+async function ensureSignedUrls(media: MediaRow[]): Promise<void> {
+    const now = Date.now()
+    const stale = media.filter((m) =>
+        !m.signed_url ||
+        (m.thumb_path && !m.signed_thumb_url) ||
+        !m.signed_until ||
+        new Date(m.signed_until).getTime() - now < SIGNED_URL_REFRESH_MS,
+    )
+    if (stale.length === 0) return
+
+    const paths = stale.flatMap((m) => (m.thumb_path ? [m.path, m.thumb_path] : [m.path]))
     const signed = new Map<string, string>()
     for (let i = 0; i < paths.length; i += 500) {
         const { data } = await db.storage.from(BUCKET).createSignedUrls(paths.slice(i, i + 500), SIGNED_URL_TTL_SEC)
         for (const d of data ?? []) if (d.signedUrl && d.path) signed.set(d.path, d.signedUrl)
     }
 
+    const until = new Date(now + SIGNED_URL_TTL_SEC * 1000).toISOString()
+    const updates = []
+    for (const m of stale) {
+        const url = signed.get(m.path)
+        if (!url) continue
+        m.signed_url = url
+        m.signed_thumb_url = m.thumb_path ? signed.get(m.thumb_path) ?? null : null
+        m.signed_until = until
+        updates.push({ id: m.id, url, thumb_url: m.signed_thumb_url, until })
+    }
+    if (updates.length) {
+        const { error } = await db.rpc('store_event_media_signed_urls', { p_rows: updates })
+        if (error) console.warn(`album-access: cache des URLs non enregistré: ${error.message}`)
+    }
+}
+
+/** Contenu de l'album avec URLs signées (mémorisées 7 jours, communes à tous les visiteurs). */
+async function grantedPayload(event: EventRow, album: AlbumRow, email: string | null) {
+    const { data: rows } = await db.from('event_media')
+        .select('id, kind, path, thumb_path, placeholder, width, height, duration, size_bytes, mime_type, caption, signed_url, signed_thumb_url, signed_until')
+        .eq('event_id', event.id)
+        .order('position', { ascending: true })
+        .order('created_at', { ascending: true })
+    const media = (rows ?? []) as MediaRow[]
+    await ensureSignedUrls(media)
+
+    const ready = media.filter((m) => m.signed_url && m.signed_until)
+    // Le client redemande l'album 1 h avant l'expiration de la première URL
+    const firstExpiry = ready.reduce(
+        (min, m) => Math.min(min, new Date(m.signed_until!).getTime()),
+        Date.now() + SIGNED_URL_TTL_SEC * 1000,
+    )
+
     return {
-        status: media.length ? 'granted' : 'empty',
+        status: ready.length ? 'granted' : 'empty',
         event: publicEvent(event),
         album: { general_access: album.general_access, allow_download: album.allow_download },
         viewer: email ? { email } : null,
-        // Marge de 10 min : le client renouvelle avant l'expiration réelle.
-        expires_at: new Date(Date.now() + (SIGNED_URL_TTL_SEC - 600) * 1000).toISOString(),
-        media: media
-            .filter((m: any) => signed.has(m.path))
+        expires_at: new Date(firstExpiry - 3600_000).toISOString(),
+        media: ready
             .map((m: any) => ({
                 id: m.id,
                 kind: m.kind,
-                url: signed.get(m.path),
-                thumb_url: m.thumb_path ? signed.get(m.thumb_path) ?? null : null,
+                url: m.signed_url,
+                thumb_url: m.thumb_path ? m.signed_thumb_url ?? null : null,
                 placeholder: m.placeholder,
                 width: m.width,
                 height: m.height,
@@ -279,19 +335,20 @@ const buttonHtml = (href: string, label: string) =>
 // ── Actions ──────────────────────────────────────────────────────────────────
 
 async function handleOpen(body: any, req: Request) {
-    const staff = await isStaff(req)
-    const event = await loadEvent(body.event, staff)
+    // Lectures indépendantes en parallèle : la latence est celle de la plus lente, pas la somme
+    const [staff, found] = await Promise.all([isStaff(req), loadEvent(body.event, true)])
+    const event = found && (found.status !== 'draft' || staff) ? found : null
     if (!event) return json({ status: 'not_found' })
-    const album = await loadAlbum(event.id)
+    const [album, sessionMail] = await Promise.all([loadAlbum(event.id), sessionEmail(event.id, body.token)])
     if (!album) return json({ status: 'not_found', event: publicEvent(event) })
     if (staff) return json(await grantedPayload(event, album, null))
 
-    let email = await sessionEmail(event.id, body.token)
+    let email = sessionMail
     const tokenInvalid = !!body.token && !email
     let newToken: string | undefined
 
     // Lien personnel reçu par email ("Envoyer une notification" côté admin)
-    if (!email && typeof body.invite === 'string' && body.invite.length >= 20 && body.invite.length <= 100) {
+    if (!email && typeof body.invite === 'string' && body.invite.length >= 16 && body.invite.length <= 100) {
         const { data: share } = await db.from('event_album_shares')
             .select('email, invite_expires_at')
             .eq('event_id', event.id).eq('invite_token_hash', await sha256(body.invite)).maybeSingle()
@@ -425,7 +482,7 @@ async function handleInvite(body: any, req: Request) {
     const forParticipants = body.template === 'participants'
     const message = typeof body.message === 'string' ? body.message.trim().slice(0, 1000) : ''
     const base = appUrl(req)
-    const albumPath = `/events/${encodeURIComponent(event.slug || String(event.id))}/album`
+    const albumPath = `/album/${encodeURIComponent(event.slug || String(event.id))}`
     let notified = 0
     let simulated = false
     const failed: string[] = []
@@ -440,7 +497,8 @@ async function handleInvite(body: any, req: Request) {
         // Tous les accès du lot enregistrés en une seule requête, puis envoi des emails
         const now = new Date().toISOString()
         const expires = new Date(Date.now() + INVITE_DAYS * 86400_000).toISOString()
-        const invites = emails.map((email) => ({ email, token: randomToken() }))
+        // 20 caractères = 100 bits : lien court mais impossible à deviner
+        const invites = emails.map((email) => ({ email, token: randomKey(20) }))
         const rows = await Promise.all(invites.map(async ({ email, token }) => ({
             event_id: event.id,
             email,
@@ -453,7 +511,7 @@ async function handleInvite(body: any, req: Request) {
 
         // Séquentiel : l'API Gmail limite à ~2 envois/seconde par compte
         for (const { email, token } of invites) {
-            const link = `${base}${albumPath}?invite=${encodeURIComponent(token)}`
+            const link = `${base}${albumPath}?invitation=${token}`
             const { subject, html } = inviteEmail(event, link, message, forParticipants)
             try {
                 const res = await sendMail(email, subject, html)

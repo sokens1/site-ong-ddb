@@ -1,4 +1,3 @@
-import JSZip from 'jszip';
 import { supabase } from '../supabaseClient';
 import {
   processImage, ProcessedImage, fitWithin, resizeStepwise, encodeThumb, makePlaceholder, THUMB_MAX_EDGE,
@@ -69,6 +68,10 @@ export interface AlbumMediaRow {
   caption: string | null;
   position: number;
   created_at: string;
+  /** URLs signées mémorisées 7 jours (migration 051), communes à tous. */
+  signed_url?: string | null;
+  signed_thumb_url?: string | null;
+  signed_until?: string | null;
 }
 
 export interface AlbumShare {
@@ -159,15 +162,17 @@ export const callAlbumFunction = async <T>(body: Record<string, unknown>): Promi
 
 // ─── URLs ────────────────────────────────────────────────────────────────────
 
+/** Adresse courte et lisible : /album/forum-jeunesse-2026 */
 export const albumPagePath = (event: { slug?: string | null; id: number | string }) =>
-  `/events/${encodeURIComponent(event.slug || String(event.id))}/album`;
+  `/album/${encodeURIComponent(event.slug || String(event.id))}`;
 
+/** En mode "lien" : /album/forum-jeunesse-2026?cle=k7mq2xpa9c */
 export const albumShareUrl = (
   event: { slug?: string | null; id: number | string },
   settings?: Pick<AlbumSettings, 'general_access' | 'link_key'>,
 ) => {
   const base = `${window.location.origin}${albumPagePath(event)}`;
-  return settings?.general_access === 'link' ? `${base}?k=${settings.link_key}` : base;
+  return settings?.general_access === 'link' ? `${base}?cle=${settings.link_key}` : base;
 };
 
 const extensionForMime = (mime: string | null | undefined, kind: 'image' | 'video') => {
@@ -220,15 +225,29 @@ const mainThreadCanvas = (w: number, h: number) => {
  * Pool de 1 à 3 Web Workers (selon les cœurs du processeur). Repli automatique
  * sur le thread principal si les workers/OffscreenCanvas ne sont pas disponibles
  * (anciens Safari) ou si un worker plante.
+ *
+ * Mémoire : une photo de 48 Mpx décodée occupe ~190 Mo. Sur un appareil de
+ * 4 Go de RAM ou moins, un seul traitement à la fois pour éviter le crash de
+ * l'onglet ; idem sur le thread principal (traitement en file).
  */
 export const createImageProcessor = (): ImageProcessor => {
   const canUseWorkers = typeof Worker !== 'undefined' && typeof OffscreenCanvas !== 'undefined';
-  const poolSize = Math.max(1, Math.min(3, (navigator.hardwareConcurrency || 2) - 1));
+  const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+  const lowMemory = typeof deviceMemory === 'number' && deviceMemory <= 4;
+  const poolSize = lowMemory ? 1 : Math.max(1, Math.min(3, (navigator.hardwareConcurrency || 2) - 1));
   const workers: Worker[] = [];
   const idle: Worker[] = [];
   const waiting: Array<() => void> = [];
   let workersBroken = !canUseWorkers;
   let seq = 0;
+  let mainThreadQueue: Promise<unknown> = Promise.resolve();
+
+  /** Thread principal : une photo à la fois (mémoire + interface réactive). */
+  const runOnMainThread = (file: Blob) => {
+    const job = mainThreadQueue.then(() => processImage(file, mainThreadCanvas));
+    mainThreadQueue = job.catch(() => undefined);
+    return job;
+  };
 
   const acquire = async (): Promise<Worker> => {
     for (;;) {
@@ -284,7 +303,7 @@ export const createImageProcessor = (): ImageProcessor => {
           release(w);
         }
       }
-      return processImage(file, mainThreadCanvas);
+      return runOnMainThread(file);
     },
     dispose() {
       workers.forEach((w) => w.terminate());
@@ -561,8 +580,17 @@ export const updateAlbumSettings = async (
   if (error) throw new Error(error.message);
 };
 
-/** Nouvelle clé : l'ancien lien "Tous les utilisateurs disposant du lien" cesse de fonctionner. */
-export const newLinkKey = () => `${crypto.randomUUID()}${crypto.randomUUID()}`.replace(/-/g, '');
+/** 32 caractères sans l/o/0/1, ambigus à l'écrit comme à l'oral (même alphabet que gen_short_key en SQL). */
+const KEY_ALPHABET = 'abcdefghijkmnpqrstuvwxyz23456789';
+
+/**
+ * Nouvelle clé courte (10 caractères = 50 bits aléatoires) : l'ancien lien
+ * "Tous les utilisateurs disposant du lien" cesse de fonctionner.
+ */
+export const newLinkKey = () => {
+  const bytes = crypto.getRandomValues(new Uint8Array(10));
+  return Array.from(bytes, (b) => KEY_ALPHABET[b & 31]).join('');
+};
 
 export const listAlbumMedia = async (eventId: number): Promise<AlbumMediaRow[]> => {
   const { data, error } = await supabase
@@ -583,6 +611,48 @@ export const signAlbumPaths = async (paths: string[], expiresInSec = 3600): Prom
     for (const d of data ?? []) if (d.signedUrl && d.path) map.set(d.path, d.signedUrl);
   }
   return map;
+};
+
+// Mêmes règles que l'Edge Function album-access (migration 051)
+const SIGNED_TTL_SEC = 7 * 86400;
+const SIGNED_REFRESH_MS = 2 * 86400_000;
+
+/**
+ * URLs (HD + miniature) pour l'admin. Réutilise les URLs mémorisées en base —
+ * identiques à celles des visiteurs, donc déjà dans le cache du navigateur — et
+ * ne signe que les fichiers nouveaux ou dont l'URL expire bientôt, puis les
+ * mémorise pour tout le monde.
+ */
+export const resolveAlbumUrls = async (
+  rows: AlbumMediaRow[],
+): Promise<Map<string, { url: string; thumb: string | null }>> => {
+  const now = Date.now();
+  const result = new Map<string, { url: string; thumb: string | null }>();
+  const stale: AlbumMediaRow[] = [];
+  for (const r of rows) {
+    const fresh = r.signed_url && r.signed_until
+      && new Date(r.signed_until).getTime() - now > SIGNED_REFRESH_MS
+      && (!r.thumb_path || r.signed_thumb_url);
+    if (fresh) result.set(r.id, { url: r.signed_url!, thumb: r.signed_thumb_url ?? null });
+    else stale.push(r);
+  }
+  if (stale.length === 0) return result;
+
+  const signed = await signAlbumPaths(stale.flatMap((r) => (r.thumb_path ? [r.path, r.thumb_path] : [r.path])), SIGNED_TTL_SEC);
+  const until = new Date(now + SIGNED_TTL_SEC * 1000).toISOString();
+  const updates: { id: string; url: string; thumb_url: string | null; until: string }[] = [];
+  for (const r of stale) {
+    const url = signed.get(r.path);
+    if (!url) continue;
+    const thumb = r.thumb_path ? signed.get(r.thumb_path) ?? null : null;
+    result.set(r.id, { url, thumb });
+    updates.push({ id: r.id, url, thumb_url: thumb, until });
+  }
+  if (updates.length) {
+    // Best-effort : sans la migration 051, l'admin signe simplement à chaque chargement
+    supabase.rpc('store_event_media_signed_urls', { p_rows: updates }).then(() => undefined, () => undefined);
+  }
+  return result;
 };
 
 export const deleteAlbumMedia = async (rows: Pick<AlbumMediaRow, 'id' | 'path' | 'thumb_path'>[]) => {
@@ -810,6 +880,9 @@ export const downloadAlbumZip = async (
     currentSize += e.size;
   }
   if (current.length) parts.push(current);
+
+  // Chargée seulement au clic : la page album reste légère pour ceux qui ne font que regarder
+  const { default: JSZip } = await import('jszip');
 
   let done = 0;
   for (let p = 0; p < parts.length; p++) {

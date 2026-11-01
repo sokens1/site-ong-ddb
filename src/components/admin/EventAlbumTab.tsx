@@ -10,7 +10,8 @@ import {
   ACCESS_MODES, AlbumAccessMode, AlbumAccessRequest, AlbumMediaRow, AlbumSettings, ImageProcessor,
   MAX_VIDEO_MB, STORAGE_QUOTA_BYTES, albumFileName, albumShareUrl, createImageProcessor,
   deleteAlbumMedia, downloadSignedFile, ensureAlbum, formatBytes, formatDuration, getStorageUsage,
-  listAccessRequests, listAlbumMedia, listAlbumShares, reorderAlbumMedia, signAlbumPaths, updateMediaCaption, uploadAlbumItem,
+  listAccessRequests, listAlbumMedia, listAlbumShares, reorderAlbumMedia, resolveAlbumUrls, signAlbumPaths, updateMediaCaption,
+  uploadAlbumItem,
   validateAlbumFile,
 } from '../../utils/albumMedia';
 
@@ -58,14 +59,13 @@ const MediaTile = memo(function MediaTile({
       onDragEnter={() => onDragEnter(item.id)}
       onDragOver={(e) => e.preventDefault()}
       onDragEnd={onDragEnd}
-      className={`group relative aspect-square rounded-xl overflow-hidden bg-gray-100 cursor-pointer select-none transition-all ${
+      className={`group relative aspect-square rounded-xl overflow-hidden bg-gray-100 bg-cover bg-center cursor-pointer select-none transition-all ${
         selected ? 'ring-4 ring-green-500 ring-offset-1' : ''
       } ${dragging ? 'opacity-40 scale-95' : ''}`}
+      // Mini-aperçu agrandi en fond : naturellement flou, sans filtre CSS coûteux
+      style={item.placeholder ? { backgroundImage: `url(${item.placeholder})` } : undefined}
       onClick={() => (selectionMode ? onToggle(item.id) : onOpen(item.id))}
     >
-      {item.placeholder && (
-        <img src={item.placeholder} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover blur-md scale-110" />
-      )}
       {thumbUrl ? (
         <img
           src={thumbUrl}
@@ -116,6 +116,7 @@ export const EventAlbumTab: React.FC<EventAlbumTabProps> = ({ eventId, eventTitl
   const [settings, setSettings] = useState<AlbumSettings | null>(null);
   const [media, setMedia] = useState<AlbumMediaRow[]>([]);
   const [thumbUrls, setThumbUrls] = useState<Record<string, string>>({});
+  const [fullUrls, setFullUrls] = useState<Record<string, string>>({});
   const [requests, setRequests] = useState<AlbumAccessRequest[]>([]);
   const [usage, setUsage] = useState<{ total: number; albums: number } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -162,11 +163,17 @@ export const EventAlbumTab: React.FC<EventAlbumTabProps> = ({ eventId, eventTitl
       setRequests(reqs);
       setNotifiedCount(shares.filter((x) => x.notified_at).length);
       nextPositionRef.current = rows.reduce((max, r) => Math.max(max, r.position + 1), 0);
-      const signed = await signAlbumPaths(rows.flatMap((r) => (r.thumb_path ? [r.thumb_path] : [])), 6 * 3600);
+      // URLs mémorisées = les mêmes que celles des visiteurs : déjà en cache navigateur
+      const resolved = await resolveAlbumUrls(rows);
       if (!mountedRef.current) return;
-      const urls: Record<string, string> = {};
-      for (const r of rows) if (r.thumb_path && signed.has(r.thumb_path)) urls[r.id] = signed.get(r.thumb_path)!;
-      setThumbUrls(urls);
+      const thumbs: Record<string, string> = {};
+      const fulls: Record<string, string> = {};
+      resolved.forEach((v, id) => {
+        if (v.thumb) thumbs[id] = v.thumb;
+        fulls[id] = v.url;
+      });
+      setThumbUrls(thumbs);
+      setFullUrls(fulls);
     } catch (err) {
       const msg = err instanceof Error ? err.message : '';
       setError(
@@ -677,6 +684,7 @@ export const EventAlbumTab: React.FC<EventAlbumTabProps> = ({ eventId, eventTitl
           media={media}
           currentId={previewId}
           thumbUrls={thumbUrls}
+          knownFullUrls={fullUrls}
           eventTitle={eventTitle}
           onNavigate={setPreviewId}
           onClose={() => setPreviewId(null)}
@@ -737,12 +745,14 @@ const AdminPreview: React.FC<{
   media: AlbumMediaRow[];
   currentId: string;
   thumbUrls: Record<string, string>;
+  /** URLs HD mémorisées (déjà connues) : pas de nouvelle signature à l'ouverture. */
+  knownFullUrls: Record<string, string>;
   eventTitle: string;
   onNavigate: (id: string) => void;
   onClose: () => void;
   onDelete: (id: string) => void;
   onCaptionSaved: (id: string, caption: string) => void;
-}> = ({ media, currentId, thumbUrls, eventTitle, onNavigate, onClose, onDelete, onCaptionSaved }) => {
+}> = ({ media, currentId, thumbUrls, knownFullUrls, eventTitle, onNavigate, onClose, onDelete, onCaptionSaved }) => {
   const index = media.findIndex((m) => m.id === currentId);
   const item = media[index];
   const [fullUrls, setFullUrls] = useState<Record<string, string>>({});
@@ -755,7 +765,7 @@ const AdminPreview: React.FC<{
   // Signe à la demande la version HD de l'élément courant et de ses voisins
   useEffect(() => {
     const wanted = [media[index - 1], media[index], media[index + 1]].filter(
-      (m): m is AlbumMediaRow => !!m && !requestedRef.current.has(m.id),
+      (m): m is AlbumMediaRow => !!m && !knownFullUrls[m.id] && !requestedRef.current.has(m.id),
     );
     if (wanted.length === 0) return;
     wanted.forEach((m) => requestedRef.current.add(m.id));
@@ -766,7 +776,7 @@ const AdminPreview: React.FC<{
         return next;
       });
     });
-  }, [index, media]);
+  }, [index, media, knownFullUrls]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -780,7 +790,7 @@ const AdminPreview: React.FC<{
   }, [index, media, onClose, onNavigate]);
 
   if (!item) return null;
-  const full = fullUrls[item.id];
+  const full = knownFullUrls[item.id] ?? fullUrls[item.id];
 
   const saveCaption = async () => {
     if ((item.caption || '') === caption.trim()) return;

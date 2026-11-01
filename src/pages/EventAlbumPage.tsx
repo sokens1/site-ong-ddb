@@ -50,8 +50,10 @@ const EventAlbumPage: React.FC = () => {
   useNoIndex();
   const { id: eventRef = '' } = useParams<{ id: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const linkKey = searchParams.get('k');
-  const inviteToken = searchParams.get('invite');
+  // ?cle= : mode "Tous les utilisateurs disposant du lien" ; ?invitation= : lien personnel reçu par email
+  // (k / invite : anciens noms, toujours acceptés)
+  const linkKey = searchParams.get('cle') ?? searchParams.get('k');
+  const inviteToken = searchParams.get('invitation') ?? searchParams.get('invite');
 
   const [data, setData] = useState<AlbumOpenResponse | null>(() => readAlbumCache(eventRef, linkKey)?.data ?? null);
   const [loading, setLoading] = useState(!data);
@@ -86,7 +88,11 @@ const EventAlbumPage: React.FC = () => {
     const cached = readAlbumCache(eventRef, linkKey);
     if (inviteToken) {
       // Le lien d'invitation est échangé contre une session puis retiré de l'URL
-      fetchAlbum(inviteToken).then(() => setSearchParams((p) => { p.delete('invite'); return p; }, { replace: true }));
+      fetchAlbum(inviteToken).then(() => setSearchParams((p) => {
+        p.delete('invitation');
+        p.delete('invite');
+        return p;
+      }, { replace: true }));
       return;
     }
     // Cache récent : aucun appel réseau. Sinon affichage instantané du cache
@@ -403,23 +409,30 @@ const AlbumGate: React.FC<{
 // ─── Galerie ─────────────────────────────────────────────────────────────────
 
 const GalleryTile = memo(function GalleryTile({
-  item, eager, onOpen,
-}: { item: PublicMediaItem; eager: boolean; onOpen: (id: string) => void }) {
+  item, eager, onOpen, onDownload,
+}: {
+  item: PublicMediaItem;
+  eager: boolean;
+  onOpen: (id: string) => void;
+  /** Absent si l'admin a désactivé le téléchargement. */
+  onDownload?: (id: string) => void;
+}) {
   const [loaded, setLoaded] = useState(false);
   // Ratio borné : un panorama ou une photo très verticale ne casse pas la ligne
   const ratio = Math.min(2.2, Math.max(0.6, item.width && item.height ? item.width / item.height : 1));
+  const label = item.kind === 'video' ? 'la vidéo' : 'la photo';
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(item.id)}
-      style={{ flexGrow: ratio * 100, flexBasis: `calc(var(--row-h) * ${ratio})` }}
-      className="group relative overflow-hidden rounded-md sm:rounded-lg bg-white/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-ddb-300"
-      aria-label={item.caption || (item.kind === 'video' ? 'Ouvrir la vidéo' : 'Ouvrir la photo')}
+    <div
+      style={{
+        flexGrow: ratio * 100,
+        flexBasis: `calc(var(--row-h) * ${ratio})`,
+        // Mini-aperçu de 8 px agrandi en fond : naturellement flou, sans filtre
+        // CSS (un blur par vignette fait saccader le défilement sur mobile)
+        backgroundImage: item.placeholder ? `url(${item.placeholder})` : undefined,
+      }}
+      className="group relative overflow-hidden rounded-md sm:rounded-lg bg-white/[0.06] bg-cover bg-center"
     >
       <span className="block" style={{ paddingBottom: `${100 / ratio}%` }} />
-      {item.placeholder && (
-        <img src={item.placeholder} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover blur-xl scale-110" />
-      )}
       {item.thumb_url ? (
         <img
           src={item.thumb_url}
@@ -435,19 +448,40 @@ const GalleryTile = memo(function GalleryTile({
       {item.kind === 'video' && (
         <>
           <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="w-12 h-12 rounded-full bg-black/45 backdrop-blur-sm flex items-center justify-center text-white group-hover:scale-110 transition-transform">
+            <span className="w-12 h-12 rounded-full bg-black/55 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
               <Play size={20} fill="currentColor" className="ml-0.5" />
             </span>
           </span>
           {item.duration ? (
-            <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/60 text-white text-[11px] font-semibold">
+            <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/60 text-white text-[11px] font-semibold">
               {formatDuration(item.duration)}
             </span>
           ) : null}
         </>
       )}
-      <span className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
-    </button>
+      <span className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+
+      {/* Zone cliquable d'ouverture (bouton frère du bouton de téléchargement : pas de bouton imbriqué) */}
+      <button
+        type="button"
+        onClick={() => onOpen(item.id)}
+        className="absolute inset-0 w-full h-full rounded-md sm:rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ddb-300"
+        aria-label={item.caption || `Ouvrir ${label}`}
+      />
+
+      {onDownload && (
+        // Visible au survol (souris), en permanence sur écran tactile (pas de survol possible)
+        <button
+          type="button"
+          onClick={() => onDownload(item.id)}
+          className="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/60 hover:bg-green-600 text-white flex items-center justify-center shadow-lg transition-all opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 focus-visible:opacity-100 focus-visible:translate-y-0 [@media(hover:none)]:opacity-90 [@media(hover:none)]:translate-y-0"
+          aria-label={`Télécharger ${label}`}
+          title={`Télécharger ${label}`}
+        >
+          <Download size={16} />
+        </button>
+      )}
+    </div>
   );
 });
 
@@ -483,29 +517,39 @@ const AlbumGallery: React.FC<{ data: Granted; onSignOut?: () => void }> = ({ dat
     return () => io.disconnect();
   }, [visible, filtered.length]);
 
-  // Visionneuse pilotée par l'URL (?m=id) : lien direct vers une photo et
-  // bouton "retour" du téléphone qui ferme la visionneuse au lieu de quitter la page.
-  const openId = searchParams.get('m');
-  const lightboxList = openId && !filtered.some((m) => m.id === openId) ? media : filtered;
-  const lightboxIndex = openId ? lightboxList.findIndex((m) => m.id === openId) : -1;
+  // Visionneuse pilotée par l'URL (?photo=12 = 12e élément de l'album) : lien
+  // direct court vers une photo, et bouton "retour" du téléphone qui ferme la
+  // visionneuse au lieu de quitter la page.
+  const photoNumber = Number(searchParams.get('photo'));
+  const openItem = Number.isInteger(photoNumber) && photoNumber >= 1 ? media[photoNumber - 1] : undefined;
+  const lightboxList = openItem && !filtered.includes(openItem) ? media : filtered;
+  const lightboxIndex = openItem ? lightboxList.indexOf(openItem) : -1;
+
+  const photoParam = useCallback((id: string) => String((globalIndex.get(id) ?? 0) + 1), [globalIndex]);
 
   const openMedia = useCallback((id: string) => {
     openedHereRef.current = true;
-    setSearchParams((p) => { p.set('m', id); return p; });
-  }, [setSearchParams]);
+    setSearchParams((p) => { p.set('photo', photoParam(id)); return p; });
+  }, [setSearchParams, photoParam]);
 
   const goTo = useCallback((id: string) => {
-    setSearchParams((p) => { p.set('m', id); return p; }, { replace: true });
-  }, [setSearchParams]);
+    setSearchParams((p) => { p.set('photo', photoParam(id)); return p; }, { replace: true });
+  }, [setSearchParams, photoParam]);
 
   const closeLightbox = useCallback(() => {
     if (openedHereRef.current) {
       openedHereRef.current = false;
       navigate(-1);
     } else {
-      setSearchParams((p) => { p.delete('m'); return p; }, { replace: true });
+      setSearchParams((p) => { p.delete('photo'); return p; }, { replace: true });
     }
   }, [navigate, setSearchParams]);
+
+  const downloadMedia = useCallback((id: string) => {
+    const i = globalIndex.get(id);
+    if (i === undefined) return;
+    downloadSignedFile(media[i].url, albumFileName(event.title, i, media[i]));
+  }, [globalIndex, media, event.title]);
 
   const handleZip = async () => {
     setZipError(null);
@@ -525,8 +569,7 @@ const AlbumGallery: React.FC<{ data: Granted; onSignOut?: () => void }> = ({ dat
 
   const handleShare = async () => {
     const url = new URL(window.location.href);
-    url.searchParams.delete('m');
-    url.searchParams.delete('invite');
+    ['photo', 'invitation', 'invite'].forEach((p) => url.searchParams.delete(p));
     const shareUrl = url.toString();
     if (navigator.share) {
       try {
@@ -614,7 +657,13 @@ const AlbumGallery: React.FC<{ data: Granted; onSignOut?: () => void }> = ({ dat
       {/* Grille justifiée (lignes de hauteur égale, sans calcul JS) */}
       <div className="flex flex-wrap gap-1 sm:gap-1.5 [--row-h:110px] sm:[--row-h:180px] lg:[--row-h:220px] after:content-[''] after:grow-[999999]">
         {filtered.slice(0, visible).map((m, i) => (
-          <GalleryTile key={m.id} item={m} eager={i < EAGER_COUNT} onOpen={openMedia} />
+          <GalleryTile
+            key={m.id}
+            item={m}
+            eager={i < EAGER_COUNT}
+            onOpen={openMedia}
+            onDownload={album.allow_download ? downloadMedia : undefined}
+          />
         ))}
       </div>
       {visible < filtered.length && <div ref={sentinelRef} className="h-px" aria-hidden />}
@@ -678,16 +727,20 @@ const Lightbox: React.FC<{
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose, prev, next]);
 
-  // Préchargement des photos voisines en HD : navigation instantanée
+  // Préchargement HD de la photo suivante et précédente : navigation instantanée.
+  // Seulement une fois la photo affichée chargée (elle reste prioritaire), et
+  // seulement ±1 pour ne pas consommer de bande passante inutile.
+  const currentKind = item?.kind;
   useEffect(() => {
-    for (const m of [items[index + 1], items[index - 1], items[index + 2]]) {
+    if (currentKind === 'image' && !fullLoaded) return;
+    for (const m of [items[index + 1], items[index - 1]]) {
       if (m && m.kind === 'image') {
         const img = new Image();
         img.decoding = 'async';
         img.src = m.url;
       }
     }
-  }, [items, index]);
+  }, [items, index, currentKind, fullLoaded]);
 
   if (!item) return null;
 

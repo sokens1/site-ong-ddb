@@ -45,7 +45,7 @@ const EventAlbumTeaser: React.FC<{ eventId: number; eventRef: string; coverUrl?:
 
   return (
     <Link
-      to={`/events/${eventRef}/album`}
+      to={`/album/${eventRef}`}
       onMouseEnter={prefetchAlbumPage}
       onTouchStart={prefetchAlbumPage}
       className="group relative block overflow-hidden rounded-3xl border border-white/10 bg-ddb-800 p-5 sm:p-6 shadow-lg transition-all hover:border-ddb-400/50 hover:shadow-xl"
