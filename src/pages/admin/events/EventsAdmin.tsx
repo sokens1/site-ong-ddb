@@ -6,6 +6,7 @@ import EventWizardModal from '../../../components/admin/EventWizardModal';
 import { Plus, Trash2, Users, MapPin, Edit3, MoreVertical, Eye, Calendar, CheckCircle, Clock, XCircle } from 'lucide-react';
 import useUserRole from '../../../hooks/useUserRole';
 import { logAdminActivity } from '../../../utils/securityLog';
+import { purgeEventAlbum } from '../../../utils/albumMedia';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -232,6 +233,13 @@ const EventsAdmin: React.FC = () => {
   };
 
   const deleteEvent = async (id: number, title: string) => {
+    // La cascade SQL efface les lignes de l'album, pas les fichiers du Storage :
+    // on les supprime d'abord (best-effort, ne bloque pas la suppression).
+    try {
+      await purgeEventAlbum(id);
+    } catch (err) {
+      console.warn('Purge des fichiers de l\'album incomplète :', err);
+    }
     const { error: e } = await supabase.from('events').delete().eq('id', id);
     if (e) alert(`Erreur: ${e.message}`);
     else {

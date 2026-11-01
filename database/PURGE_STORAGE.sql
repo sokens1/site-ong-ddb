@@ -38,6 +38,8 @@ WITH refs AS (
                      coalesce(program::text,'')||' '||coalesce(form_fields::text,'')||' '||
                      coalesce(poster_template,'')||' '||coalesce(ticket_template,'')||' '||
                      coalesce(certificate_template,'') FROM public.events
+    -- Albums (bucket privé event-albums, hors liste ci-dessous) : par sécurité
+    UNION ALL SELECT coalesce(path,'')||' '||coalesce(thumb_path,'') FROM public.event_media
   ) x
 )
 SELECT o.bucket_id, o.name,

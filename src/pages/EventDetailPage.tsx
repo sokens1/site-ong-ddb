@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, MapPin, Users, X, CheckCircle, ChevronLeft, Star, MessageSquare, ChevronRight, ChevronDown, Sparkles, Share2, Copy, Check, Loader2, AlertCircle, Clock, User, Plus, Minus, CreditCard, Phone, ArrowRight, ExternalLink, ShieldCheck } from 'lucide-react';
 import PosterGeneratorModal from '../components/events/PosterGeneratorModal';
 import { EventProgramModal } from '../components/events/EventProgramModal';
+import EventAlbumTeaser from '../components/events/EventAlbumTeaser';
 import InAppBrowserBanner from '../components/InAppBrowserBanner';
 import { InAppBrowserProvider, useInAppBrowserBanner } from '../context/InAppBrowserContext';
 import { isInAppBrowser } from '../utils/inAppBrowser';
@@ -1850,6 +1851,11 @@ const EventDetailPage: React.FC = () => {
 
           {/* Main Content — pas de carte blanche, écritures directement sur le vert */}
           <div className="lg:col-span-2 space-y-8">
+            {/* Album photos & vidéos : affiché une fois l'événement terminé */}
+            {isPast && (
+              <EventAlbumTeaser eventId={event.id} eventRef={event.slug || String(event.id)} coverUrl={event.image_url} />
+            )}
+
             <div>
               <h2 className="font-heading text-2xl font-bold text-white mb-4">À propos de l'événement</h2>
 

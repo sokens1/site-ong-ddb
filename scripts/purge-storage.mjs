@@ -50,6 +50,9 @@ const URL_SOURCES = [
   ['events', ['image_url', 'logo_url', 'organizer_logos', 'partner_logos',
               'program', 'form_fields', 'poster_template', 'ticket_template',
               'certificate_template']],
+  // Albums (bucket privé event-albums, hors BUCKETS ci-dessus) : référencés
+  // ici par sécurité si le bucket est un jour ajouté à la liste.
+  ['event_media', ['path', 'thumb_path']],
 ];
 
 async function buildHaystack() {

@@ -54,6 +54,7 @@ const ArticlePage = lazy(() => import('./pages/ArticlePage'));
 const JoinPage = lazy(() => import('./pages/JoinPage'));
 const EventDetailPage = lazy(() => import('./pages/EventDetailPage'));
 const EventsPage = lazy(() => import('./pages/EventsPage'));
+const EventAlbumPage = lazy(() => import('./pages/EventAlbumPage'));
 
 // Admin — lazy-loaded so they are excluded from the main bundle
 const AdminLogin     = lazy(() => import('./pages/AdminLogin'));
@@ -175,6 +176,14 @@ function App() {
           <div className="bg-gray-50">
             <Header />
             <EventDetailPage />
+            <Footer />
+            <BackToTop />
+          </div>
+        } />
+        <Route path="/events/:id/album" element={
+          <div className="bg-ddb-950">
+            <Header />
+            <EventAlbumPage />
             <Footer />
             <BackToTop />
           </div>

@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCrud } from '../../../hooks/useCrud';
 import * as XLSX from 'xlsx';
 import {
   ArrowLeft, Users, Trash2, Star, Eye, Search, Pencil, Send, CheckCircle2, Download, Loader2,
   BarChart2, FileSpreadsheet, HardHat, Upload, Mail, Edit3, Award, Ticket, Sparkles, ClipboardList,
   MessageSquare, Calendar, MapPin, Clock, Smartphone, CreditCard, Plus, ChevronDown, ChevronUp, Layers, AlertCircle,
-  Lock, Unlock, MoreVertical,
+  Lock, Unlock, MoreVertical, Images,
 } from 'lucide-react';
 import EventStatsTab from './EventStatsTab';
 import { EventPostersTab } from '../../../components/admin/EventPostersTab';
+import { EventAlbumTab } from '../../../components/admin/EventAlbumTab';
 import { motion } from 'framer-motion';
 import { supabase } from '../../../supabaseClient';
 import ConfirmationModal from '../../../components/admin/ConfirmationModal';
@@ -139,7 +140,11 @@ const CreateEventPage: React.FC = () => {
   const { data: eventsData, refresh: refreshEvents } = useCrud<Event>({ tableName: 'events' });
   const isEditing = !!id;
 
-  const [activeTab, setActiveTab] = useState<'info' | 'participants' | 'volunteers' | 'feedbacks' | 'stats' | 'certificates' | 'posters'>('info');
+  const [searchParams] = useSearchParams();
+  // ?tab=album : lien direct depuis l'email "demande d'accès à l'album"
+  const [activeTab, setActiveTab] = useState<'info' | 'participants' | 'volunteers' | 'feedbacks' | 'stats' | 'certificates' | 'posters' | 'album'>(
+    () => (searchParams.get('tab') === 'album' ? 'album' : 'info'),
+  );
   const [infoWizardOpen, setInfoWizardOpen] = useState(false);
   const [wizardInitialStep, setWizardInitialStep] = useState<StepKey>('info');
 
@@ -1114,6 +1119,7 @@ const CreateEventPage: React.FC = () => {
     { key: 'info', label: 'Informations', icon: ClipboardList, sub: 'Résumé & configuration' },
     { key: 'participants', label: 'Participants', icon: Users, sub: 'Inscrits', badge: registrations.length || null },
     { key: 'posters', label: "Affiches J'y serai", icon: Sparkles, sub: 'Visuels générés' },
+    { key: 'album', label: 'Album', icon: Images, sub: 'Photos & vidéos' },
     { key: 'certificates', label: 'Certificats', icon: Award, sub: 'Envoi aux scannés', badge: scannedRegistrations.length || null },
     { key: 'volunteers', label: 'Volontaires', icon: HardHat, sub: 'Bénévoles', badge: volunteers.length || null },
     { key: 'stats', label: 'Statistiques', icon: BarChart2, sub: 'KPIs & graphes' },
@@ -2576,6 +2582,13 @@ const CreateEventPage: React.FC = () => {
         {activeTab === 'posters' && id && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-6 sm:px-10 py-8">
             <EventPostersTab eventId={id} eventTitle={formData.title || 'Événement'} />
+          </motion.div>
+        )}
+
+        {/* ── Album Tab : photos & vidéos, partage façon Drive ── */}
+        {activeTab === 'album' && id && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-4 sm:px-10 py-5 sm:py-8">
+            <EventAlbumTab eventId={parseInt(id)} eventTitle={formData.title || 'Événement'} eventSlug={formData.slug} />
           </motion.div>
         )}
       </div>
